@@ -13,10 +13,10 @@ const aliases = {
 export default defineConfig({
   main: {
     build: {
-      rollupOptions: {
-        input: {
-          main: resolve(__dirname, "lib/main/main.ts"),
-        },
+      lib: {
+        entry: resolve(__dirname, "lib/main/main.ts"),
+        formats: ["cjs"],
+        fileName: () => "main.js",
       },
     },
     resolve: {
@@ -26,10 +26,10 @@ export default defineConfig({
   },
   preload: {
     build: {
-      rollupOptions: {
-        input: {
-          preload: resolve(__dirname, "lib/preload/preload.ts"),
-        },
+      lib: {
+        entry: resolve(__dirname, "lib/preload/preload.ts"),
+        formats: ["cjs"],
+        fileName: () => "preload.js",
       },
     },
     resolve: {
