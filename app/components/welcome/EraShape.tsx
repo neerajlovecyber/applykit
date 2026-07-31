@@ -1,45 +1,45 @@
-import { useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const pathTypes = [
-  { name: 'Electron' },
-  { name: 'React' },
-  { name: 'Vite' },
-  { name: 'Shadcn' },
-  { name: 'Tailwind' },
-  { name: 'ERA' },
-]
+  { name: "Electron" },
+  { name: "React" },
+  { name: "Vite" },
+  { name: "Shadcn" },
+  { name: "Tailwind" },
+  { name: "ERA" },
+];
 
 interface EraShapeIconProps {
-  onPathHover?: (index: number, name: string) => void
-  onPathReset?: () => void
-  [key: string]: any
+  onPathHover?: (index: number, name: string) => void;
+  onPathReset?: () => void;
+  [key: string]: any;
 }
 
 const EraShape = ({ onPathHover, onPathReset, ...props }: EraShapeIconProps) => {
-  const [hoveredPath, setHoveredPath] = useState('ERA')
-  const timeoutRef = useRef<number | null>(null)
+  const [hoveredPath, setHoveredPath] = useState("ERA");
+  const timeoutRef = useRef<number | null>(null);
 
   const handleMouseEnter = (index: number) => {
     // Clear any existing timeout when a new path is hovered
     if (timeoutRef.current !== null) {
-      clearTimeout(timeoutRef.current)
-      timeoutRef.current = null
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-    setHoveredPath(pathTypes[index].name)
+    setHoveredPath(pathTypes[index].name);
     // Emit the hover event with the path index and name
     if (onPathHover) {
-      onPathHover(index, pathTypes[index].name)
+      onPathHover(index, pathTypes[index].name);
     }
-  }
+  };
   const handleMouseLeave = () => {
     timeoutRef.current = window.setTimeout(() => {
-      setHoveredPath('ERA')
-      timeoutRef.current = null
+      setHoveredPath("ERA");
+      timeoutRef.current = null;
       // Emit the reset event when the mouse leaves the shape
-      if (onPathReset) onPathReset()
-    }, 5000)
-  }
+      if (onPathReset) onPathReset();
+    }, 5000);
+  };
 
   return (
     <div id="era-shape">
@@ -51,13 +51,19 @@ const EraShape = ({ onPathHover, onPathReset, ...props }: EraShapeIconProps) => 
           exit={{ opacity: 0 }}
           transition={{
             duration: 0.2,
-            ease: 'easeInOut',
+            ease: "easeInOut",
           }}
         >
           {hoveredPath}
         </motion.span>
       </AnimatePresence>
-      <svg width="100%" height="100%" viewBox="0 0 195 197" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <svg
+        width="100%"
+        height="100%"
+        viewBox="0 0 195 197"
+        xmlns="http://www.w3.org/2000/svg"
+        {...props}
+      >
         <defs>
           <linearGradient id="viteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#68a9fd" stopOpacity="1" />
@@ -102,7 +108,7 @@ const EraShape = ({ onPathHover, onPathReset, ...props }: EraShapeIconProps) => 
         />
       </svg>
     </div>
-  )
-}
+  );
+};
 
-export default EraShape
+export default EraShape;

@@ -1,15 +1,18 @@
-import React from 'react'
-import ContentStep from '../ContentStep'
-import AsterikIcon from '../icons/AsterikIcon'
+import React from "react";
+import ContentStep from "../ContentStep";
+import AsterikIcon from "../icons/AsterikIcon";
 
 const ElectronContent = () => {
   return (
     <div>
       <h2 className="flex items-center gap-4">Electron</h2>
-      <p>With the power of modern Chromium, Electron gives you an unopinionated blank slate to build your app.</p>
       <p>
-        Choose to integrate your favourite libraries and frameworks from the front-end ecosystem, or carve your own path
-        with bespoke HTML code.
+        With the power of modern Chromium, Electron gives you an unopinionated blank slate to build
+        your app.
+      </p>
+      <p>
+        Choose to integrate your favourite libraries and frameworks from the front-end ecosystem, or
+        carve your own path with bespoke HTML code.
       </p>
 
       <div className="welcome-content-steps">
@@ -39,13 +42,13 @@ const ElectronContent = () => {
       </div>
 
       <p className="learn-more">
-        Learn more about Electron at{' '}
+        Learn more about Electron at{" "}
         <a href="https://www.electronjs.org/" target="_blank" rel="noreferrer">
           electronjs.org
         </a>
       </p>
     </div>
-  )
-}
+  );
+};
 
-export default ElectronContent
+export default ElectronContent;

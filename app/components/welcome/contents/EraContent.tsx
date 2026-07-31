@@ -1,33 +1,33 @@
-import ContentStep from '../ContentStep'
-import CodeWindowIcon from '../icons/CodeWindowIcon'
-import FanIcon from '../icons/FanIcon'
-import ColorSchemeIcon from '../icons/ColorSchemeIcon'
-import AsterikIcon from '../icons/AsterikIcon'
-import { useConveyor } from '@/app/hooks/use-conveyor'
-import { useEffect, useState } from 'react'
+import ContentStep from "../ContentStep";
+import CodeWindowIcon from "../icons/CodeWindowIcon";
+import FanIcon from "../icons/FanIcon";
+import ColorSchemeIcon from "../icons/ColorSchemeIcon";
+import AsterikIcon from "../icons/AsterikIcon";
+import { useConveyor } from "@/app/hooks/use-conveyor";
+import { useEffect, useState } from "react";
 
 const EraContent = () => {
-  const { version } = useConveyor('app')
-  const [appVersion, setAppVersion] = useState('')
+  const { version } = useConveyor("app");
+  const [appVersion, setAppVersion] = useState("");
 
   useEffect(() => {
     const fetchVersion = async () => {
-      const appVersion = await version()
-      setAppVersion(appVersion)
-    }
-    fetchVersion()
-  }, [version])
+      const appVersion = await version();
+      setAppVersion(appVersion);
+    };
+    fetchVersion();
+  }, [version]);
 
   return (
     <div>
       <h2 className="flex items-center gap-4">Electron React App</h2>
       <p>
-        Welcome to the Electron React App "v{appVersion}". A starter kit that provides a solid foundation for developing
-        desktop applications.
+        Welcome to the Electron React App "v{appVersion}". A starter kit that provides a solid
+        foundation for developing desktop applications.
       </p>
       <p>
-        This project utilizes Electron, React, Vite, TypeScript, and Tailwind CSS to provide a modern development
-        environment with the latest features and tools.
+        This project utilizes Electron, React, Vite, TypeScript, and Tailwind CSS to provide a
+        modern development environment with the latest features and tools.
       </p>
 
       <div className="welcome-content-steps">
@@ -57,13 +57,13 @@ const EraContent = () => {
       </div>
 
       <p className="learn-more">
-        Learn more about Electron React App at{' '}
+        Learn more about Electron React App at{" "}
         <a href="https://github.com/guasam/electron-react-app" target="_blank" rel="noreferrer">
           Github
         </a>
       </p>
     </div>
-  )
-}
+  );
+};
 
-export default EraContent
+export default EraContent;

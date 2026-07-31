@@ -1,15 +1,17 @@
-import React from 'react'
-import ContentStep from '../ContentStep'
-import AsterikIcon from '../icons/AsterikIcon'
+import React from "react";
+import ContentStep from "../ContentStep";
+import AsterikIcon from "../icons/AsterikIcon";
 
 const ViteContent = () => {
   return (
     <div>
       <h2 className="flex items-center gap-4">Electron Vite</h2>
-      <p>Combine Electron's desktop capabilities with Vite's lightning-fast development experience.</p>
       <p>
-        This powerful combination delivers exceptional developer experience with instant HMR, while allowing you to
-        build feature-rich desktop applications.
+        Combine Electron's desktop capabilities with Vite's lightning-fast development experience.
+      </p>
+      <p>
+        This powerful combination delivers exceptional developer experience with instant HMR, while
+        allowing you to build feature-rich desktop applications.
       </p>
 
       <div className="welcome-content-steps">
@@ -39,13 +41,13 @@ const ViteContent = () => {
       </div>
 
       <p className="learn-more">
-        Learn more about Electron Vite at{' '}
+        Learn more about Electron Vite at{" "}
         <a href="https://electron-vite.org/guide/" target="_blank" rel="noreferrer">
           electron-vite.org
         </a>
       </p>
     </div>
-  )
-}
+  );
+};
 
-export default ViteContent
+export default ViteContent;

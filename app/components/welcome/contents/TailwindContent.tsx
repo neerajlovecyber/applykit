@@ -1,6 +1,6 @@
-import React from 'react'
-import ContentStep from '../ContentStep'
-import AsterikIcon from '../icons/AsterikIcon'
+import React from "react";
+import ContentStep from "../ContentStep";
+import AsterikIcon from "../icons/AsterikIcon";
 
 const TailwindContent = () => {
   return (
@@ -8,8 +8,8 @@ const TailwindContent = () => {
       <h2 className="flex items-center gap-4">Tailwind CSS</h2>
       <p>A utility-first CSS framework for rapidly building custom user interfaces.</p>
       <p>
-        Tailwind CSS provides low-level utility classes that let you build completely custom designs without ever
-        leaving your HTML, resulting in faster development and cleaner code.
+        Tailwind CSS provides low-level utility classes that let you build completely custom designs
+        without ever leaving your HTML, resulting in faster development and cleaner code.
       </p>
 
       <div className="welcome-content-steps">
@@ -39,13 +39,13 @@ const TailwindContent = () => {
       </div>
 
       <p className="learn-more">
-        Learn more about Tailwind CSS at{' '}
+        Learn more about Tailwind CSS at{" "}
         <a href="https://tailwindcss.com/" target="_blank" rel="noreferrer">
           tailwindcss.com
         </a>
       </p>
     </div>
-  )
-}
+  );
+};
 
-export default TailwindContent
+export default TailwindContent;

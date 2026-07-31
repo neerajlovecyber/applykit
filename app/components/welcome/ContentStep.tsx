@@ -3,9 +3,9 @@ const ContentStep = ({
   description,
   icon: Icon,
 }: {
-  title: string
-  description: string
-  icon: React.ComponentType
+  title: string;
+  description: string;
+  icon: React.ComponentType;
 }) => {
   return (
     <div className="welcome-content-step">
@@ -15,7 +15,7 @@ const ContentStep = ({
         <p>{description}</p>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ContentStep
+export default ContentStep;

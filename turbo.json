@@ -1,0 +1,18 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "vite:build:app": {
+      "outputs": ["out/**"]
+    },
+    "lint": {
+      "outputs": []
+    },
+    "format": {
+      "outputs": []
+    }
+  }
+}

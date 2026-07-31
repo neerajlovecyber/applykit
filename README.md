@@ -98,23 +98,23 @@ This will start Electron with hot-reload enabled so you can see changes in real 
 Use the `useConveyor` hook in your React components:
 
 ```tsx
-import { useConveyor } from '@/app/hooks/use-conveyor'
+import { useConveyor } from "@/app/hooks/use-conveyor";
 
 function MyComponent() {
-  const { version } = useConveyor('app')
-  const { windowMinimize } = useConveyor('window')
+  const { version } = useConveyor("app");
+  const { windowMinimize } = useConveyor("window");
 
   const handleGetVersion = async () => {
-    console.log('App version:', await version())
-    console.log('App version:', await window.conveyor.app.version()) // OR
-  }
+    console.log("App version:", await version());
+    console.log("App version:", await window.conveyor.app.version()); // OR
+  };
 
   return (
     <div>
       <button onClick={handleGetVersion}>Get Version</button>
       <button onClick={windowMinimize}>Minimize Window</button>
     </div>
-  )
+  );
 }
 ```
 
@@ -124,15 +124,15 @@ Conveyor provides two ways to access IPC methods:
 
 ```tsx
 // Method 1: React Hook (Recommended)
-const { version } = useConveyor('app')
-await version()
+const { version } = useConveyor("app");
+await version();
 
 // Method 2: React Hook Global Conveyor
-const conveyor = useConveyor()
-await conveyor.app.version()
+const conveyor = useConveyor();
+await conveyor.app.version();
 
 // Method 3: Global Window Object
-await window.conveyor.app.version()
+await window.conveyor.app.version();
 ```
 
 ### Built-in APIs
@@ -153,11 +153,11 @@ Follow these 4 simple steps to add your own IPC methods:
 Create a schema in `lib/conveyor/schemas/app-schema.ts`:
 
 ```ts
-import { z } from 'zod'
+import { z } from "zod";
 
 export const appIpcSchema = {
   // Simple method with no parameters
-  'get-app-info': {
+  "get-app-info": {
     args: z.tuple([]),
     return: z.object({
       name: z.string(),
@@ -167,7 +167,7 @@ export const appIpcSchema = {
   },
 
   // Method with parameters
-  'save-user-preference': {
+  "save-user-preference": {
     args: z.tuple([
       z.object({
         key: z.string(),
@@ -176,7 +176,7 @@ export const appIpcSchema = {
     ]),
     return: z.boolean(),
   },
-} as const
+} as const;
 ```
 
 #### Step 2: Add API Method
@@ -185,8 +185,9 @@ Update `lib/conveyor/api/app-api.ts`:
 
 ```ts
 export class AppApi extends ConveyorApi {
-  getAppInfo = () => this.invoke('get-app-info')
-  saveUserPreference = (key: string, value: string) => this.invoke('save-user-preference', { key, value })
+  getAppInfo = () => this.invoke("get-app-info");
+  saveUserPreference = (key: string, value: string) =>
+    this.invoke("save-user-preference", { key, value });
 }
 ```
 
@@ -195,22 +196,22 @@ export class AppApi extends ConveyorApi {
 Add handler in `lib/conveyor/handlers/app-handler.ts`:
 
 ```ts
-import { handle } from '@/lib/main/shared'
-import { app } from 'electron'
+import { handle } from "@/lib/main/shared";
+import { app } from "electron";
 
 export const registerAppHandlers = () => {
-  handle('get-app-info', () => ({
+  handle("get-app-info", () => ({
     name: app.getName(),
     version: app.getVersion(),
     platform: process.platform,
-  }))
+  }));
 
-  handle('save-user-preference', async ({ key, value }) => {
+  handle("save-user-preference", async ({ key, value }) => {
     // Save to file, database, etc.
-    console.log(`Saving ${key}: ${value}`)
-    return true
-  })
-}
+    console.log(`Saving ${key}: ${value}`);
+    return true;
+  });
+};
 ```
 
 #### Step 4: Register Handler
@@ -218,27 +219,27 @@ export const registerAppHandlers = () => {
 In `lib/main/app.ts`:
 
 ```ts
-import { registerAppHandlers } from '@/lib/conveyor/handlers/app-handler'
+import { registerAppHandlers } from "@/lib/conveyor/handlers/app-handler";
 
 // During app initialization
-registerAppHandlers()
+registerAppHandlers();
 ```
 
 ### Usage in Components
 
 ```tsx
 function SettingsComponent() {
-  const conveyor = useConveyor()
-  const [appInfo, setAppInfo] = useState(null)
+  const conveyor = useConveyor();
+  const [appInfo, setAppInfo] = useState(null);
 
   useEffect(() => {
     // Get app information
-    conveyor.app.getAppInfo().then(setAppInfo)
-  }, [])
+    conveyor.app.getAppInfo().then(setAppInfo);
+  }, []);
 
   const saveTheme = (theme: string) => {
-    conveyor.app.saveUserPreference('theme', theme)
-  }
+    conveyor.app.saveUserPreference("theme", theme);
+  };
 
   return (
     <div>
@@ -249,9 +250,9 @@ function SettingsComponent() {
         </p>
       )}
 
-      <button onClick={() => saveTheme('dark')}>Set Dark Theme</button>
+      <button onClick={() => saveTheme("dark")}>Set Dark Theme</button>
     </div>
-  )
+  );
 }
 ```
 
@@ -260,26 +261,26 @@ function SettingsComponent() {
 ```tsx
 const handleApiCall = async () => {
   try {
-    const result = await conveyor.app.getAppInfo()
-    console.log('Success:', result)
+    const result = await conveyor.app.getAppInfo();
+    console.log("Success:", result);
   } catch (error) {
-    console.error('API call failed:', error)
+    console.error("API call failed:", error);
     // Handle validation errors, network issues, etc.
   }
-}
+};
 ```
 
 ### Type Safety Benefits
 
 ```tsx
 // ✅ TypeScript enforces correct types
-const info = await conveyor.app.getAppInfo() // Returns { name: string, version: string, platform: string }
+const info = await conveyor.app.getAppInfo(); // Returns { name: string, version: string, platform: string }
 
 // ❌ TypeScript error - wrong parameter type
-const result = await conveyor.app.saveUserPreference(123, 'value') // Error: Expected string, got number
+const result = await conveyor.app.saveUserPreference(123, "value"); // Error: Expected string, got number
 
 // ✅ Runtime validation ensures data integrity
-const valid = await conveyor.app.saveUserPreference('theme', 'dark') // Validates at runtime
+const valid = await conveyor.app.saveUserPreference("theme", "dark"); // Validates at runtime
 ```
 
 📖 **For advanced usage and detailed documentation, see [Conveyor README](lib/conveyor/README.md)**
@@ -381,11 +382,11 @@ The project uses TypeScript path aliases for clean imports:
 
 ```ts
 // Instead of relative paths like:
-import { Button } from '../../../components/ui/button'
+import { Button } from "../../../components/ui/button";
 
 // Use clean aliases:
-import { Button } from '@/app/components/ui/button'
-import { conveyor } from '@/lib/conveyor/api'
+import { Button } from "@/app/components/ui/button";
+import { conveyor } from "@/lib/conveyor/api";
 ```
 
 Configured aliases by default, customise as you want:

@@ -193,7 +193,7 @@
   background-color: var(--window-c-control-hover);
 }
 
-.titlebar-controlButton[aria-label='close']:hover {
+.titlebar-controlButton[aria-label="close"]:hover {
   background-color: var(--window-c-control-close-hover);
   color: var(--window-c-control-close-hover-text, inherit);
 }

@@ -1,24 +1,24 @@
-import { Component, ErrorInfo, ReactNode } from 'react'
-import { ScrollArea, ScrollBar } from './ui/scroll-area'
+import { Component, ErrorInfo, ReactNode } from "react";
+import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 
 interface Props {
-  children: ReactNode
-  fallback?: ReactNode
+  children: ReactNode;
+  fallback?: ReactNode;
 }
 
 interface State {
-  hasError: boolean
-  error?: Error
+  hasError: boolean;
+  error?: Error;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
-    super(props)
-    this.state = { hasError: false }
+    super(props);
+    this.state = { hasError: false };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error }
+    return { hasError: true, error };
   }
 
   componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
@@ -63,7 +63,9 @@ export class ErrorBoundary extends Component<Props, State> {
                 {/* Stack Trace */}
                 {this.state.error?.stack && (
                   <ScrollArea className="mt-3 h-32 p-4 rounded-lg border border-border/50 bg-muted/50">
-                    <pre className="text-sm text-foreground select-text text-left">{this.state.error.stack}</pre>
+                    <pre className="text-sm text-foreground select-text text-left">
+                      {this.state.error.stack}
+                    </pre>
                     <ScrollBar orientation="horizontal" />
                   </ScrollArea>
                 )}
@@ -71,9 +73,9 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
           </div>
         )
-      )
+      );
     }
 
-    return this.props.children
+    return this.props.children;
   }
 }
