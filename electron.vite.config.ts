@@ -5,7 +5,9 @@ import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 
 // Shared alias configuration
 const aliases = {
+  "@": resolve(__dirname, "."),
   "@/app": resolve(__dirname, "app"),
+  "@/components": resolve(__dirname, "components"),
   "@/lib": resolve(__dirname, "lib"),
   "@/resources": resolve(__dirname, "resources"),
 };

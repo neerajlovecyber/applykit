@@ -64,26 +64,26 @@
   }
 
   .dark {
-    --background: var(--color-neutral-950);
-    --foreground: var(--color-neutral-100);
-    --card: hsl(0, 0%, 3.9%);
+    --background: hsl(0 0% 5%);
+    --foreground: hsl(0 0% 98%);
+    --card: hsl(0 0% 7%);
     --card-foreground: hsl(0 0% 98%);
-    --popover: hsl(0 0% 3.9%);
+    --popover: hsl(0 0% 7%);
     --popover-foreground: hsl(0 0% 98%);
-    --primary: hsl(0 0% 98%);
-    --primary-foreground: hsl(0 0% 9%);
-    --secondary: hsl(0 0% 14.9%);
+    --primary: hsl(158 64% 45%);
+    --primary-foreground: hsl(0 0% 100%);
+    --secondary: hsl(0 0% 12%);
     --secondary-foreground: hsl(0 0% 98%);
-    --muted: hsl(0 0% 14.9%);
-    --muted-foreground: hsl(0 0% 63.9%);
-    --accent: hsl(0 0% 14.9%);
-    --accent-foreground: hsl(0 0% 98%);
+    --muted: hsl(0 0% 12%);
+    --muted-foreground: hsl(0 0% 60%);
+    --accent: hsl(158 64% 45% / 0.15);
+    --accent-foreground: hsl(158 64% 50%);
     --destructive: hsl(0 62.8% 30.6%);
     --destructive-foreground: hsl(0 0% 98%);
-    --border: hsl(0 0% 14.9%);
-    --input: hsl(0 0% 14.9%);
-    --ring: hsl(0 0% 83.1%);
-    --chart-1: hsl(220 70% 50%);
+    --border: hsl(0 0% 12%);
+    --input: hsl(0 0% 12%);
+    --ring: hsl(158 64% 45%);
+    --chart-1: hsl(158 64% 45%);
     --chart-2: hsl(160 60% 45%);
     --chart-3: hsl(30 80% 55%);
     --chart-4: hsl(280 65% 60%);
@@ -103,14 +103,14 @@
 }
 
 .dark {
-  --sidebar: hsl(240 5.9% 10%);
-  --sidebar-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar: hsl(0 0% 3.5%);
+  --sidebar-foreground: hsl(0 0% 98%);
+  --sidebar-primary: hsl(158 64% 45%);
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(240 3.7% 15.9%);
-  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-border: hsl(240 3.7% 15.9%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+  --sidebar-accent: hsl(0 0% 12%);
+  --sidebar-accent-foreground: hsl(0 0% 98%);
+  --sidebar-border: hsl(0 0% 12%);
+  --sidebar-ring: hsl(158 64% 45%);
 }
 
 @theme inline {

@@ -5,7 +5,8 @@
     "electron.vite.config.*",
     "lib/**/*",
     "resources/**/*",
-    "app/**/*"
+    "app/**/*",
+    "components/**/*"
   ],
   "compilerOptions": {
     "composite": true,

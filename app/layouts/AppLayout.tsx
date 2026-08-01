@@ -12,18 +12,38 @@ import {
   Play,
   Pause,
   Briefcase,
+  PanelLeft,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
+import {
+  SidebarProvider,
+  SidebarInset,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+  SidebarTrigger,
+  SidebarSeparator,
+} from "@/app/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
-const navItems = [
+const mainNavItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { path: "/queue", label: "Job Queue", icon: ListTodo },
   { path: "/finder", label: "Job Finder", icon: Compass },
   { path: "/profiles", label: "Role Profiles", icon: UserCheck },
   { path: "/history", label: "History", icon: History },
-  { path: "/settings", label: "Settings", icon: Settings },
 ];
+
+const allNavItems = [...mainNavItems, { path: "/settings", label: "Settings", icon: Settings }];
 
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -31,69 +51,135 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const { activeProfile } = useProfileStore();
 
   return (
-    <div className="flex h-screen bg-background text-foreground select-none overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col justify-between p-4">
-        <div>
-          {/* Logo / Brand */}
-          <div className="flex items-center gap-3 px-2 py-4 mb-4 border-b border-border/50">
-            <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-sm">
-              <Briefcase className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="font-semibold tracking-tight text-base">ApplyKit</h1>
-              <p className="text-xs text-muted-foreground">Auto-Job Applicator</p>
-            </div>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="h-4 w-4" />
-                    <span>{item.label}</span>
+    <SidebarProvider
+      className="web3-dashboard bg-background text-foreground min-h-screen font-sans select-none overflow-hidden"
+      style={{ "--sidebar-width": "16rem", "--sidebar-width-icon": "3.5rem" } as React.CSSProperties}
+    >
+      <Sidebar collapsible="icon" className="border-r border-border">
+        <SidebarHeader className="p-3">
+          <SidebarMenu>
+            <SidebarMenuItem className="flex items-center justify-between gap-2">
+              <SidebarMenuButton
+                asChild
+                size="lg"
+                className="h-11 px-2 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:hidden hover:bg-muted/50 rounded-xl"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="size-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
+                    <Briefcase className="size-4 text-emerald-400" />
                   </div>
-                  {item.path === "/queue" && pendingCount > 0 && (
-                    <Badge variant={isActive ? "secondary" : "outline"} className="text-xs px-2">
-                      {pendingCount}
-                    </Badge>
-                  )}
+                  <span className="text-lg font-medium text-foreground">ApplyKit</span>
+                </div>
+              </SidebarMenuButton>
+              <SidebarTrigger className="shrink-0" />
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+
+        <SidebarContent className="gap-4 p-3">
+          <SidebarGroup className="p-0">
+            <SidebarGroupLabel className="h-8 px-1 text-sm font-medium text-muted-foreground">
+              Main
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {mainNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.label}
+                        className={cn(
+                          "h-9 gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
+                          isActive
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-primary"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <Link to={item.path} className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-3">
+                            <Icon className={cn("size-4", isActive ? "text-primary" : "")} />
+                            <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                          </div>
+                          {item.path === "/queue" && pendingCount > 0 && (
+                            <Badge
+                              variant="secondary"
+                              className="text-xs px-2 py-0 group-data-[collapsible=icon]:hidden"
+                            >
+                              {pendingCount}
+                            </Badge>
+                          )}
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        <SidebarSeparator />
+
+        <SidebarFooter className="gap-2 p-3">
+          <SidebarMenu className="gap-1">
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === "/settings"}
+                tooltip="Settings"
+                className={cn(
+                  "h-9 gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
+                  location.pathname === "/settings"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Link to="/settings" className="flex items-center gap-3">
+                  <Settings className="size-4" />
+                  <span className="group-data-[collapsible=icon]:hidden">Settings</span>
                 </Link>
-              );
-            })}
-          </nav>
-        </div>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
 
-        {/* Active Profile Status */}
-        <div className="p-3 bg-muted/40 rounded-xl border border-border/40 text-xs">
-          <div className="text-muted-foreground mb-1">Active Profile</div>
-          <div className="font-medium truncate">{activeProfile?.name ?? "No profile selected"}</div>
-        </div>
-      </aside>
+          <div className="pt-1 group-data-[collapsible=icon]:hidden">
+            <Link
+              to="/profiles"
+              className="flex items-center justify-between p-2 rounded-xl bg-muted/30 border border-border/40 hover:bg-muted/60 transition-all duration-150 group/prof"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="size-7 rounded-lg bg-emerald-500/20 text-emerald-400 font-semibold text-xs flex items-center justify-center shrink-0">
+                  {activeProfile?.name ? activeProfile.name.charAt(0).toUpperCase() : "P"}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider leading-none">
+                    Active Profile
+                  </span>
+                  <span className="text-xs font-medium text-foreground truncate mt-0.5">
+                    {activeProfile?.name ?? "Select Role Profile"}
+                  </span>
+                </div>
+              </div>
+              <ChevronDown className="size-3.5 text-muted-foreground group-hover/prof:text-foreground shrink-0 ml-1 transition-colors" />
+            </Link>
+          </div>
+        </SidebarFooter>
+      </Sidebar>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Sticky Header with Global Controls */}
-        <header className="h-16 border-b border-border bg-background/80 backdrop-blur-xs px-6 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold tracking-tight">
-              {navItems.find((item) => item.path === location.pathname)?.label ?? "Dashboard"}
-            </h2>
+      <SidebarInset className="flex flex-col min-w-0 h-screen">
+        {/* Top bar control bar merged with top header */}
+        <div className="h-12 border-b border-border/60 bg-background/95 backdrop-blur-md pl-6 pr-32 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold tracking-tight text-foreground">
+              {allNavItems.find((item) => item.path === location.pathname)?.label ?? "Dashboard"}
+            </span>
           </div>
 
-          {/* Global Run / Pause Button */}
+          {/* Global Run / Pause Engine Status */}
           <div className="flex items-center gap-4">
             <div className="text-xs text-muted-foreground flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full ${isRunning ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"}`} />
@@ -105,28 +191,29 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                 variant="destructive"
                 size="sm"
                 onClick={pauseQueue}
-                className="gap-2 shadow-xs"
+                className="gap-2 h-7 text-xs px-3 shadow-xs"
               >
-                <Pause className="h-4 w-4" />
-                Pause Automation
+                <Pause className="h-3.5 w-3.5" />
+                Pause
               </Button>
             ) : (
               <Button
                 variant="default"
                 size="sm"
                 onClick={startQueue}
-                className="gap-2 shadow-xs"
+                className="gap-2 h-7 text-xs px-3 shadow-xs bg-emerald-500 hover:bg-emerald-600 text-white"
               >
-                <Play className="h-4 w-4" />
+                <Play className="h-3.5 w-3.5 fill-current" />
                 Run Queue ({pendingCount})
               </Button>
             )}
           </div>
-        </header>
+        </div>
 
         {/* Page Body */}
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 };
+

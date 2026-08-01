@@ -9,6 +9,8 @@ import { HistoryPage } from "@/app/pages/HistoryPage";
 import { SettingsPage } from "@/app/pages/SettingsPage";
 import "./styles/app.css";
 
+import Web3DashboardDemo from "../components/watermelon/web3-dashboard/demo";
+
 export default function App() {
   return (
     <BrowserRouter>

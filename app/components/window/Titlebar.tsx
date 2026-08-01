@@ -1,18 +1,14 @@
 import { useEffect } from "react";
+import { Minus, Square, X } from "lucide-react";
 import { useWindowContext } from "./WindowContext";
 import { useTitlebarContext } from "./TitlebarContext";
 import { TitlebarMenu } from "./TitlebarMenu";
 import { useConveyor } from "@/app/hooks/use-conveyor";
-
-const SVG_PATHS = {
-  close:
-    "M 0,0 0,0.7 4.3,5 0,9.3 0,10 0.7,10 5,5.7 9.3,10 10,10 10,9.3 5.7,5 10,0.7 10,0 9.3,0 5,4.3 0.7,0 Z",
-  maximize: "M 0,0 0,10 10,10 10,0 Z M 1,1 9,1 9,9 1,9 Z",
-  minimize: "M 0,5 10,5 10,6 0,6 Z",
-} as const;
+import { Button } from "@/app/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip";
 
 export const Titlebar = () => {
-  const { title, icon, titleCentered, menuItems } = useWindowContext().titlebar;
+  const { menuItems } = useWindowContext().titlebar;
   const { menusVisible, setMenusVisible, closeActiveMenu } = useTitlebarContext();
   const { window: wcontext } = useWindowContext();
 
@@ -30,19 +26,6 @@ export const Titlebar = () => {
 
   return (
     <div className={`window-titlebar ${wcontext?.platform ? `platform-${wcontext.platform}` : ""}`}>
-      {wcontext?.platform !== "darwin" && (
-        <div className="window-titlebar-icon">
-          <img src={icon} />
-        </div>
-      )}
-
-      <div
-        className="window-titlebar-title"
-        {...(titleCentered && { "data-centered": true })}
-        style={{ visibility: menusVisible ? "hidden" : "visible" }}
-      >
-        {title}
-      </div>
       {menusVisible && <TitlebarMenu />}
       {wcontext?.platform === "win32" && <TitlebarControls />}
     </div>
@@ -53,19 +36,31 @@ const TitlebarControls = () => {
   const { window: wcontext } = useWindowContext();
 
   return (
-    <div className="window-titlebar-controls">
-      {wcontext?.minimizable && (
-        <TitlebarControlButton label="minimize" svgPath={SVG_PATHS.minimize} />
-      )}
-      {wcontext?.maximizable && (
-        <TitlebarControlButton label="maximize" svgPath={SVG_PATHS.maximize} />
-      )}
-      <TitlebarControlButton label="close" svgPath={SVG_PATHS.close} />
-    </div>
+    <TooltipProvider delayDuration={300}>
+      <div className="window-titlebar-controls flex items-center gap-1.5 px-3 py-1.5">
+        {wcontext?.minimizable && (
+          <TitlebarIconButton label="Minimize" icon={<Minus className="size-3.5" />} action="minimize" />
+        )}
+        {wcontext?.maximizable && (
+          <TitlebarIconButton label="Maximize" icon={<Square className="size-3" />} action="maximize" />
+        )}
+        <TitlebarIconButton label="Close" icon={<X className="size-3.5" />} action="close" isClose />
+      </div>
+    </TooltipProvider>
   );
 };
 
-const TitlebarControlButton = ({ svgPath, label }: { svgPath: string; label: string }) => {
+const TitlebarIconButton = ({
+  label,
+  icon,
+  action,
+  isClose = false,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  action: "minimize" | "maximize" | "close";
+  isClose?: boolean;
+}) => {
   const { windowMinimize, windowMaximizeToggle, windowClose } = useConveyor("window");
 
   const handleAction = () => {
@@ -74,15 +69,30 @@ const TitlebarControlButton = ({ svgPath, label }: { svgPath: string; label: str
       maximize: windowMaximizeToggle,
       close: windowClose,
     };
-    actions[label as keyof typeof actions]?.();
+    actions[action]?.();
   };
 
   return (
-    <div aria-label={label} className="titlebar-controlButton" onClick={handleAction}>
-      <svg width="10" height="10">
-        <path fill="currentColor" d={svgPath} />
-      </svg>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon"
+          className={`size-7 rounded-lg border border-border/50 transition-all duration-150 shadow-2xs ${
+            isClose
+              ? "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500 hover:text-white hover:border-rose-500"
+              : "bg-muted/30 text-muted-foreground hover:bg-emerald-500/15 hover:text-emerald-400 hover:border-emerald-500/30"
+          }`}
+          onClick={handleAction}
+        >
+          {icon}
+          <span className="sr-only">{label}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent className="px-2 py-1 text-[11px] font-medium" side="bottom">
+        {label}
+      </TooltipContent>
+    </Tooltip>
   );
 };
 
