@@ -1060,3 +1060,33 @@ export function getHistoryStats(): { total: number; applied: number; failed: num
   const weekCount = (db.prepare("SELECT COUNT(*) as count FROM history WHERE applied_at >= datetime('now', '-7 days')").get() as { count: number }).count;
   return { total, applied, failed, todayCount, weekCount };
 }
+
+// ═══════════════════════════════════════════════════════════
+// ALIAS HELPER EXPORTS
+// ═══════════════════════════════════════════════════════════
+
+export function updateApplicationDrafts(id: string, coverLetter?: string, tailoredResume?: string): void {
+  updateApplicationMaterials(id, { cover_letter: coverLetter, resume_version: tailoredResume });
+}
+
+export function updateSearchQuery(id: string, data: any): void {
+  const query = getSearchQueryById(id);
+  if (!query) return;
+  getDb().prepare("UPDATE search_queries SET keywords = ?, location = ? WHERE id = ?").run(data.keywords ?? query.keywords, data.location ?? query.location, id);
+}
+
+export function recordSearchRun(id: string, foundCount: number): void {
+  updateSearchQueryLastRun(id, foundCount, true);
+}
+
+export function insertDocument(data: { profile_id: string; name: string; type: string; content_text?: string; is_primary?: boolean }): Document {
+  return createDocument({
+    profile_id: data.profile_id,
+    doc_type: data.type,
+    display_name: data.name,
+    file_path: "",
+    extracted_text: data.content_text,
+    is_default: data.is_primary ? 1 : 0,
+  });
+}
+

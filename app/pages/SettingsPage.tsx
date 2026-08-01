@@ -20,29 +20,15 @@ import {
 import type { Platform } from "@/lib/main/db-queries";
 import type { LLMProviderConfig } from "@/lib/providers/types";
 
-const PROVIDER_MODELS_MAP: Record<string, string[]> = {
-  openrouter: [
-    "deepseek/deepseek-r1:free",
-    "google/gemini-2.0-flash-exp:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "qwen/qwen-2.5-coder-32b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
-    "google/gemini-2.0-flash-001",
-    "anthropic/claude-3.5-sonnet",
-    "openai/gpt-4o-mini",
-    "openai/gpt-4o",
-  ],
-  openai: [
-    "gpt-4o-mini",
-    "gpt-4o",
-    "o3-mini",
-  ],
-  gemini: [
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
-    "gemini-2.0-flash-exp",
-  ],
-};
+interface DiscoveredModel {
+  id: string;
+  name: string;
+  isFree?: boolean;
+  context_length?: number;
+}
+
+const DEFAULT_OPENAI_MODELS = ["gpt-4o", "gpt-4o-mini", "o3-mini", "o1"];
+const DEFAULT_GEMINI_MODELS = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"];
 
 export const SettingsPage: React.FC = () => {
   const conveyor = useConveyor();
@@ -57,6 +43,10 @@ export const SettingsPage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState("deepseek/deepseek-r1:free");
   const [customModelInput, setCustomModelInput] = useState("");
 
+  // Live dynamic models state
+  const [openRouterModels, setOpenRouterModels] = useState<DiscoveredModel[]>([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+
   const [testStatus, setTestStatus] = useState<{ testing: boolean; success?: boolean; message?: string }>({
     testing: false,
   });
@@ -65,6 +55,7 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     loadSettings();
+    loadLiveOpenRouterModels();
   }, []);
 
   const loadSettings = async () => {
@@ -76,18 +67,17 @@ export const SettingsPage: React.FC = () => {
       setActiveProviderId(activeId);
 
       const providerList: LLMProviderConfig[] = await (window as any).electron?.ipcRenderer?.invoke("llm:list-providers") || [
-        { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "deepseek/deepseek-r1:free", availableModels: PROVIDER_MODELS_MAP.openrouter, isEnabled: true },
-        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: PROVIDER_MODELS_MAP.openai, isEnabled: true },
-        { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: PROVIDER_MODELS_MAP.gemini, isEnabled: true },
+        { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "deepseek/deepseek-r1:free", availableModels: [], isEnabled: true },
+        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: DEFAULT_OPENAI_MODELS, isEnabled: true },
+        { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: DEFAULT_GEMINI_MODELS, isEnabled: true },
       ];
 
-      const filteredProviders = providerList.filter((p) => p.id !== "ollama");
-      setProviders(filteredProviders);
+      setProviders(providerList.filter((p) => p.id !== "ollama"));
 
-      const activeConfig = filteredProviders.find((p) => p.id === activeId) || filteredProviders[0];
+      const activeConfig = providerList.find((p) => p.id === activeId) || providerList[0];
       if (activeConfig) {
         setSelectedProviderConfig(activeConfig);
-        setSelectedModel(activeConfig.defaultModel || PROVIDER_MODELS_MAP[activeId]?.[0] || "");
+        setSelectedModel(activeConfig.defaultModel || "deepseek/deepseek-r1:free");
         setBaseUrlInput(activeConfig.baseUrl || "");
       }
     } catch (err) {
@@ -95,10 +85,24 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const loadLiveOpenRouterModels = async () => {
+    setIsFetchingModels(true);
+    try {
+      const list: DiscoveredModel[] = await (window as any).electron?.ipcRenderer?.invoke("llm:fetch-openrouter-models");
+      if (list && list.length > 0) {
+        setOpenRouterModels(list);
+      }
+    } catch (err) {
+      console.error("Failed to fetch live OpenRouter models:", err);
+    } finally {
+      setIsFetchingModels(false);
+    }
+  };
+
   const handleSelectProvider = (id: string) => {
     setActiveProviderId(id);
     const p = providers.find((pr) => pr.id === id);
-    const defaultM = p?.defaultModel || PROVIDER_MODELS_MAP[id]?.[0] || "";
+    const defaultM = id === "openrouter" ? "deepseek/deepseek-r1:free" : (id === "openai" ? "gpt-4o-mini" : "gemini-1.5-flash");
 
     if (p) {
       setSelectedProviderConfig(p);
@@ -120,7 +124,7 @@ export const SettingsPage: React.FC = () => {
         apiKey: apiKeyInput.trim() || selectedProviderConfig.apiKey,
         baseUrl: baseUrlInput.trim() || selectedProviderConfig.baseUrl,
         defaultModel: finalModel,
-        availableModels: PROVIDER_MODELS_MAP[activeProviderId] || [finalModel],
+        availableModels: activeProviderId === "openrouter" ? openRouterModels.map((m) => m.id) : (activeProviderId === "openai" ? DEFAULT_OPENAI_MODELS : DEFAULT_GEMINI_MODELS),
         isEnabled: true,
       };
 
@@ -147,7 +151,7 @@ export const SettingsPage: React.FC = () => {
         apiKey: apiKeyInput.trim() || selectedProviderConfig.apiKey,
         baseUrl: baseUrlInput.trim() || selectedProviderConfig.baseUrl,
         defaultModel: finalModel,
-        availableModels: PROVIDER_MODELS_MAP[activeProviderId] || [finalModel],
+        availableModels: [finalModel],
         isEnabled: true,
       };
 
@@ -172,26 +176,55 @@ export const SettingsPage: React.FC = () => {
     loadSettings();
   };
 
-  const availableModelsForProvider = PROVIDER_MODELS_MAP[activeProviderId] || [];
+  // Determine current dropdown model choices
+  const currentModelChoices =
+    activeProviderId === "openrouter"
+      ? openRouterModels.length > 0
+        ? openRouterModels
+        : [
+            { id: "deepseek/deepseek-r1:free", name: "DeepSeek R1 (Free)", isFree: true },
+            { id: "google/gemini-2.0-flash-exp:free", name: "Gemini 2.0 Flash (Free)", isFree: true },
+            { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B (Free)", isFree: true },
+            { id: "google/gemini-2.0-flash-001", name: "Gemini 2.0 Flash 001", isFree: false },
+            { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", isFree: false },
+          ]
+      : activeProviderId === "openai"
+      ? DEFAULT_OPENAI_MODELS.map((m) => ({ id: m, name: m }))
+      : DEFAULT_GEMINI_MODELS.map((m) => ({ id: m, name: m }));
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto py-2">
       {/* AI Provider Configuration (@openrouter/ai-sdk-provider) */}
       <div className="space-y-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-lg">AI Provider Engine & Model Config</h3>
-            <Badge variant="outline" className="text-xs border-primary/30 text-primary flex items-center gap-1">
-              <Sparkles className="h-3 w-3" /> @openrouter/ai-sdk-provider
-            </Badge>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-lg">AI Provider Engine & Dynamic Model Config</h3>
+              <Badge variant="outline" className="text-xs border-primary/30 text-primary flex items-center gap-1">
+                <Sparkles className="h-3 w-3" /> @openrouter/ai-sdk-provider
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Fetch live available models dynamically from OpenRouter REST API or select direct OpenAI / Gemini.
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Select your AI Provider and model from official OpenRouter (including FREE models), OpenAI, or Gemini.
-          </p>
+
+          {activeProviderId === "openrouter" && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={loadLiveOpenRouterModels}
+              disabled={isFetchingModels}
+              className="gap-2 text-xs"
+            >
+              {isFetchingModels ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              Fetch Live Models
+            </Button>
+          )}
         </div>
 
         <div className="p-5 bg-card border border-border rounded-xl space-y-5">
-          {/* Dual Dropdown Selectors: Provider & Model */}
+          {/* Dual Dropdown Selectors: Provider & Dynamic Model */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* AI Provider Dropdown */}
             <div className="space-y-2">
@@ -203,16 +236,16 @@ export const SettingsPage: React.FC = () => {
                 onChange={(e) => handleSelectProvider(e.target.value)}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-semibold text-foreground"
               >
-                <option value="openrouter">OpenRouter (Recommended — Free & Paid Models)</option>
+                <option value="openrouter">OpenRouter (Dynamic API — Free & Paid Models)</option>
                 <option value="openai">OpenAI (Direct — GPT-4o, o3-mini)</option>
                 <option value="gemini">Google Gemini (Direct — Gemini 1.5 Flash)</option>
               </select>
             </div>
 
-            {/* AI Model Dropdown */}
+            {/* Dynamic AI Model Dropdown */}
             <div className="space-y-2">
               <Label className="text-xs font-medium flex items-center gap-1.5">
-                <Cpu className="h-3.5 w-3.5 text-primary" /> AI Model Dropdown Selector
+                <Cpu className="h-3.5 w-3.5 text-primary" /> Live AI Model Dropdown Selector
               </Label>
               <select
                 value={selectedModel}
@@ -222,12 +255,12 @@ export const SettingsPage: React.FC = () => {
                 }}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-semibold text-foreground"
               >
-                {availableModelsForProvider.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
+                {currentModelChoices.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.isFree ? `[FREE] ${m.name} (${m.id})` : `${m.name} (${m.id})`}
                   </option>
                 ))}
-                <option value="custom">+ Custom Model Name...</option>
+                <option value="custom">+ Custom Model ID...</option>
               </select>
             </div>
           </div>
@@ -235,13 +268,13 @@ export const SettingsPage: React.FC = () => {
           {/* Optional Custom Model Input */}
           {(selectedModel === "custom" || customModelInput) && (
             <div className="space-y-2">
-              <Label className="text-xs font-medium">Custom Model Identifier</Label>
+              <Label className="text-xs font-medium">Custom Model ID</Label>
               <Input
                 type="text"
                 value={customModelInput}
                 onChange={(e) => setCustomModelInput(e.target.value)}
                 placeholder="e.g. meta-llama/llama-3.3-70b-instruct:free"
-                className="text-xs"
+                className="text-xs font-mono"
               />
             </div>
           )}
@@ -274,30 +307,6 @@ export const SettingsPage: React.FC = () => {
                 />
                 <Globe className="h-4 w-4 text-muted-foreground absolute right-2.5 top-2.5" />
               </div>
-            </div>
-          </div>
-
-          {/* Quick Tab Buttons for Providers */}
-          <div className="space-y-2 pt-1">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quick Provider Tabs</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {providers.map((p) => {
-                const isActive = p.id === activeProviderId;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => handleSelectProvider(p.id)}
-                    className={`px-3 py-2 rounded-lg border text-xs font-medium transition-all text-left flex items-center justify-between ${
-                      isActive
-                        ? "border-primary bg-primary/10 text-primary shadow-xs"
-                        : "border-border bg-background hover:bg-muted/40 text-foreground"
-                    }`}
-                  >
-                    <span>{p.name}</span>
-                    {isActive && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />}
-                  </button>
-                );
-              })}
             </div>
           </div>
 
