@@ -5,6 +5,7 @@ import { Input } from "@/app/components/ui/input";
 import { Switch } from "@/app/components/ui/switch";
 import { Badge } from "@/app/components/ui/badge";
 import { Label } from "@/app/components/ui/label";
+import { ModelCombobox } from "@/app/components/ui/model-combobox";
 import {
   CheckCircle2,
   XCircle,
@@ -93,6 +94,7 @@ export const SettingsPage: React.FC = () => {
 
       if (models && models.length > 0) {
         setDynamicModels(models);
+        // Automatically select the first model if current model doesn't belong to this provider
         if (!models.some((m) => m.id === selectedModel) && models[0]) {
           setSelectedModel(models[0].id);
         }
@@ -114,6 +116,9 @@ export const SettingsPage: React.FC = () => {
       setApiKeyInput("");
       setTestStatus({ testing: false });
     }
+
+    // Immediately fetch live models for the newly selected provider
+    loadLiveModels(id, "");
   };
 
   const handleSaveLLM = async () => {
@@ -208,27 +213,21 @@ export const SettingsPage: React.FC = () => {
               </select>
             </div>
 
-            {/* Model Dropdown */}
+            {/* Model Searchable Combobox */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Model</Label>
                 {isLoadingModels && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
               </div>
-              <select
+              <ModelCombobox
+                options={dynamicModels}
                 value={selectedModel}
-                onChange={(e) => {
-                  setSelectedModel(e.target.value);
+                onChange={(val) => {
+                  setSelectedModel(val);
                   setCustomModelInput("");
                 }}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-semibold text-foreground"
-              >
-                {dynamicModels.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-                <option value="custom">+ Custom Model ID...</option>
-              </select>
+                disabled={isLoadingModels}
+              />
             </div>
           </div>
 
