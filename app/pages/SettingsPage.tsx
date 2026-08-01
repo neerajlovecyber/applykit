@@ -11,24 +11,31 @@ import {
   RefreshCw,
   Key,
   Globe,
-  Sparkles,
   Loader2,
-  Cpu,
   Save,
-  Layers,
 } from "lucide-react";
 import type { Platform } from "@/lib/main/db-queries";
 import type { LLMProviderConfig } from "@/lib/providers/types";
+import { FALLBACK_OPENROUTER_MODELS } from "@/lib/providers/openrouter-fetcher";
 
 interface DiscoveredModel {
   id: string;
   name: string;
   isFree?: boolean;
-  context_length?: number;
 }
 
-const DEFAULT_OPENAI_MODELS = ["gpt-4o", "gpt-4o-mini", "o3-mini", "o1"];
-const DEFAULT_GEMINI_MODELS = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"];
+const DEFAULT_OPENAI_MODELS = [
+  { id: "gpt-4o", name: "GPT-4o" },
+  { id: "gpt-4o-mini", name: "GPT-4o Mini" },
+  { id: "o3-mini", name: "o3-mini" },
+  { id: "o1", name: "o1" },
+];
+
+const DEFAULT_GEMINI_MODELS = [
+  { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash" },
+  { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro" },
+  { id: "gemini-2.0-flash-exp", name: "Gemini 2.0 Flash Exp" },
+];
 
 export const SettingsPage: React.FC = () => {
   const conveyor = useConveyor();
@@ -43,9 +50,7 @@ export const SettingsPage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState("deepseek/deepseek-r1:free");
   const [customModelInput, setCustomModelInput] = useState("");
 
-  // Live dynamic models state
-  const [openRouterModels, setOpenRouterModels] = useState<DiscoveredModel[]>([]);
-  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [openRouterModels, setOpenRouterModels] = useState<DiscoveredModel[]>(FALLBACK_OPENROUTER_MODELS);
 
   const [testStatus, setTestStatus] = useState<{ testing: boolean; success?: boolean; message?: string }>({
     testing: false,
@@ -53,7 +58,6 @@ export const SettingsPage: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
-  // Automatically fetch settings & live OpenRouter models in background on load
   useEffect(() => {
     loadSettings();
     loadLiveOpenRouterModels();
@@ -69,8 +73,8 @@ export const SettingsPage: React.FC = () => {
 
       const providerList: LLMProviderConfig[] = await (window as any).electron?.ipcRenderer?.invoke("llm:list-providers") || [
         { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "deepseek/deepseek-r1:free", availableModels: [], isEnabled: true },
-        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: DEFAULT_OPENAI_MODELS, isEnabled: true },
-        { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: DEFAULT_GEMINI_MODELS, isEnabled: true },
+        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: DEFAULT_OPENAI_MODELS.map((m) => m.id), isEnabled: true },
+        { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: DEFAULT_GEMINI_MODELS.map((m) => m.id), isEnabled: true },
       ];
 
       setProviders(providerList.filter((p) => p.id !== "ollama"));
@@ -87,7 +91,6 @@ export const SettingsPage: React.FC = () => {
   };
 
   const loadLiveOpenRouterModels = async () => {
-    setIsFetchingModels(true);
     try {
       const list: DiscoveredModel[] = await (window as any).electron?.ipcRenderer?.invoke("llm:fetch-openrouter-models");
       if (list && list.length > 0) {
@@ -95,8 +98,6 @@ export const SettingsPage: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to fetch live OpenRouter models:", err);
-    } finally {
-      setIsFetchingModels(false);
     }
   };
 
@@ -112,10 +113,6 @@ export const SettingsPage: React.FC = () => {
       setApiKeyInput("");
       setTestStatus({ testing: false });
     }
-
-    if (id === "openrouter" && openRouterModels.length === 0) {
-      loadLiveOpenRouterModels();
-    }
   };
 
   const handleSaveLLM = async () => {
@@ -129,7 +126,7 @@ export const SettingsPage: React.FC = () => {
         apiKey: apiKeyInput.trim() || selectedProviderConfig.apiKey,
         baseUrl: baseUrlInput.trim() || selectedProviderConfig.baseUrl,
         defaultModel: finalModel,
-        availableModels: activeProviderId === "openrouter" ? openRouterModels.map((m) => m.id) : (activeProviderId === "openai" ? DEFAULT_OPENAI_MODELS : DEFAULT_GEMINI_MODELS),
+        availableModels: activeProviderId === "openrouter" ? openRouterModels.map((m) => m.id) : (activeProviderId === "openai" ? DEFAULT_OPENAI_MODELS.map((m) => m.id) : DEFAULT_GEMINI_MODELS.map((m) => m.id)),
         isEnabled: true,
       };
 
@@ -181,69 +178,42 @@ export const SettingsPage: React.FC = () => {
     loadSettings();
   };
 
-  // Determine current dropdown model choices
   const currentModelChoices =
     activeProviderId === "openrouter"
-      ? openRouterModels.length > 0
-        ? openRouterModels
-        : [
-            { id: "deepseek/deepseek-r1:free", name: "DeepSeek R1 (Free)", isFree: true },
-            { id: "google/gemini-2.0-flash-exp:free", name: "Gemini 2.0 Flash (Free)", isFree: true },
-            { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B (Free)", isFree: true },
-            { id: "google/gemini-2.0-flash-001", name: "Gemini 2.0 Flash 001", isFree: false },
-            { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", isFree: false },
-          ]
+      ? openRouterModels
       : activeProviderId === "openai"
-      ? DEFAULT_OPENAI_MODELS.map((m) => ({ id: m, name: m }))
-      : DEFAULT_GEMINI_MODELS.map((m) => ({ id: m, name: m }));
+      ? DEFAULT_OPENAI_MODELS
+      : DEFAULT_GEMINI_MODELS;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto py-2">
-      {/* AI Provider Configuration (@openrouter/ai-sdk-provider) */}
+      {/* AI Provider Configuration */}
       <div className="space-y-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-lg">AI Provider Engine & Model Config</h3>
-            <Badge variant="outline" className="text-xs border-primary/30 text-primary flex items-center gap-1">
-              <Sparkles className="h-3 w-3" /> @openrouter/ai-sdk-provider
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Live models are automatically fetched from OpenRouter's REST API in the background.
-          </p>
+          <h3 className="font-semibold text-lg">AI Configuration</h3>
+          <p className="text-sm text-muted-foreground">Select your AI provider and model for resume tailoring and job scoring.</p>
         </div>
 
         <div className="p-5 bg-card border border-border rounded-xl space-y-5">
-          {/* Dual Dropdown Selectors: Provider & Dynamic Model */}
+          {/* Provider & Model Selectors */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* AI Provider Dropdown */}
+            {/* Provider Dropdown */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-primary" /> AI Provider Dropdown Selector
-              </Label>
+              <Label className="text-xs font-medium">Provider</Label>
               <select
                 value={activeProviderId}
                 onChange={(e) => handleSelectProvider(e.target.value)}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-semibold text-foreground"
               >
-                <option value="openrouter">OpenRouter (Auto-Synced Live Models — Free & Paid)</option>
-                <option value="openai">OpenAI (Direct — GPT-4o, o3-mini)</option>
-                <option value="gemini">Google Gemini (Direct — Gemini 1.5 Flash)</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="openai">OpenAI</option>
+                <option value="gemini">Google Gemini</option>
               </select>
             </div>
 
-            {/* Dynamic AI Model Dropdown */}
+            {/* Model Dropdown */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium flex items-center gap-1.5">
-                  <Cpu className="h-3.5 w-3.5 text-primary" /> Live AI Model Dropdown Selector
-                </Label>
-                {isFetchingModels && (
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Loader2 className="h-3 w-3 animate-spin text-primary" /> Syncing live models...
-                  </span>
-                )}
-              </div>
+              <Label className="text-xs font-medium">Model</Label>
               <select
                 value={selectedModel}
                 onChange={(e) => {
@@ -254,7 +224,7 @@ export const SettingsPage: React.FC = () => {
               >
                 {currentModelChoices.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.isFree ? `[FREE] ${m.name} (${m.id})` : `${m.name} (${m.id})`}
+                    {m.isFree ? `[FREE] ${m.name}` : m.name}
                   </option>
                 ))}
                 <option value="custom">+ Custom Model ID...</option>
@@ -262,7 +232,7 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Optional Custom Model Input */}
+          {/* Custom Model Input */}
           {(selectedModel === "custom" || customModelInput) && (
             <div className="space-y-2">
               <Label className="text-xs font-medium">Custom Model ID</Label>
@@ -330,7 +300,7 @@ export const SettingsPage: React.FC = () => {
             >
               {testStatus.testing ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Testing Connection...
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Testing...
                 </>
               ) : (
                 <>
@@ -342,7 +312,7 @@ export const SettingsPage: React.FC = () => {
             <div className="flex items-center gap-2">
               {saveSuccess && <span className="text-xs text-emerald-400 font-medium">Settings Saved!</span>}
               <Button size="sm" onClick={handleSaveLLM} className="gap-2 text-xs">
-                <Save className="h-3.5 w-3.5" /> Save AI Configuration
+                <Save className="h-3.5 w-3.5" /> Save Configuration
               </Button>
             </div>
           </div>
