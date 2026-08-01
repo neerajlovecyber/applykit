@@ -2,17 +2,25 @@
  * Application Executor & Task Handler Registry.
  *
  * Connects the in-process Task Queue (`lib/engine/task-queue.ts`) to Playwright
- * browser automation appliers for LinkedIn, Lever, Greenhouse, and custom ATS forms.
+ * browser automation appliers for LinkedIn, Naukri, Indeed, Lever, Greenhouse, and generic ATS forms.
  */
 
 import { registerTaskHandler } from "@/lib/engine/task-queue";
 import { createStealthPage } from "./browser-pool";
 import { LinkedInApplier } from "./platforms/linkedin-applier";
+import { NaukriApplier } from "./platforms/naukri-applier";
+import { IndeedApplier } from "./platforms/indeed-applier";
+import { LeverApplier } from "./platforms/lever-applier";
+import { GreenhouseApplier } from "./platforms/greenhouse-applier";
 import { GenericApplier } from "./platforms/generic-applier";
 import type { ApplicationExecuteOptions } from "./types";
 import { getApplicationById, getJobPostingById } from "@/lib/main/db-queries";
 
 const linkedinApplier = new LinkedInApplier();
+const naukriApplier = new NaukriApplier();
+const indeedApplier = new IndeedApplier();
+const leverApplier = new LeverApplier();
+const greenhouseApplier = new GreenhouseApplier();
 const genericApplier = new GenericApplier();
 
 /**
@@ -51,10 +59,25 @@ export function registerExecutionTaskHandlers(): void {
       page = await createStealthPage({ headless: false });
 
       let result;
-      if (job.source === "linkedin") {
-        result = await linkedinApplier.apply(page, executeOptions);
-      } else {
-        result = await genericApplier.apply(page, executeOptions);
+      switch (job.source.toLowerCase()) {
+        case "linkedin":
+          result = await linkedinApplier.apply(page, executeOptions);
+          break;
+        case "naukri":
+          result = await naukriApplier.apply(page, executeOptions);
+          break;
+        case "indeed":
+          result = await indeedApplier.apply(page, executeOptions);
+          break;
+        case "lever":
+          result = await leverApplier.apply(page, executeOptions);
+          break;
+        case "greenhouse":
+          result = await greenhouseApplier.apply(page, executeOptions);
+          break;
+        default:
+          result = await genericApplier.apply(page, executeOptions);
+          break;
       }
 
       return {
@@ -80,5 +103,5 @@ export function registerExecutionTaskHandlers(): void {
     }
   });
 
-  console.log("[Executor] Execution task handlers registered.");
+  console.log("[Executor] Execution task handlers registered for all 5 platform appliers.");
 }
