@@ -1,5 +1,5 @@
 /**
- * Provider Registry using Vercel AI SDK.
+ * Provider Registry using Vercel AI SDK and @openrouter/ai-sdk-provider.
  *
  * Provides model instantiation and high-level AI tasks (scoring, drafting, parsing, Q&A)
  * powered by `generateText` and `generateObject` from the `ai` SDK.
@@ -8,7 +8,7 @@
 import { generateText, generateObject, type LanguageModel } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createOllama } from "ollama-ai-provider";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import {
   LLMProviderConfig,
   PROVIDER_TEMPLATES,
@@ -36,7 +36,6 @@ for (const [id, template] of Object.entries(PROVIDER_TEMPLATES)) {
  */
 export function configureProvider(config: LLMProviderConfig): void {
   providerConfigs.set(config.id, config);
-  // Persist config to settings if API key or URL updated
   setSetting(`llm_config_${config.id}`, JSON.stringify(config));
   console.log(`[LLM] Configured provider: ${config.name} (${config.id})`);
 }
@@ -63,7 +62,6 @@ export function getActiveProviderConfig(): LLMProviderConfig {
     }
   }
 
-  // Hydrate saved config from DB if present
   if (activeProviderId) {
     const savedJson = getSetting(`llm_config_${activeProviderId}`);
     if (savedJson) {
@@ -78,7 +76,6 @@ export function getActiveProviderConfig(): LLMProviderConfig {
     if (cfg) return cfg;
   }
 
-  // Default to openrouter or openai
   const fallback = providerConfigs.get("openrouter") || providerConfigs.get("openai")!;
   return fallback;
 }
@@ -89,6 +86,7 @@ export function getActiveProviderConfig(): LLMProviderConfig {
 export function listProviders(): LLMProviderConfig[] {
   const result: LLMProviderConfig[] = [];
   for (const [id, template] of providerConfigs.entries()) {
+    if (id === "ollama") continue; // Exclude Ollama per user request
     const savedJson = getSetting(`llm_config_${id}`);
     let config = { ...template };
     if (savedJson) {
@@ -98,7 +96,6 @@ export function listProviders(): LLMProviderConfig[] {
         // fallback to in-memory
       }
     }
-    // Redact API keys for security when listing
     result.push({
       ...config,
       apiKey: config.apiKey ? "••••••" + config.apiKey.slice(-4) : undefined,
@@ -115,6 +112,12 @@ export function getLanguageModel(overrideConfig?: LLMProviderConfig, modelName?:
   const targetModel = modelName || config.defaultModel;
 
   switch (config.type) {
+    case "openrouter": {
+      const openrouter = createOpenRouter({
+        apiKey: config.apiKey || process.env.OPENROUTER_API_KEY || "",
+      });
+      return openrouter(targetModel);
+    }
     case "openai": {
       const openai = createOpenAI({
         apiKey: config.apiKey || process.env.OPENAI_API_KEY || "",
@@ -127,24 +130,6 @@ export function getLanguageModel(overrideConfig?: LLMProviderConfig, modelName?:
         apiKey: config.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || "",
       });
       return google(targetModel);
-    }
-    case "openrouter": {
-      const openrouter = createOpenAI({
-        name: "openrouter",
-        apiKey: config.apiKey || process.env.OPENROUTER_API_KEY || "",
-        baseURL: config.baseUrl || "https://openrouter.ai/api/v1",
-        headers: {
-          "HTTP-Referer": "https://applykit.local",
-          "X-Title": "ApplyKit Desktop App",
-        },
-      });
-      return openrouter(targetModel);
-    }
-    case "ollama": {
-      const ollama = createOllama({
-        baseURL: config.baseUrl || "http://localhost:11434/api",
-      });
-      return ollama(targetModel);
     }
     case "custom": {
       const customOpenAI = createOpenAI({

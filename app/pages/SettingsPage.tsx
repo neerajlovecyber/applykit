@@ -22,25 +22,25 @@ import type { LLMProviderConfig } from "@/lib/providers/types";
 
 const PROVIDER_MODELS_MAP: Record<string, string[]> = {
   openrouter: [
+    "deepseek/deepseek-r1:free",
+    "google/gemini-2.0-flash-exp:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "qwen/qwen-2.5-coder-32b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
     "google/gemini-2.0-flash-001",
-    "deepseek/deepseek-r1",
-    "anthropic/claude-3.7-sonnet",
-    "openai/gpt-4o-2024-11-20",
+    "anthropic/claude-3.5-sonnet",
     "openai/gpt-4o-mini",
-    "meta-llama/llama-3.3-70b-instruct",
-    "qwen/qwen-2.5-coder-32b-instruct",
+    "openai/gpt-4o",
   ],
   openai: [
-    "gpt-4o",
     "gpt-4o-mini",
+    "gpt-4o",
     "o3-mini",
-    "o1",
   ],
   gemini: [
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
     "gemini-1.5-pro",
-    "gemini-2.0-pro-exp",
+    "gemini-2.0-flash-exp",
   ],
 };
 
@@ -54,7 +54,7 @@ export const SettingsPage: React.FC = () => {
 
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [baseUrlInput, setBaseUrlInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("google/gemini-2.0-flash-001");
+  const [selectedModel, setSelectedModel] = useState("deepseek/deepseek-r1:free");
   const [customModelInput, setCustomModelInput] = useState("");
 
   const [testStatus, setTestStatus] = useState<{ testing: boolean; success?: boolean; message?: string }>({
@@ -76,12 +76,12 @@ export const SettingsPage: React.FC = () => {
       setActiveProviderId(activeId);
 
       const providerList: LLMProviderConfig[] = await (window as any).electron?.ipcRenderer?.invoke("llm:list-providers") || [
-        { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "google/gemini-2.0-flash-001", availableModels: PROVIDER_MODELS_MAP.openrouter, isEnabled: true },
-        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o", availableModels: PROVIDER_MODELS_MAP.openai, isEnabled: true },
-        { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-2.0-flash", availableModels: PROVIDER_MODELS_MAP.gemini, isEnabled: true },
+        { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "deepseek/deepseek-r1:free", availableModels: PROVIDER_MODELS_MAP.openrouter, isEnabled: true },
+        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: PROVIDER_MODELS_MAP.openai, isEnabled: true },
+        { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: PROVIDER_MODELS_MAP.gemini, isEnabled: true },
       ];
-      
-      const filteredProviders = providerList.filter(p => p.id !== "ollama");
+
+      const filteredProviders = providerList.filter((p) => p.id !== "ollama");
       setProviders(filteredProviders);
 
       const activeConfig = filteredProviders.find((p) => p.id === activeId) || filteredProviders[0];
@@ -176,17 +176,17 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto py-2">
-      {/* AI Provider Configuration (Vercel AI SDK) */}
+      {/* AI Provider Configuration (@openrouter/ai-sdk-provider) */}
       <div className="space-y-4">
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-lg">AI Provider Engine & Model Config</h3>
             <Badge variant="outline" className="text-xs border-primary/30 text-primary flex items-center gap-1">
-              <Sparkles className="h-3 w-3" /> Vercel AI SDK
+              <Sparkles className="h-3 w-3" /> @openrouter/ai-sdk-provider
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            Select your preferred AI Provider and modern 2026 Model from the dropdowns below to power job fit scoring and answer generation.
+            Select your AI Provider and model from official OpenRouter (including FREE models), OpenAI, or Gemini.
           </p>
         </div>
 
@@ -203,9 +203,9 @@ export const SettingsPage: React.FC = () => {
                 onChange={(e) => handleSelectProvider(e.target.value)}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-semibold text-foreground"
               >
-                <option value="openrouter">OpenRouter (Recommended — Multi-Model API)</option>
+                <option value="openrouter">OpenRouter (Recommended — Free & Paid Models)</option>
                 <option value="openai">OpenAI (Direct — GPT-4o, o3-mini)</option>
-                <option value="gemini">Google Gemini (Direct — Gemini 2.0 Flash)</option>
+                <option value="gemini">Google Gemini (Direct — Gemini 1.5 Flash)</option>
               </select>
             </div>
 
@@ -240,7 +240,7 @@ export const SettingsPage: React.FC = () => {
                 type="text"
                 value={customModelInput}
                 onChange={(e) => setCustomModelInput(e.target.value)}
-                placeholder="e.g. meta-llama/llama-3.3-70b-instruct"
+                placeholder="e.g. meta-llama/llama-3.3-70b-instruct:free"
                 className="text-xs"
               />
             </div>

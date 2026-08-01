@@ -33,6 +33,7 @@
     "@ai-sdk/openai": "^4.0.27",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@openrouter/ai-sdk-provider": "^3.0.0",
     "@radix-ui/react-slot": "^1.3.3",
     "@radix-ui/react-switch": "^1.3.7",
     "@tanstack/react-query": "^5.101.4",
