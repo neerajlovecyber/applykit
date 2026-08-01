@@ -7,6 +7,7 @@ import {
   ListTodo,
   Compass,
   UserCheck,
+  FileCheck,
   BrainCircuit,
   History,
   Settings,
@@ -40,6 +41,7 @@ const mainNavItems = [
   { path: "/queue", label: "Job Queue", icon: ListTodo },
   { path: "/finder", label: "Job Finder", icon: Compass },
   { path: "/profiles", label: "Role Profiles", icon: UserCheck },
+  { path: "/documents", label: "Documents", icon: FileCheck },
   { path: "/qabank", label: "QA Memory", icon: BrainCircuit },
   { path: "/history", label: "History", icon: History },
 ];

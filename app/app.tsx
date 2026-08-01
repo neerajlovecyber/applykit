@@ -5,6 +5,7 @@ import { DashboardPage } from "@/app/pages/DashboardPage";
 import { JobQueuePage } from "@/app/pages/JobQueuePage";
 import { JobFinderPage } from "@/app/pages/JobFinderPage";
 import { RoleProfilesPage } from "@/app/pages/RoleProfilesPage";
+import { DocumentsPage } from "@/app/pages/DocumentsPage";
 import { QABankPage } from "@/app/pages/QABankPage";
 import { HistoryPage } from "@/app/pages/HistoryPage";
 import { SettingsPage } from "@/app/pages/SettingsPage";
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/queue" element={<JobQueuePage />} />
           <Route path="/finder" element={<JobFinderPage />} />
           <Route path="/profiles" element={<RoleProfilesPage />} />
+          <Route path="/documents" element={<DocumentsPage />} />
           <Route path="/qabank" element={<QABankPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/settings" element={<SettingsPage />} />
