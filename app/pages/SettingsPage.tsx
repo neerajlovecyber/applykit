@@ -10,14 +10,45 @@ import {
   XCircle,
   RefreshCw,
   Key,
-  Bot,
   Globe,
-  Sliders,
   Sparkles,
   Loader2,
+  Cpu,
+  Save,
 } from "lucide-react";
 import type { Platform } from "@/lib/main/db-queries";
 import type { LLMProviderConfig } from "@/lib/providers/types";
+
+const PROVIDER_MODELS_MAP: Record<string, string[]> = {
+  openrouter: [
+    "google/gemini-2.0-flash-001",
+    "deepseek/deepseek-r1",
+    "anthropic/claude-3.5-sonnet",
+    "openai/gpt-4o-mini",
+    "openai/gpt-4o",
+    "meta-llama/llama-3.3-70b-instruct",
+    "mistralai/mistral-large-2411",
+  ],
+  openai: [
+    "gpt-4o-mini",
+    "gpt-4o",
+    "gpt-4-turbo",
+    "o3-mini",
+    "o1-mini",
+  ],
+  gemini: [
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+  ],
+  ollama: [
+    "llama3.2",
+    "deepseek-r1:7b",
+    "mistral",
+    "qwen2.5-coder",
+    "phi4",
+  ],
+};
 
 export const SettingsPage: React.FC = () => {
   const conveyor = useConveyor();
@@ -29,7 +60,8 @@ export const SettingsPage: React.FC = () => {
 
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [baseUrlInput, setBaseUrlInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("");
+  const [selectedModel, setSelectedModel] = useState("google/gemini-2.0-flash-001");
+  const [customModelInput, setCustomModelInput] = useState("");
 
   const [testStatus, setTestStatus] = useState<{ testing: boolean; success?: boolean; message?: string }>({
     testing: false,
@@ -37,7 +69,6 @@ export const SettingsPage: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
-  // Load platforms and LLM settings
   useEffect(() => {
     loadSettings();
   }, []);
@@ -50,20 +81,18 @@ export const SettingsPage: React.FC = () => {
       const activeId = (await conveyor.data.getSetting("llm_active_provider")) || "openrouter";
       setActiveProviderId(activeId);
 
-      const llmProviders = await window.conveyor.data.getAllSettings();
-      // Fetch provider list via IPC
       const providerList: LLMProviderConfig[] = await (window as any).electron?.ipcRenderer?.invoke("llm:list-providers") || [
-        { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "google/gemini-2.0-flash-001", availableModels: ["google/gemini-2.0-flash-001", "deepseek/deepseek-r1", "anthropic/claude-3.5-sonnet", "openai/gpt-4o-mini"], isEnabled: true },
-        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: ["gpt-4o-mini", "gpt-4o"], isEnabled: true },
-        { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-2.0-flash", availableModels: ["gemini-2.0-flash", "gemini-2.5-flash"], isEnabled: true },
-        { id: "ollama", name: "Ollama (Local)", type: "ollama", baseUrl: "http://localhost:11434/api", defaultModel: "llama3.2", availableModels: ["llama3.2"], isEnabled: true },
+        { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "google/gemini-2.0-flash-001", availableModels: PROVIDER_MODELS_MAP.openrouter, isEnabled: true },
+        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: PROVIDER_MODELS_MAP.openai, isEnabled: true },
+        { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-2.0-flash", availableModels: PROVIDER_MODELS_MAP.gemini, isEnabled: true },
+        { id: "ollama", name: "Ollama (Local)", type: "ollama", baseUrl: "http://localhost:11434/api", defaultModel: "llama3.2", availableModels: PROVIDER_MODELS_MAP.ollama, isEnabled: true },
       ];
       setProviders(providerList);
 
       const activeConfig = providerList.find((p) => p.id === activeId) || providerList[0];
       if (activeConfig) {
         setSelectedProviderConfig(activeConfig);
-        setSelectedModel(activeConfig.defaultModel);
+        setSelectedModel(activeConfig.defaultModel || PROVIDER_MODELS_MAP[activeId]?.[0] || "");
         setBaseUrlInput(activeConfig.baseUrl || "");
       }
     } catch (err) {
@@ -74,9 +103,11 @@ export const SettingsPage: React.FC = () => {
   const handleSelectProvider = (id: string) => {
     setActiveProviderId(id);
     const p = providers.find((pr) => pr.id === id);
+    const defaultM = p?.defaultModel || PROVIDER_MODELS_MAP[id]?.[0] || "";
+
     if (p) {
       setSelectedProviderConfig(p);
-      setSelectedModel(p.defaultModel);
+      setSelectedModel(defaultM);
       setBaseUrlInput(p.baseUrl || "");
       setApiKeyInput("");
       setTestStatus({ testing: false });
@@ -85,14 +116,16 @@ export const SettingsPage: React.FC = () => {
 
   const handleSaveLLM = async () => {
     try {
+      const finalModel = customModelInput.trim() || selectedModel;
+
       const updatedConfig: LLMProviderConfig = {
         id: selectedProviderConfig.id || activeProviderId,
         name: selectedProviderConfig.name || activeProviderId,
         type: selectedProviderConfig.type || (activeProviderId as any),
         apiKey: apiKeyInput.trim() || selectedProviderConfig.apiKey,
         baseUrl: baseUrlInput.trim() || selectedProviderConfig.baseUrl,
-        defaultModel: selectedModel || selectedProviderConfig.defaultModel || "",
-        availableModels: selectedProviderConfig.availableModels || [selectedModel],
+        defaultModel: finalModel,
+        availableModels: PROVIDER_MODELS_MAP[activeProviderId] || [finalModel],
         isEnabled: true,
       };
 
@@ -110,14 +143,16 @@ export const SettingsPage: React.FC = () => {
   const handleTestConnection = async () => {
     setTestStatus({ testing: true });
     try {
+      const finalModel = customModelInput.trim() || selectedModel;
+
       const configToTest: LLMProviderConfig = {
         id: selectedProviderConfig.id || activeProviderId,
         name: selectedProviderConfig.name || activeProviderId,
         type: selectedProviderConfig.type || (activeProviderId as any),
         apiKey: apiKeyInput.trim() || selectedProviderConfig.apiKey,
         baseUrl: baseUrlInput.trim() || selectedProviderConfig.baseUrl,
-        defaultModel: selectedModel || selectedProviderConfig.defaultModel || "",
-        availableModels: selectedProviderConfig.availableModels || [selectedModel],
+        defaultModel: finalModel,
+        availableModels: PROVIDER_MODELS_MAP[activeProviderId] || [finalModel],
         isEnabled: true,
       };
 
@@ -142,102 +177,118 @@ export const SettingsPage: React.FC = () => {
     loadSettings();
   };
 
+  const availableModelsForProvider = PROVIDER_MODELS_MAP[activeProviderId] || [];
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto py-2">
       {/* AI Provider Configuration (Vercel AI SDK) */}
       <div className="space-y-4">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-lg">AI Provider Engine</h3>
+            <h3 className="font-semibold text-lg">AI Provider Engine & Model Config</h3>
             <Badge variant="outline" className="text-xs border-primary/30 text-primary flex items-center gap-1">
               <Sparkles className="h-3 w-3" /> Vercel AI SDK
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            Configure OpenRouter, OpenAI, Gemini, or Ollama to power fit scoring and resume tailoring.
+            Configure OpenRouter, OpenAI, Gemini, or Ollama with dropdown model selection for job fit scoring and answer generation.
           </p>
         </div>
 
         <div className="p-5 bg-card border border-border rounded-xl space-y-5">
           {/* Provider Selection Buttons */}
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Active Provider</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Active AI Provider</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {providers.map((p) => {
                 const isActive = p.id === activeProviderId;
                 return (
                   <button
                     key={p.id}
                     onClick={() => handleSelectProvider(p.id)}
-                    className={`px-3 py-2.5 rounded-lg border text-xs font-medium transition-all text-left flex flex-col justify-between h-16 ${
+                    className={`px-3.5 py-3 rounded-xl border text-xs font-medium transition-all text-left flex flex-col justify-between h-18 ${
                       isActive
-                        ? "border-primary bg-primary/10 text-primary shadow-sm"
-                        : "border-border bg-background hover:bg-accent text-foreground"
+                        ? "border-primary bg-primary/10 text-primary shadow-xs"
+                        : "border-border bg-background hover:bg-muted/40 text-foreground"
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <span>{p.name}</span>
-                      {isActive && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />}
+                      <span className="font-semibold text-sm">{p.name}</span>
+                      {isActive && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
                     </div>
-                    <span className="text-[10px] text-muted-foreground capitalize">{p.type}</span>
+                    <span className="text-[10px] text-muted-foreground capitalize">{p.type} Provider</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Config Details for Selected Provider */}
+          {/* Config Inputs & Prominent Dropdown Selectors */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
             <div className="space-y-2">
-              <Label className="text-xs">API Key</Label>
+              <Label className="text-xs font-medium">API Key</Label>
               <div className="relative">
                 <Input
                   type="password"
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
-                  placeholder={selectedProviderConfig.apiKey ? "••••••••••••••••" : "Enter API Key"}
-                  className="pr-8"
+                  placeholder={selectedProviderConfig.apiKey ? "••••••••••••••••" : "Enter Provider API Key"}
+                  className="pr-8 text-xs"
                 />
                 <Key className="h-4 w-4 text-muted-foreground absolute right-2.5 top-2.5" />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs">Base URL (Optional override)</Label>
-              <Input
-                type="text"
-                value={baseUrlInput}
-                onChange={(e) => setBaseUrlInput(e.target.value)}
-                placeholder={selectedProviderConfig.baseUrl || "Default"}
-              />
+              <Label className="text-xs font-medium">Base URL (Optional Override)</Label>
+              <div className="relative">
+                <Input
+                  type="text"
+                  value={baseUrlInput}
+                  onChange={(e) => setBaseUrlInput(e.target.value)}
+                  placeholder={selectedProviderConfig.baseUrl || "Default Provider URL"}
+                  className="pr-8 text-xs"
+                />
+                <Globe className="h-4 w-4 text-muted-foreground absolute right-2.5 top-2.5" />
+              </div>
             </div>
           </div>
 
-          {/* Model Selection */}
-          <div className="space-y-2">
-            <Label className="text-xs">Default Model</Label>
-            <div className="flex flex-wrap gap-2">
-              {(selectedProviderConfig.availableModels || []).map((model) => (
-                <button
-                  key={model}
-                  onClick={() => setSelectedModel(model)}
-                  className={`px-3 py-1.5 rounded-md border text-xs font-medium ${
-                    selectedModel === model
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background hover:bg-muted text-foreground"
-                  }`}
-                >
-                  {model}
-                </button>
-              ))}
-              <Input
-                type="text"
+          {/* AI Model Dropdown Selector */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium flex items-center gap-1.5">
+                <Cpu className="h-3.5 w-3.5 text-primary" /> AI Model Selection Dropdown
+              </Label>
+              <select
                 value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                placeholder="Or custom model name..."
-                className="w-48 h-8 text-xs"
-              />
+                onChange={(e) => {
+                  setSelectedModel(e.target.value);
+                  setCustomModelInput("");
+                }}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium"
+              >
+                {availableModelsForProvider.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+                <option value="custom">+ Custom Model Name...</option>
+              </select>
             </div>
+
+            {(selectedModel === "custom" || customModelInput) && (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Custom Model Name</Label>
+                <Input
+                  type="text"
+                  value={customModelInput}
+                  onChange={(e) => setCustomModelInput(e.target.value)}
+                  placeholder="e.g. meta-llama/llama-3.1-405b"
+                  className="text-xs"
+                />
+              </div>
+            )}
           </div>
 
           {/* Status Message */}
@@ -273,9 +324,9 @@ export const SettingsPage: React.FC = () => {
             </Button>
 
             <div className="flex items-center gap-2">
-              {saveSuccess && <span className="text-xs text-emerald-400 font-medium">Saved!</span>}
+              {saveSuccess && <span className="text-xs text-emerald-400 font-medium">Settings Saved!</span>}
               <Button size="sm" onClick={handleSaveLLM} className="gap-2 text-xs">
-                Save AI Configuration
+                <Save className="h-3.5 w-3.5" /> Save AI Configuration
               </Button>
             </div>
           </div>
