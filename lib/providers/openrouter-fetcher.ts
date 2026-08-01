@@ -1,7 +1,7 @@
 /**
- * OpenRouter Pure Dynamic Model Discovery.
+ * OpenRouter Dynamic Model Discovery.
  *
- * Fetches models strictly from OpenRouter's live REST API with zero manual fallback lists.
+ * Fetches models strictly from OpenRouter's live REST API.
  */
 
 export interface OpenRouterModel {
@@ -16,7 +16,7 @@ export interface OpenRouterModel {
 export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
   const autoOption: OpenRouterModel = {
     id: "openrouter/auto",
-    name: "Auto Mode (Auto Selects Best Free Model)",
+    name: "openrouter/auto",
     isFree: true,
   };
 
@@ -42,7 +42,7 @@ export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
 
       return {
         id: m.id,
-        name: m.name ? `${m.name}` : m.id,
+        name: m.name ? m.name : m.id,
         isFree,
       };
     });

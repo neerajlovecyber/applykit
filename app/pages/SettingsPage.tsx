@@ -50,7 +50,7 @@ export const SettingsPage: React.FC = () => {
   const [customModelInput, setCustomModelInput] = useState("");
 
   const [openRouterModels, setOpenRouterModels] = useState<DiscoveredModel[]>([
-    { id: "openrouter/auto", name: "Auto Mode (Auto Selects Best Free Model)", isFree: true },
+    { id: "openrouter/auto", name: "openrouter/auto" },
   ]);
 
   const [testStatus, setTestStatus] = useState<{ testing: boolean; success?: boolean; message?: string }>({
@@ -225,7 +225,7 @@ export const SettingsPage: React.FC = () => {
               >
                 {currentModelChoices.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.isFree ? `[FREE] ${m.name}` : m.name}
+                    {m.name}
                   </option>
                 ))}
                 <option value="custom">+ Custom Model ID...</option>
