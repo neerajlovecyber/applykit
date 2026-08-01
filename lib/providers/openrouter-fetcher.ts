@@ -14,6 +14,12 @@ export interface OpenRouterModel {
  * Fetch live available models directly from OpenRouter API.
  */
 export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
+  const freeOption: OpenRouterModel = {
+    id: "openrouter/free",
+    name: "openrouter/free",
+    isFree: true,
+  };
+
   const autoOption: OpenRouterModel = {
     id: "openrouter/auto",
     name: "openrouter/auto",
@@ -54,9 +60,13 @@ export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
       return a.id.localeCompare(b.id);
     });
 
-    return [autoOption, ...sorted.filter((m) => m.id !== "openrouter/auto")];
+    return [
+      freeOption,
+      autoOption,
+      ...sorted.filter((m) => m.id !== "openrouter/free" && m.id !== "openrouter/auto"),
+    ];
   } catch (err) {
     console.error("[OpenRouterFetcher] Live API fetch error:", err);
-    return [autoOption];
+    return [freeOption, autoOption];
   }
 }

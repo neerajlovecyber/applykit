@@ -39,7 +39,7 @@ export const PROVIDER_TEMPLATES: Record<string, Omit<LLMProviderConfig, "apiKey"
     name: "OpenRouter",
     type: "openrouter",
     baseUrl: "https://openrouter.ai/api/v1",
-    defaultModel: "openrouter/auto",
+    defaultModel: "openrouter/free",
     availableModels: [],
   },
   ollama: {

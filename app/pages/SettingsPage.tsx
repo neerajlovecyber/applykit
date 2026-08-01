@@ -46,10 +46,11 @@ export const SettingsPage: React.FC = () => {
 
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [baseUrlInput, setBaseUrlInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("openrouter/auto");
+  const [selectedModel, setSelectedModel] = useState("openrouter/free");
   const [customModelInput, setCustomModelInput] = useState("");
 
   const [openRouterModels, setOpenRouterModels] = useState<DiscoveredModel[]>([
+    { id: "openrouter/free", name: "openrouter/free" },
     { id: "openrouter/auto", name: "openrouter/auto" },
   ]);
 
@@ -73,7 +74,7 @@ export const SettingsPage: React.FC = () => {
       setActiveProviderId(activeId);
 
       const providerList: LLMProviderConfig[] = await (window as any).electron?.ipcRenderer?.invoke("llm:list-providers") || [
-        { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "openrouter/auto", availableModels: [], isEnabled: true },
+        { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "openrouter/free", availableModels: [], isEnabled: true },
         { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: DEFAULT_OPENAI_MODELS.map((m) => m.id), isEnabled: true },
         { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: DEFAULT_GEMINI_MODELS.map((m) => m.id), isEnabled: true },
       ];
@@ -83,7 +84,7 @@ export const SettingsPage: React.FC = () => {
       const activeConfig = providerList.find((p) => p.id === activeId) || providerList[0];
       if (activeConfig) {
         setSelectedProviderConfig(activeConfig);
-        setSelectedModel(activeConfig.defaultModel || "openrouter/auto");
+        setSelectedModel(activeConfig.defaultModel || "openrouter/free");
         setBaseUrlInput(activeConfig.baseUrl || "");
       }
     } catch (err) {
@@ -105,7 +106,7 @@ export const SettingsPage: React.FC = () => {
   const handleSelectProvider = (id: string) => {
     setActiveProviderId(id);
     const p = providers.find((pr) => pr.id === id);
-    const defaultM = id === "openrouter" ? "openrouter/auto" : (id === "openai" ? "gpt-4o-mini" : "gemini-1.5-flash");
+    const defaultM = id === "openrouter" ? "openrouter/free" : (id === "openai" ? "gpt-4o-mini" : "gemini-1.5-flash");
 
     if (p) {
       setSelectedProviderConfig(p);
