@@ -1,7 +1,7 @@
 /**
- * OpenRouter Dynamic Model Discovery Utility.
+ * OpenRouter Pure Dynamic Model Discovery.
  *
- * Fetches the live catalog of models directly from OpenRouter's public REST API.
+ * Fetches models strictly from OpenRouter's live REST API with zero manual fallback lists.
  */
 
 export interface OpenRouterModel {
@@ -11,9 +11,15 @@ export interface OpenRouterModel {
 }
 
 /**
- * Fetch live available models directly from OpenRouter public API endpoint.
+ * Fetch live available models directly from OpenRouter API.
  */
 export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
+  const autoOption: OpenRouterModel = {
+    id: "openrouter/auto",
+    name: "Auto Mode (Auto Selects Best Free Model)",
+    isFree: true,
+  };
+
   try {
     const res = await fetch("https://openrouter.ai/api/v1/models", {
       headers: {
@@ -23,7 +29,7 @@ export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
     });
 
     if (!res.ok) {
-      throw new Error(`OpenRouter API status: ${res.status}`);
+      throw new Error(`OpenRouter API error: ${res.status}`);
     }
 
     const data = await res.json();
@@ -36,31 +42,21 @@ export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
 
       return {
         id: m.id,
-        name: m.name || m.id,
+        name: m.name ? `${m.name}` : m.id,
         isFree,
       };
     });
 
-    // Sort free models first, then alphabetically
+    // Sort free models first
     const sorted = parsedModels.sort((a, b) => {
       if (a.isFree && !b.isFree) return -1;
       if (!a.isFree && b.isFree) return 1;
       return a.id.localeCompare(b.id);
     });
 
-    // Return live list with openrouter/auto as #1 choice
-    return [
-      { id: "openrouter/auto", name: "Auto Mode (Auto Selects Best Free Model)", isFree: true },
-      ...sorted.filter((m) => m.id !== "openrouter/auto"),
-    ];
+    return [autoOption, ...sorted.filter((m) => m.id !== "openrouter/auto")];
   } catch (err) {
-    console.error("[OpenRouterFetcher] Error fetching live OpenRouter models:", err);
-    // Minimal dynamic fallback with Auto Mode
-    return [
-      { id: "openrouter/auto", name: "Auto Mode (Auto Selects Best Free Model)", isFree: true },
-      { id: "deepseek/deepseek-r1:free", name: "DeepSeek R1 (Free)", isFree: true },
-      { id: "google/gemini-2.0-flash-exp:free", name: "Gemini 2.0 Flash Exp (Free)", isFree: true },
-      { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B (Free)", isFree: true },
-    ];
+    console.error("[OpenRouterFetcher] Live API fetch error:", err);
+    return [autoOption];
   }
 }
