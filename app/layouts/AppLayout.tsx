@@ -7,12 +7,12 @@ import {
   ListTodo,
   Compass,
   UserCheck,
+  BrainCircuit,
   History,
   Settings,
   Play,
   Pause,
   Briefcase,
-  PanelLeft,
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
@@ -40,6 +40,7 @@ const mainNavItems = [
   { path: "/queue", label: "Job Queue", icon: ListTodo },
   { path: "/finder", label: "Job Finder", icon: Compass },
   { path: "/profiles", label: "Role Profiles", icon: UserCheck },
+  { path: "/qabank", label: "QA Memory", icon: BrainCircuit },
   { path: "/history", label: "History", icon: History },
 ];
 
@@ -219,4 +220,3 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     </SidebarProvider>
   );
 };
-
