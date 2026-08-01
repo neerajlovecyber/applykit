@@ -131,6 +131,30 @@ export function getLanguageModel(overrideConfig?: LLMProviderConfig, modelName?:
       });
       return google(targetModel);
     }
+    case "claude": {
+      const claudeOpenAI = createOpenAI({
+        name: "claude",
+        apiKey: config.apiKey || process.env.ANTHROPIC_API_KEY || "",
+        baseURL: config.baseUrl || "https://api.anthropic.com/v1",
+      });
+      return claudeOpenAI(targetModel);
+    }
+    case "deepseek": {
+      const deepseekOpenAI = createOpenAI({
+        name: "deepseek",
+        apiKey: config.apiKey || process.env.DEEPSEEK_API_KEY || "",
+        baseURL: config.baseUrl || "https://api.deepseek.com/v1",
+      });
+      return deepseekOpenAI(targetModel);
+    }
+    case "groq": {
+      const groqOpenAI = createOpenAI({
+        name: "groq",
+        apiKey: config.apiKey || process.env.GROQ_API_KEY || "",
+        baseURL: config.baseUrl || "https://api.groq.com/openai/v1",
+      });
+      return groqOpenAI(targetModel);
+    }
     case "custom": {
       const customOpenAI = createOpenAI({
         name: "custom",

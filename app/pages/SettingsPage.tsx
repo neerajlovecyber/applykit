@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useConveyor } from "@/app/hooks/use-conveyor";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -43,6 +43,8 @@ export const SettingsPage: React.FC = () => {
   ]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
 
+  const currentProviderRef = useRef<string>("openrouter");
+
   const [testStatus, setTestStatus] = useState<{ testing: boolean; success?: boolean; message?: string }>({
     testing: false,
   });
@@ -53,10 +55,6 @@ export const SettingsPage: React.FC = () => {
     loadSettings();
   }, []);
 
-  useEffect(() => {
-    loadLiveModels(activeProviderId, apiKeyInput);
-  }, [activeProviderId]);
-
   const loadSettings = async () => {
     try {
       const dbPlatforms = await conveyor.data.getPlatforms();
@@ -64,6 +62,7 @@ export const SettingsPage: React.FC = () => {
 
       const activeId = (await conveyor.data.getSetting("llm_active_provider")) || "openrouter";
       setActiveProviderId(activeId);
+      currentProviderRef.current = activeId;
 
       const providerList: LLMProviderConfig[] = await (window as any).electron?.ipcRenderer?.invoke("llm:list-providers") || [
         { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "openrouter/free", availableModels: [], isEnabled: true },
@@ -82,12 +81,15 @@ export const SettingsPage: React.FC = () => {
         setSelectedModel(activeConfig.defaultModel || (activeId === "openrouter" ? "openrouter/free" : ""));
         setBaseUrlInput(activeConfig.baseUrl || "");
       }
+
+      loadLiveModels(activeId, activeConfig?.apiKey);
     } catch (err) {
       console.error("Failed to load settings:", err);
     }
   };
 
   const loadLiveModels = async (provider: string, apiKey?: string) => {
+    currentProviderRef.current = provider;
     setIsLoadingModels(true);
     try {
       let keyToUse = apiKey;
@@ -106,24 +108,25 @@ export const SettingsPage: React.FC = () => {
         apiKey: keyToUse,
       });
 
-      if (models && models.length > 0) {
+      // Guard: Only update if user hasn't switched away to another provider!
+      if (currentProviderRef.current === provider && models && models.length > 0) {
         setDynamicModels(models);
-        // If current selectedModel is not in the new provider's models, set to first model
-        if (!models.some((m) => m.id === selectedModel)) {
-          setSelectedModel(models[0].id);
-        }
+        setSelectedModel(models[0].id);
       }
     } catch (err) {
       console.error(`Failed to fetch models for ${provider}:`, err);
     } finally {
-      setIsLoadingModels(false);
+      if (currentProviderRef.current === provider) {
+        setIsLoadingModels(false);
+      }
     }
   };
 
   const handleSelectProvider = (id: string) => {
     setActiveProviderId(id);
-    const p = providers.find((pr) => pr.id === id);
+    currentProviderRef.current = id;
 
+    const p = providers.find((pr) => pr.id === id);
     if (p) {
       setSelectedProviderConfig(p);
       setBaseUrlInput(p.baseUrl || "");
@@ -131,7 +134,8 @@ export const SettingsPage: React.FC = () => {
       setTestStatus({ testing: false });
     }
 
-    // Immediately fetch live models for the new provider
+    // Clear models temporarily while loading new provider models
+    setDynamicModels([]);
     loadLiveModels(id, "");
   };
 

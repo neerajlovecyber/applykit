@@ -1,7 +1,7 @@
 /**
  * LLM provider type definitions and schemas using Vercel AI SDK.
  *
- * Supports OpenAI, Google Gemini, Ollama, OpenRouter, and custom OpenAI-compatible endpoints.
+ * Supports OpenAI, Google Gemini, Anthropic Claude, DeepSeek, Groq, OpenRouter, and custom endpoints.
  */
 
 import { z } from "zod";
@@ -9,7 +9,7 @@ import { z } from "zod";
 export interface LLMProviderConfig {
   id: string;
   name: string;
-  type: "openai" | "gemini" | "ollama" | "openrouter" | "custom";
+  type: "openai" | "gemini" | "openrouter" | "claude" | "deepseek" | "groq" | "custom";
   apiKey?: string;
   baseUrl?: string;
   defaultModel: string;
@@ -19,21 +19,6 @@ export interface LLMProviderConfig {
 }
 
 export const PROVIDER_TEMPLATES: Record<string, Omit<LLMProviderConfig, "apiKey" | "isEnabled">> = {
-  openai: {
-    id: "openai",
-    name: "OpenAI",
-    type: "openai",
-    baseUrl: "https://api.openai.com/v1",
-    defaultModel: "gpt-4o-mini",
-    availableModels: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "o3-mini"],
-  },
-  gemini: {
-    id: "gemini",
-    name: "Google Gemini",
-    type: "gemini",
-    defaultModel: "gemini-2.0-flash",
-    availableModels: ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"],
-  },
   openrouter: {
     id: "openrouter",
     name: "OpenRouter",
@@ -42,13 +27,44 @@ export const PROVIDER_TEMPLATES: Record<string, Omit<LLMProviderConfig, "apiKey"
     defaultModel: "openrouter/free",
     availableModels: [],
   },
-  ollama: {
-    id: "ollama",
-    name: "Ollama (Local)",
-    type: "ollama",
-    baseUrl: "http://localhost:11434/api",
-    defaultModel: "llama3.2",
-    availableModels: ["llama3.2", "mistral", "qwen2.5"],
+  openai: {
+    id: "openai",
+    name: "OpenAI",
+    type: "openai",
+    baseUrl: "https://api.openai.com/v1",
+    defaultModel: "gpt-4o-mini",
+    availableModels: ["gpt-4o-mini", "gpt-4o", "o3-mini"],
+  },
+  gemini: {
+    id: "gemini",
+    name: "Google Gemini",
+    type: "gemini",
+    defaultModel: "gemini-1.5-flash",
+    availableModels: ["gemini-1.5-flash", "gemini-1.5-pro"],
+  },
+  claude: {
+    id: "claude",
+    name: "Anthropic Claude",
+    type: "claude",
+    baseUrl: "https://api.anthropic.com/v1",
+    defaultModel: "claude-3-7-sonnet-20250219",
+    availableModels: [],
+  },
+  deepseek: {
+    id: "deepseek",
+    name: "DeepSeek",
+    type: "deepseek",
+    baseUrl: "https://api.deepseek.com/v1",
+    defaultModel: "deepseek-v4-flash",
+    availableModels: [],
+  },
+  groq: {
+    id: "groq",
+    name: "Groq",
+    type: "groq",
+    baseUrl: "https://api.groq.com/openai/v1",
+    defaultModel: "llama-3.3-70b-versatile",
+    availableModels: [],
   },
   custom: {
     id: "custom",
