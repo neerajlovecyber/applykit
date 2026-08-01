@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { Check, ChevronsUpDown, Search, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ComboboxOption {
   id: string;
-  label: string;
+  label?: string;
+  name?: string;
+  isFree?: boolean;
 }
 
 interface ModelComboboxProps {
@@ -16,7 +18,7 @@ interface ModelComboboxProps {
 }
 
 export const ModelCombobox: React.FC<ModelComboboxProps> = ({
-  options,
+  options = [],
   value,
   onChange,
   placeholder = "Select or search model...",
@@ -37,12 +39,23 @@ export const ModelCombobox: React.FC<ModelComboboxProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    opt.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const safeOptions = Array.isArray(options) ? options : [];
 
-  const selectedOption = options.find((opt) => opt.id === value);
+  const getOptionLabel = (opt: ComboboxOption) => {
+    if (!opt) return "";
+    return opt.label || opt.name || opt.id || "";
+  };
+
+  const filteredOptions = safeOptions.filter((opt) => {
+    if (!opt) return false;
+    const labelStr = getOptionLabel(opt).toLowerCase();
+    const idStr = (opt.id || "").toLowerCase();
+    const query = (searchTerm || "").toLowerCase().trim();
+    return labelStr.includes(query) || idStr.includes(query);
+  });
+
+  const selectedOption = safeOptions.find((opt) => opt && opt.id === value);
+  const displayLabel = selectedOption ? getOptionLabel(selectedOption) : value || placeholder;
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -55,14 +68,12 @@ export const ModelCombobox: React.FC<ModelComboboxProps> = ({
           disabled && "cursor-not-allowed opacity-50"
         )}
       >
-        <span className="truncate">
-          {selectedOption ? selectedOption.label : value || placeholder}
-        </span>
+        <span className="truncate">{displayLabel}</span>
         <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-2" />
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-80 zoom-in-95">
+        <div className="absolute z-50 mt-1 max-h-64 w-full overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-80 zoom-in-95">
           <div className="p-2 border-b border-border/50 flex items-center gap-2 bg-muted/20">
             <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <input
@@ -75,7 +86,7 @@ export const ModelCombobox: React.FC<ModelComboboxProps> = ({
             />
           </div>
 
-          <div className="max-h-48 overflow-y-auto p-1 space-y-0.5 scrollbar-thin">
+          <div className="max-h-52 overflow-y-auto p-1 space-y-0.5 scrollbar-thin">
             {filteredOptions.length === 0 ? (
               <div className="py-2.5 text-center text-xs text-muted-foreground">
                 No matching models found.
@@ -83,6 +94,8 @@ export const ModelCombobox: React.FC<ModelComboboxProps> = ({
             ) : (
               filteredOptions.map((option) => {
                 const isSelected = option.id === value;
+                const optLabel = getOptionLabel(option);
+
                 return (
                   <button
                     key={option.id}
@@ -99,12 +112,26 @@ export const ModelCombobox: React.FC<ModelComboboxProps> = ({
                         : "hover:bg-accent hover:text-accent-foreground text-foreground"
                     )}
                   >
-                    <span className="truncate">{option.label}</span>
+                    <span className="truncate">{optLabel}</span>
                     {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0 ml-2" />}
                   </button>
                 );
               })
             )}
+
+            {/* Custom option */}
+            <button
+              type="button"
+              onClick={() => {
+                onChange("custom");
+                setOpen(false);
+                setSearchTerm("");
+              }}
+              className="w-full text-left px-2.5 py-1.5 rounded text-xs flex items-center gap-2 transition-colors border-t border-border/40 mt-1 text-primary hover:bg-primary/5 font-medium"
+            >
+              <Plus className="h-3.5 w-3.5 shrink-0" />
+              <span>Use Custom Model ID...</span>
+            </button>
           </div>
         </div>
       )}

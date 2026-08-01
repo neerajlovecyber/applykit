@@ -31,6 +31,7 @@
   "dependencies": {
     "@ai-sdk/google": "^4.0.31",
     "@ai-sdk/openai": "^4.0.27",
+    "@base-ui/react": "^1.6.0",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@openrouter/ai-sdk-provider": "^3.0.0",

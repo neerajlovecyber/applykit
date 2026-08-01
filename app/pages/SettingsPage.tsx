@@ -24,6 +24,39 @@ interface ProviderModelItem {
   isFree?: boolean;
 }
 
+const DEFAULT_PROVIDER_MODELS: Record<string, ProviderModelItem[]> = {
+  openrouter: [
+    { id: "openrouter/free", label: "openrouter/free", isFree: true },
+    { id: "openrouter/auto", label: "openrouter/auto", isFree: true },
+  ],
+  openai: [
+    { id: "gpt-4o-mini", label: "gpt-4o-mini" },
+    { id: "gpt-4o", label: "gpt-4o" },
+    { id: "o3-mini", label: "o3-mini" },
+    { id: "o1", label: "o1" },
+  ],
+  gemini: [
+    { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+    { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+    { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+  ],
+  claude: [
+    { id: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet" },
+    { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+    { id: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
+  ],
+  deepseek: [
+    { id: "deepseek-v4-flash", label: "deepseek-v4-flash" },
+    { id: "deepseek-v4-pro", label: "deepseek-v4-pro" },
+    { id: "deepseek-coder", label: "deepseek-coder" },
+  ],
+  groq: [
+    { id: "llama-3.3-70b-versatile", label: "llama-3.3-70b-versatile" },
+    { id: "llama-3.1-8b-instant", label: "llama-3.1-8b-instant" },
+    { id: "mixtral-8x7b-32768", label: "mixtral-8x7b-32768" },
+  ],
+};
+
 export const SettingsPage: React.FC = () => {
   const conveyor = useConveyor();
 
@@ -37,10 +70,9 @@ export const SettingsPage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState("openrouter/free");
   const [customModelInput, setCustomModelInput] = useState("");
 
-  const [dynamicModels, setDynamicModels] = useState<ProviderModelItem[]>([
-    { id: "openrouter/free", label: "openrouter/free" },
-    { id: "openrouter/auto", label: "openrouter/auto" },
-  ]);
+  const [dynamicModels, setDynamicModels] = useState<ProviderModelItem[]>(
+    DEFAULT_PROVIDER_MODELS.openrouter
+  );
   const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   const currentProviderRef = useRef<string>("openrouter");
@@ -78,10 +110,11 @@ export const SettingsPage: React.FC = () => {
       const activeConfig = providerList.find((p) => p.id === activeId) || providerList[0];
       if (activeConfig) {
         setSelectedProviderConfig(activeConfig);
-        setSelectedModel(activeConfig.defaultModel || (activeId === "openrouter" ? "openrouter/free" : ""));
+        setSelectedModel(activeConfig.defaultModel || DEFAULT_PROVIDER_MODELS[activeId]?.[0]?.id || "openrouter/free");
         setBaseUrlInput(activeConfig.baseUrl || "");
       }
 
+      setDynamicModels(DEFAULT_PROVIDER_MODELS[activeId] || DEFAULT_PROVIDER_MODELS.openrouter);
       loadLiveModels(activeId, activeConfig?.apiKey);
     } catch (err) {
       console.error("Failed to load settings:", err);
@@ -108,10 +141,11 @@ export const SettingsPage: React.FC = () => {
         apiKey: keyToUse,
       });
 
-      // Guard: Only update if user hasn't switched away to another provider!
       if (currentProviderRef.current === provider && models && models.length > 0) {
         setDynamicModels(models);
-        setSelectedModel(models[0].id);
+        if (!models.some((m) => m.id === selectedModel)) {
+          setSelectedModel(models[0].id);
+        }
       }
     } catch (err) {
       console.error(`Failed to fetch models for ${provider}:`, err);
@@ -126,6 +160,11 @@ export const SettingsPage: React.FC = () => {
     setActiveProviderId(id);
     currentProviderRef.current = id;
 
+    const defaultList = DEFAULT_PROVIDER_MODELS[id] || DEFAULT_PROVIDER_MODELS.openrouter;
+    setDynamicModels(defaultList);
+    setSelectedModel(defaultList[0].id);
+    setCustomModelInput("");
+
     const p = providers.find((pr) => pr.id === id);
     if (p) {
       setSelectedProviderConfig(p);
@@ -134,8 +173,6 @@ export const SettingsPage: React.FC = () => {
       setTestStatus({ testing: false });
     }
 
-    // Clear models temporarily while loading new provider models
-    setDynamicModels([]);
     loadLiveModels(id, "");
   };
 
