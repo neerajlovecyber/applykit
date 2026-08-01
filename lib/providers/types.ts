@@ -40,14 +40,7 @@ export const PROVIDER_TEMPLATES: Record<string, Omit<LLMProviderConfig, "apiKey"
     type: "openrouter",
     baseUrl: "https://openrouter.ai/api/v1",
     defaultModel: "openrouter/auto",
-    availableModels: [
-      "openrouter/auto",
-      "deepseek/deepseek-r1:free",
-      "google/gemini-2.0-flash-exp:free",
-      "meta-llama/llama-3.3-70b-instruct:free",
-      "anthropic/claude-3.5-sonnet",
-      "openai/gpt-4o-mini",
-    ],
+    availableModels: [],
   },
   ollama: {
     id: "ollama",

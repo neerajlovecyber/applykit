@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import type { Platform } from "@/lib/main/db-queries";
 import type { LLMProviderConfig } from "@/lib/providers/types";
-import { FALLBACK_OPENROUTER_MODELS } from "@/lib/providers/openrouter-fetcher";
 
 interface DiscoveredModel {
   id: string;
@@ -50,7 +49,9 @@ export const SettingsPage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState("openrouter/auto");
   const [customModelInput, setCustomModelInput] = useState("");
 
-  const [openRouterModels, setOpenRouterModels] = useState<DiscoveredModel[]>(FALLBACK_OPENROUTER_MODELS);
+  const [openRouterModels, setOpenRouterModels] = useState<DiscoveredModel[]>([
+    { id: "openrouter/auto", name: "Auto Mode (Auto Selects Best Free Model)", isFree: true },
+  ]);
 
   const [testStatus, setTestStatus] = useState<{ testing: boolean; success?: boolean; message?: string }>({
     testing: false,
