@@ -81,6 +81,21 @@ export function getActiveProviderConfig(): LLMProviderConfig {
 }
 
 /**
+ * Get provider configuration by ID.
+ */
+export function getProviderConfig(id: string): LLMProviderConfig | undefined {
+  const template = providerConfigs.get(id);
+  const savedJson = getSetting(`llm_config_${id}`);
+  if (savedJson) {
+    try {
+      const parsed = JSON.parse(savedJson);
+      return { ...template, ...parsed } as LLMProviderConfig;
+    } catch {}
+  }
+  return template;
+}
+
+/**
  * Get all registered provider configurations.
  */
 export function listProviders(): LLMProviderConfig[] {

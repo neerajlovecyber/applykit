@@ -115,7 +115,14 @@ export function registerAppHandlers(): void {
   ipcMain.handle("llm:configure-provider", (_, config) => llmRegistry.configureProvider(config));
   ipcMain.handle("llm:test-connection", (_, config) => llmRegistry.testProviderConnection(config));
   ipcMain.handle("llm:fetch-openrouter-models", () => fetchOpenRouterModels());
-  ipcMain.handle("llm:fetch-provider-models", (_, { provider, apiKey }) => fetchProviderModels(provider, apiKey));
+  ipcMain.handle("llm:fetch-provider-models", (_, { provider, apiKey }) => {
+    let keyToUse = apiKey;
+    if (!keyToUse || keyToUse.startsWith("•••")) {
+      const savedConfig = llmRegistry.getProviderConfig(provider);
+      keyToUse = savedConfig?.apiKey || "";
+    }
+    return fetchProviderModels(provider, keyToUse);
+  });
   ipcMain.handle("llm:score-job", (_, { profileSummary, jobDescription }) => llmRegistry.scoreJobFit(profileSummary, jobDescription));
   ipcMain.handle("llm:generate-cover-letter", (_, { profileSummary, jobDescription }) => llmRegistry.generateCoverLetter(profileSummary, jobDescription));
   ipcMain.handle("llm:answer-question", (_, { profileSummary, question, context }) => llmRegistry.answerQuestion(profileSummary, question, context));
