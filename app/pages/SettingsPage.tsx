@@ -24,30 +24,23 @@ const PROVIDER_MODELS_MAP: Record<string, string[]> = {
   openrouter: [
     "google/gemini-2.0-flash-001",
     "deepseek/deepseek-r1",
-    "anthropic/claude-3.5-sonnet",
+    "anthropic/claude-3.7-sonnet",
+    "openai/gpt-4o-2024-11-20",
     "openai/gpt-4o-mini",
-    "openai/gpt-4o",
     "meta-llama/llama-3.3-70b-instruct",
-    "mistralai/mistral-large-2411",
+    "qwen/qwen-2.5-coder-32b-instruct",
   ],
   openai: [
-    "gpt-4o-mini",
     "gpt-4o",
-    "gpt-4-turbo",
+    "gpt-4o-mini",
     "o3-mini",
-    "o1-mini",
+    "o1",
   ],
   gemini: [
     "gemini-2.0-flash",
-    "gemini-1.5-flash",
+    "gemini-2.0-flash-lite",
     "gemini-1.5-pro",
-  ],
-  ollama: [
-    "llama3.2",
-    "deepseek-r1:7b",
-    "mistral",
-    "qwen2.5-coder",
-    "phi4",
+    "gemini-2.0-pro-exp",
   ],
 };
 
@@ -84,13 +77,14 @@ export const SettingsPage: React.FC = () => {
 
       const providerList: LLMProviderConfig[] = await (window as any).electron?.ipcRenderer?.invoke("llm:list-providers") || [
         { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "google/gemini-2.0-flash-001", availableModels: PROVIDER_MODELS_MAP.openrouter, isEnabled: true },
-        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: PROVIDER_MODELS_MAP.openai, isEnabled: true },
+        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o", availableModels: PROVIDER_MODELS_MAP.openai, isEnabled: true },
         { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-2.0-flash", availableModels: PROVIDER_MODELS_MAP.gemini, isEnabled: true },
-        { id: "ollama", name: "Ollama (Local)", type: "ollama", baseUrl: "http://localhost:11434/api", defaultModel: "llama3.2", availableModels: PROVIDER_MODELS_MAP.ollama, isEnabled: true },
       ];
-      setProviders(providerList);
+      
+      const filteredProviders = providerList.filter(p => p.id !== "ollama");
+      setProviders(filteredProviders);
 
-      const activeConfig = providerList.find((p) => p.id === activeId) || providerList[0];
+      const activeConfig = filteredProviders.find((p) => p.id === activeId) || filteredProviders[0];
       if (activeConfig) {
         setSelectedProviderConfig(activeConfig);
         setSelectedModel(activeConfig.defaultModel || PROVIDER_MODELS_MAP[activeId]?.[0] || "");
@@ -192,7 +186,7 @@ export const SettingsPage: React.FC = () => {
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            Select your preferred AI Provider and Model from the dropdowns below to power job fit scoring and answer generation.
+            Select your preferred AI Provider and modern 2026 Model from the dropdowns below to power job fit scoring and answer generation.
           </p>
         </div>
 
@@ -210,9 +204,8 @@ export const SettingsPage: React.FC = () => {
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-semibold text-foreground"
               >
                 <option value="openrouter">OpenRouter (Recommended — Multi-Model API)</option>
-                <option value="openai">OpenAI (Direct — GPT-4o, GPT-4o-mini)</option>
+                <option value="openai">OpenAI (Direct — GPT-4o, o3-mini)</option>
                 <option value="gemini">Google Gemini (Direct — Gemini 2.0 Flash)</option>
-                <option value="ollama">Ollama (Local Offline LLM)</option>
               </select>
             </div>
 
@@ -247,7 +240,7 @@ export const SettingsPage: React.FC = () => {
                 type="text"
                 value={customModelInput}
                 onChange={(e) => setCustomModelInput(e.target.value)}
-                placeholder="e.g. meta-llama/llama-3.1-405b"
+                placeholder="e.g. meta-llama/llama-3.3-70b-instruct"
                 className="text-xs"
               />
             </div>
@@ -287,7 +280,7 @@ export const SettingsPage: React.FC = () => {
           {/* Quick Tab Buttons for Providers */}
           <div className="space-y-2 pt-1">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quick Provider Tabs</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {providers.map((p) => {
                 const isActive = p.id === activeProviderId;
                 return (
