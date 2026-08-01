@@ -53,6 +53,7 @@ export const SettingsPage: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
+  // Automatically fetch settings & live OpenRouter models in background on load
   useEffect(() => {
     loadSettings();
     loadLiveOpenRouterModels();
@@ -110,6 +111,10 @@ export const SettingsPage: React.FC = () => {
       setBaseUrlInput(p.baseUrl || "");
       setApiKeyInput("");
       setTestStatus({ testing: false });
+    }
+
+    if (id === "openrouter" && openRouterModels.length === 0) {
+      loadLiveOpenRouterModels();
     }
   };
 
@@ -196,31 +201,16 @@ export const SettingsPage: React.FC = () => {
     <div className="space-y-8 max-w-4xl mx-auto py-2">
       {/* AI Provider Configuration (@openrouter/ai-sdk-provider) */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-lg">AI Provider Engine & Dynamic Model Config</h3>
-              <Badge variant="outline" className="text-xs border-primary/30 text-primary flex items-center gap-1">
-                <Sparkles className="h-3 w-3" /> @openrouter/ai-sdk-provider
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Fetch live available models dynamically from OpenRouter REST API or select direct OpenAI / Gemini.
-            </p>
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-lg">AI Provider Engine & Model Config</h3>
+            <Badge variant="outline" className="text-xs border-primary/30 text-primary flex items-center gap-1">
+              <Sparkles className="h-3 w-3" /> @openrouter/ai-sdk-provider
+            </Badge>
           </div>
-
-          {activeProviderId === "openrouter" && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={loadLiveOpenRouterModels}
-              disabled={isFetchingModels}
-              className="gap-2 text-xs"
-            >
-              {isFetchingModels ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              Fetch Live Models
-            </Button>
-          )}
+          <p className="text-sm text-muted-foreground">
+            Live models are automatically fetched from OpenRouter's REST API in the background.
+          </p>
         </div>
 
         <div className="p-5 bg-card border border-border rounded-xl space-y-5">
@@ -236,7 +226,7 @@ export const SettingsPage: React.FC = () => {
                 onChange={(e) => handleSelectProvider(e.target.value)}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-semibold text-foreground"
               >
-                <option value="openrouter">OpenRouter (Dynamic API — Free & Paid Models)</option>
+                <option value="openrouter">OpenRouter (Auto-Synced Live Models — Free & Paid)</option>
                 <option value="openai">OpenAI (Direct — GPT-4o, o3-mini)</option>
                 <option value="gemini">Google Gemini (Direct — Gemini 1.5 Flash)</option>
               </select>
@@ -244,9 +234,16 @@ export const SettingsPage: React.FC = () => {
 
             {/* Dynamic AI Model Dropdown */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium flex items-center gap-1.5">
-                <Cpu className="h-3.5 w-3.5 text-primary" /> Live AI Model Dropdown Selector
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium flex items-center gap-1.5">
+                  <Cpu className="h-3.5 w-3.5 text-primary" /> Live AI Model Dropdown Selector
+                </Label>
+                {isFetchingModels && (
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin text-primary" /> Syncing live models...
+                  </span>
+                )}
+              </div>
               <select
                 value={selectedModel}
                 onChange={(e) => {
