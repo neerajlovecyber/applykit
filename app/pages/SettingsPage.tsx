@@ -15,6 +15,7 @@ import {
   Loader2,
   Cpu,
   Save,
+  Layers,
 } from "lucide-react";
 import type { Platform } from "@/lib/main/db-queries";
 import type { LLMProviderConfig } from "@/lib/providers/types";
@@ -191,40 +192,69 @@ export const SettingsPage: React.FC = () => {
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            Configure OpenRouter, OpenAI, Gemini, or Ollama with dropdown model selection for job fit scoring and answer generation.
+            Select your preferred AI Provider and Model from the dropdowns below to power job fit scoring and answer generation.
           </p>
         </div>
 
         <div className="p-5 bg-card border border-border rounded-xl space-y-5">
-          {/* Provider Selection Buttons */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Active AI Provider</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {providers.map((p) => {
-                const isActive = p.id === activeProviderId;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => handleSelectProvider(p.id)}
-                    className={`px-3.5 py-3 rounded-xl border text-xs font-medium transition-all text-left flex flex-col justify-between h-18 ${
-                      isActive
-                        ? "border-primary bg-primary/10 text-primary shadow-xs"
-                        : "border-border bg-background hover:bg-muted/40 text-foreground"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="font-semibold text-sm">{p.name}</span>
-                      {isActive && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground capitalize">{p.type} Provider</span>
-                  </button>
-                );
-              })}
+          {/* Dual Dropdown Selectors: Provider & Model */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* AI Provider Dropdown */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-primary" /> AI Provider Dropdown Selector
+              </Label>
+              <select
+                value={activeProviderId}
+                onChange={(e) => handleSelectProvider(e.target.value)}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-semibold text-foreground"
+              >
+                <option value="openrouter">OpenRouter (Recommended — Multi-Model API)</option>
+                <option value="openai">OpenAI (Direct — GPT-4o, GPT-4o-mini)</option>
+                <option value="gemini">Google Gemini (Direct — Gemini 2.0 Flash)</option>
+                <option value="ollama">Ollama (Local Offline LLM)</option>
+              </select>
+            </div>
+
+            {/* AI Model Dropdown */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium flex items-center gap-1.5">
+                <Cpu className="h-3.5 w-3.5 text-primary" /> AI Model Dropdown Selector
+              </Label>
+              <select
+                value={selectedModel}
+                onChange={(e) => {
+                  setSelectedModel(e.target.value);
+                  setCustomModelInput("");
+                }}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-semibold text-foreground"
+              >
+                {availableModelsForProvider.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+                <option value="custom">+ Custom Model Name...</option>
+              </select>
             </div>
           </div>
 
-          {/* Config Inputs & Prominent Dropdown Selectors */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          {/* Optional Custom Model Input */}
+          {(selectedModel === "custom" || customModelInput) && (
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Custom Model Identifier</Label>
+              <Input
+                type="text"
+                value={customModelInput}
+                onChange={(e) => setCustomModelInput(e.target.value)}
+                placeholder="e.g. meta-llama/llama-3.1-405b"
+                className="text-xs"
+              />
+            </div>
+          )}
+
+          {/* Config Inputs: API Key & Base URL */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 border-t border-border/40">
             <div className="space-y-2">
               <Label className="text-xs font-medium">API Key</Label>
               <div className="relative">
@@ -233,7 +263,7 @@ export const SettingsPage: React.FC = () => {
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
                   placeholder={selectedProviderConfig.apiKey ? "••••••••••••••••" : "Enter Provider API Key"}
-                  className="pr-8 text-xs"
+                  className="pr-8 text-xs font-mono"
                 />
                 <Key className="h-4 w-4 text-muted-foreground absolute right-2.5 top-2.5" />
               </div>
@@ -247,48 +277,35 @@ export const SettingsPage: React.FC = () => {
                   value={baseUrlInput}
                   onChange={(e) => setBaseUrlInput(e.target.value)}
                   placeholder={selectedProviderConfig.baseUrl || "Default Provider URL"}
-                  className="pr-8 text-xs"
+                  className="pr-8 text-xs font-mono"
                 />
                 <Globe className="h-4 w-4 text-muted-foreground absolute right-2.5 top-2.5" />
               </div>
             </div>
           </div>
 
-          {/* AI Model Dropdown Selector */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-medium flex items-center gap-1.5">
-                <Cpu className="h-3.5 w-3.5 text-primary" /> AI Model Selection Dropdown
-              </Label>
-              <select
-                value={selectedModel}
-                onChange={(e) => {
-                  setSelectedModel(e.target.value);
-                  setCustomModelInput("");
-                }}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium"
-              >
-                {availableModelsForProvider.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-                <option value="custom">+ Custom Model Name...</option>
-              </select>
+          {/* Quick Tab Buttons for Providers */}
+          <div className="space-y-2 pt-1">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quick Provider Tabs</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {providers.map((p) => {
+                const isActive = p.id === activeProviderId;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => handleSelectProvider(p.id)}
+                    className={`px-3 py-2 rounded-lg border text-xs font-medium transition-all text-left flex items-center justify-between ${
+                      isActive
+                        ? "border-primary bg-primary/10 text-primary shadow-xs"
+                        : "border-border bg-background hover:bg-muted/40 text-foreground"
+                    }`}
+                  >
+                    <span>{p.name}</span>
+                    {isActive && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />}
+                  </button>
+                );
+              })}
             </div>
-
-            {(selectedModel === "custom" || customModelInput) && (
-              <div className="space-y-2">
-                <Label className="text-xs font-medium">Custom Model Name</Label>
-                <Input
-                  type="text"
-                  value={customModelInput}
-                  onChange={(e) => setCustomModelInput(e.target.value)}
-                  placeholder="e.g. meta-llama/llama-3.1-405b"
-                  className="text-xs"
-                />
-              </div>
-            )}
           </div>
 
           {/* Status Message */}
@@ -314,7 +331,7 @@ export const SettingsPage: React.FC = () => {
             >
               {testStatus.testing ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Testing...
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Testing Connection...
                 </>
               ) : (
                 <>
