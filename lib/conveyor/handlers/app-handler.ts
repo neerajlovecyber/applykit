@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import * as dbQueries from "@/lib/main/db-queries";
 import * as llmRegistry from "@/lib/providers/provider-registry";
+import { executeSearch } from "@/lib/jobs/search/search-manager";
 
 export function registerAppHandlers(): void {
   // ═══════════════════════════════════════════════════════════
@@ -16,7 +17,7 @@ export function registerAppHandlers(): void {
   ipcMain.handle("profiles:delete", (_, id) => dbQueries.deleteProfile(id));
 
   // ═══════════════════════════════════════════════════════════
-  // JOB POSTINGS
+  // JOB POSTINGS & SEARCH SCRAPING
   // ═══════════════════════════════════════════════════════════
 
   ipcMain.handle("job-postings:get", (_, filters) => dbQueries.getJobPostings(filters));
@@ -26,6 +27,7 @@ export function registerAppHandlers(): void {
   ipcMain.handle("job-postings:update-state", (_, { id, state }) => dbQueries.updateJobPostingState(id, state));
   ipcMain.handle("job-postings:update-score", (_, { id, score, breakdown, explanation }) => dbQueries.updateJobPostingScore(id, score, breakdown, explanation));
   ipcMain.handle("job-postings:get-stats", () => dbQueries.getJobPostingStats());
+  ipcMain.handle("search:execute", (_, { options, queryId }) => executeSearch(options, queryId));
 
   // ═══════════════════════════════════════════════════════════
   // APPLICATIONS

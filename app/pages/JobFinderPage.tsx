@@ -12,12 +12,13 @@ import {
   DollarSign,
   Plus,
   Check,
-  Filter,
   Sparkles,
   RefreshCw,
   Zap,
   Bookmark,
   ExternalLink,
+  Loader2,
+  Globe,
 } from "lucide-react";
 import type { JobPosting } from "@/lib/main/db-queries";
 
@@ -30,6 +31,8 @@ export const JobFinderPage: React.FC = () => {
   const [location, setLocation] = useState("Remote");
   const [selectedPlatform, setSelectedPlatform] = useState("all");
   const [scoringId, setScoringId] = useState<string | null>(null);
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapeResultMsg, setScrapeResultMsg] = useState<string | null>(null);
 
   useEffect(() => {
     loadJobs();
@@ -64,6 +67,35 @@ export const JobFinderPage: React.FC = () => {
       console.error("Failed to load job postings:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRunLiveScraper = async () => {
+    setIsScraping(true);
+    setScrapeResultMsg("Launching Playwright scraper...");
+    try {
+      const options = {
+        source: selectedPlatform,
+        keywords,
+        location,
+        maxPages: 2,
+        easyApplyOnly: true,
+      };
+
+      const result = await (window as any).electron?.ipcRenderer?.invoke("search:execute", { options });
+
+      if (result?.error) {
+        setScrapeResultMsg(`Scraper notice: ${result.error}`);
+      } else {
+        setScrapeResultMsg(
+          `Scraped ${result?.totalScraped || 0} jobs (${result?.newJobsAdded || 0} new added, ${result?.duplicatesSkipped || 0} duplicates skipped).`
+        );
+        loadJobs();
+      }
+    } catch (err) {
+      setScrapeResultMsg(err instanceof Error ? err.message : "Scraper execution failed");
+    } finally {
+      setIsScraping(false);
     }
   };
 
@@ -169,10 +201,33 @@ export const JobFinderPage: React.FC = () => {
             <option value="greenhouse">Greenhouse</option>
           </select>
 
-          <Button onClick={handleCreateSearchQuery} variant="secondary" className="gap-2 shrink-0 text-xs">
+          <Button
+            onClick={handleRunLiveScraper}
+            disabled={isScraping}
+            className="gap-2 shrink-0 text-xs bg-primary text-primary-foreground"
+          >
+            {isScraping ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Scraping...
+              </>
+            ) : (
+              <>
+                <Globe className="h-4 w-4" /> Run Live Scraper
+              </>
+            )}
+          </Button>
+
+          <Button onClick={handleCreateSearchQuery} variant="outline" className="gap-2 shrink-0 text-xs">
             <Bookmark className="h-4 w-4" /> Save Search
           </Button>
         </div>
+
+        {scrapeResultMsg && (
+          <div className="p-3 rounded-lg bg-primary/10 text-primary text-xs flex items-center gap-2 border border-primary/20">
+            <Zap className="h-4 w-4 shrink-0" />
+            <span>{scrapeResultMsg}</span>
+          </div>
+        )}
       </div>
 
       {/* Discovered Jobs List */}
