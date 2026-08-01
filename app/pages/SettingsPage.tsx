@@ -69,6 +69,9 @@ export const SettingsPage: React.FC = () => {
         { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "openrouter/free", availableModels: [], isEnabled: true },
         { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: [], isEnabled: true },
         { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: [], isEnabled: true },
+        { id: "claude", name: "Anthropic Claude", type: "claude", defaultModel: "claude-3-7-sonnet-20250219", availableModels: [], isEnabled: true },
+        { id: "deepseek", name: "DeepSeek", type: "deepseek", defaultModel: "deepseek-v4-flash", availableModels: [], isEnabled: true },
+        { id: "groq", name: "Groq", type: "groq", defaultModel: "llama-3.3-70b-versatile", availableModels: [], isEnabled: true },
       ];
 
       setProviders(providerList.filter((p) => p.id !== "ollama"));
@@ -76,7 +79,7 @@ export const SettingsPage: React.FC = () => {
       const activeConfig = providerList.find((p) => p.id === activeId) || providerList[0];
       if (activeConfig) {
         setSelectedProviderConfig(activeConfig);
-        setSelectedModel(activeConfig.defaultModel || "openrouter/free");
+        setSelectedModel(activeConfig.defaultModel || (activeId === "openrouter" ? "openrouter/free" : ""));
         setBaseUrlInput(activeConfig.baseUrl || "");
       }
     } catch (err) {
@@ -87,15 +90,26 @@ export const SettingsPage: React.FC = () => {
   const loadLiveModels = async (provider: string, apiKey?: string) => {
     setIsLoadingModels(true);
     try {
+      let keyToUse = apiKey;
+      if (!keyToUse) {
+        const savedJson = await (window as any).electron?.ipcRenderer?.invoke("settings:get", `llm_config_${provider}`);
+        if (savedJson) {
+          try {
+            const parsed = JSON.parse(savedJson);
+            keyToUse = parsed.apiKey;
+          } catch {}
+        }
+      }
+
       const models: ProviderModelItem[] = await (window as any).electron?.ipcRenderer?.invoke("llm:fetch-provider-models", {
         provider,
-        apiKey,
+        apiKey: keyToUse,
       });
 
       if (models && models.length > 0) {
         setDynamicModels(models);
-        // Automatically select the first model if current model doesn't belong to this provider
-        if (!models.some((m) => m.id === selectedModel) && models[0]) {
+        // If current selectedModel is not in the new provider's models, set to first model
+        if (!models.some((m) => m.id === selectedModel)) {
           setSelectedModel(models[0].id);
         }
       }
@@ -117,7 +131,7 @@ export const SettingsPage: React.FC = () => {
       setTestStatus({ testing: false });
     }
 
-    // Immediately fetch live models for the newly selected provider
+    // Immediately fetch live models for the new provider
     loadLiveModels(id, "");
   };
 
