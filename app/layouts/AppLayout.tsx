@@ -93,21 +93,24 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                         isActive={isActive}
                         tooltip={item.label}
                         className={cn(
-                          "h-9 gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
+                          "h-9.5 gap-3 rounded-lg px-3 text-sm font-semibold transition-all duration-150 group/btn",
                           isActive
-                            ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-primary"
-                            : "text-muted-foreground hover:text-foreground"
+                            ? "bg-emerald-500/15 text-white"
+                            : "text-zinc-400 hover:text-white hover:bg-white/5"
                         )}
                       >
                         <Link to={item.path} className="flex items-center justify-between w-full">
                           <div className="flex items-center gap-3">
-                            <Icon className={cn("size-4", isActive ? "text-primary" : "")} />
+                            <Icon className={cn("size-4 shrink-0 transition-colors", isActive ? "text-emerald-400" : "text-zinc-400 group-hover/btn:text-emerald-400")} />
                             <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                           </div>
                           {item.path === "/queue" && pendingCount > 0 && (
                             <Badge
                               variant="secondary"
-                              className="text-xs px-2 py-0 group-data-[collapsible=icon]:hidden"
+                              className={cn(
+                                "text-xs px-2 py-0 group-data-[collapsible=icon]:hidden",
+                                isActive && "bg-emerald-500 text-white"
+                              )}
                             >
                               {pendingCount}
                             </Badge>
@@ -132,14 +135,14 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                 isActive={location.pathname === "/settings"}
                 tooltip="Settings"
                 className={cn(
-                  "h-9 gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
+                  "h-9.5 gap-3 rounded-lg px-3 text-sm font-semibold transition-all duration-150 group/btn",
                   location.pathname === "/settings"
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-emerald-500/15 text-white"
+                    : "text-zinc-400 hover:text-white hover:bg-white/5"
                 )}
               >
                 <Link to="/settings" className="flex items-center gap-3">
-                  <Settings className="size-4" />
+                  <Settings className={cn("size-4 shrink-0 transition-colors", location.pathname === "/settings" ? "text-emerald-400" : "text-zinc-400 group-hover/btn:text-emerald-400")} />
                   <span className="group-data-[collapsible=icon]:hidden">Settings</span>
                 </Link>
               </SidebarMenuButton>
@@ -201,7 +204,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                 variant="default"
                 size="sm"
                 onClick={startQueue}
-                className="gap-2 h-7 text-xs px-3 shadow-xs bg-emerald-500 hover:bg-emerald-600 text-white"
+                className="gap-2 h-7 text-xs px-3 shadow-xs"
               >
                 <Play className="h-3.5 w-3.5 fill-current" />
                 Run Queue ({pendingCount})
