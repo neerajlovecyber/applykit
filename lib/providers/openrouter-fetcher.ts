@@ -11,6 +11,9 @@ export interface OpenRouterModel {
 }
 
 export const FALLBACK_OPENROUTER_MODELS: OpenRouterModel[] = [
+  // Auto Mode (Default #1 Choice)
+  { id: "openrouter/auto", name: "Auto Mode (Auto Selects Best Free Model)", isFree: true },
+  
   // Free Models
   { id: "deepseek/deepseek-r1:free", name: "DeepSeek R1 (Free)", isFree: true },
   { id: "google/gemini-2.0-flash-exp:free", name: "Gemini 2.0 Flash Exp (Free)", isFree: true },
@@ -72,12 +75,18 @@ export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
       };
     });
 
-    // Sort free models first, then alphabetically
-    return parsedModels.sort((a, b) => {
+    // Sort free models first
+    const sorted = parsedModels.sort((a, b) => {
       if (a.isFree && !b.isFree) return -1;
       if (!a.isFree && b.isFree) return 1;
       return a.id.localeCompare(b.id);
     });
+
+    // Prepend Auto Mode as index 0
+    return [
+      { id: "openrouter/auto", name: "Auto Mode (Auto Selects Best Free Model)", isFree: true },
+      ...sorted.filter((m) => m.id !== "openrouter/auto"),
+    ];
   } catch (err) {
     console.error("[OpenRouterFetcher] Failed to fetch live model list, using rich fallback:", err);
     return FALLBACK_OPENROUTER_MODELS;

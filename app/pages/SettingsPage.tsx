@@ -47,7 +47,7 @@ export const SettingsPage: React.FC = () => {
 
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [baseUrlInput, setBaseUrlInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("deepseek/deepseek-r1:free");
+  const [selectedModel, setSelectedModel] = useState("openrouter/auto");
   const [customModelInput, setCustomModelInput] = useState("");
 
   const [openRouterModels, setOpenRouterModels] = useState<DiscoveredModel[]>(FALLBACK_OPENROUTER_MODELS);
@@ -72,7 +72,7 @@ export const SettingsPage: React.FC = () => {
       setActiveProviderId(activeId);
 
       const providerList: LLMProviderConfig[] = await (window as any).electron?.ipcRenderer?.invoke("llm:list-providers") || [
-        { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "deepseek/deepseek-r1:free", availableModels: [], isEnabled: true },
+        { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "openrouter/auto", availableModels: [], isEnabled: true },
         { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: DEFAULT_OPENAI_MODELS.map((m) => m.id), isEnabled: true },
         { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: DEFAULT_GEMINI_MODELS.map((m) => m.id), isEnabled: true },
       ];
@@ -82,7 +82,7 @@ export const SettingsPage: React.FC = () => {
       const activeConfig = providerList.find((p) => p.id === activeId) || providerList[0];
       if (activeConfig) {
         setSelectedProviderConfig(activeConfig);
-        setSelectedModel(activeConfig.defaultModel || "deepseek/deepseek-r1:free");
+        setSelectedModel(activeConfig.defaultModel || "openrouter/auto");
         setBaseUrlInput(activeConfig.baseUrl || "");
       }
     } catch (err) {
@@ -104,7 +104,7 @@ export const SettingsPage: React.FC = () => {
   const handleSelectProvider = (id: string) => {
     setActiveProviderId(id);
     const p = providers.find((pr) => pr.id === id);
-    const defaultM = id === "openrouter" ? "deepseek/deepseek-r1:free" : (id === "openai" ? "gpt-4o-mini" : "gemini-1.5-flash");
+    const defaultM = id === "openrouter" ? "openrouter/auto" : (id === "openai" ? "gpt-4o-mini" : "gemini-1.5-flash");
 
     if (p) {
       setSelectedProviderConfig(p);
