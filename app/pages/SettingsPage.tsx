@@ -61,7 +61,7 @@ export const SettingsPage: React.FC = () => {
       setActiveProviderId(activeId);
       currentProviderRef.current = activeId;
 
-      const providerList: LLMProviderConfig[] = await (window as any).electron?.ipcRenderer?.invoke("llm:list-providers") || [
+      const providerList: LLMProviderConfig[] = await conveyor.data.listProviders() || [
         { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "openrouter/free", availableModels: [], isEnabled: true },
         { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: [], isEnabled: true },
         { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: [], isEnabled: true },
@@ -89,10 +89,7 @@ export const SettingsPage: React.FC = () => {
     currentProviderRef.current = provider;
     setIsLoadingModels(true);
     try {
-      const models: ProviderModelItem[] = await (window as any).electron?.ipcRenderer?.invoke("llm:fetch-provider-models", {
-        provider,
-        apiKey,
-      });
+      const models: ProviderModelItem[] = await conveyor.data.fetchProviderModels(provider, apiKey);
 
       if (currentProviderRef.current === provider && models && models.length > 0) {
         setDynamicModels(models);
@@ -140,8 +137,8 @@ export const SettingsPage: React.FC = () => {
         isEnabled: true,
       };
 
-      await (window as any).electron?.ipcRenderer?.invoke("llm:configure-provider", updatedConfig);
-      await (window as any).electron?.ipcRenderer?.invoke("llm:set-active-provider", updatedConfig.id);
+      await conveyor.data.configureProvider(updatedConfig);
+      await conveyor.data.setActiveLLMProvider(updatedConfig.id);
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -167,7 +164,7 @@ export const SettingsPage: React.FC = () => {
         isEnabled: true,
       };
 
-      const result = await (window as any).electron?.ipcRenderer?.invoke("llm:test-connection", configToTest);
+      const result = await conveyor.data.testProviderConnection(configToTest);
       if (result?.success) {
         setTestStatus({ testing: false, success: true, message: "Connection successful! Provider ready." });
       } else {

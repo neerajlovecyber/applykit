@@ -333,6 +333,26 @@ export class DataApi {
   }
 
   // ═══════════════════════════════════════════════════════════
+  // LLM & MODEL DISCOVERY
+  // ═══════════════════════════════════════════════════════════
+
+  async fetchProviderModels(provider: string, apiKey?: string): Promise<any[]> {
+    return this.api.ipcRenderer.invoke("llm:fetch-provider-models", { provider, apiKey });
+  }
+  async listProviders(): Promise<any[]> {
+    return this.api.ipcRenderer.invoke("llm:list-providers");
+  }
+  async configureProvider(config: any): Promise<void> {
+    return this.api.ipcRenderer.invoke("llm:configure-provider", config);
+  }
+  async setActiveLLMProvider(id: string): Promise<void> {
+    return this.api.ipcRenderer.invoke("llm:set-active-provider", id);
+  }
+  async testProviderConnection(config: any): Promise<any> {
+    return this.api.ipcRenderer.invoke("llm:test-connection", config);
+  }
+
+  // ═══════════════════════════════════════════════════════════
   // LEGACY: Jobs & History
   // ═══════════════════════════════════════════════════════════
 
