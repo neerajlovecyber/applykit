@@ -9,9 +9,9 @@
   --window-background-transition-duration: 0.3s;
   --window-c-popup-font-weight: normal;
 
-  --window-c-background: #1c1c1c;
-  --window-c-titlebar-background: #282828;
-  --window-c-titlebar-border: transparent;
+  --window-c-background: hsl(240 10% 3.9%);
+  --window-c-titlebar-background: hsl(240 10% 3.9%);
+  --window-c-titlebar-border: hsl(240 3.7% 15.9%);
   --window-c-text: #ffffffc8;
   --window-c-hover: #3c3c3c;
   --window-c-popup-background: #282828;

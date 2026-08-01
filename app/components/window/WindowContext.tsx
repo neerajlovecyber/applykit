@@ -16,7 +16,7 @@ const WindowContext = createContext<WindowContextProps | undefined>(undefined);
 export const WindowContextProvider = ({
   children,
   titlebar = {
-    title: "Electron React App",
+    title: "ApplyKit",
     icon: "appIcon.png",
     titleCentered: false,
     menuItems: [],
