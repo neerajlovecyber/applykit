@@ -17,24 +17,11 @@ import {
 import type { Platform } from "@/lib/main/db-queries";
 import type { LLMProviderConfig } from "@/lib/providers/types";
 
-interface DiscoveredModel {
+interface ProviderModelItem {
   id: string;
-  name: string;
+  label: string;
   isFree?: boolean;
 }
-
-const DEFAULT_OPENAI_MODELS = [
-  { id: "gpt-4o", name: "GPT-4o" },
-  { id: "gpt-4o-mini", name: "GPT-4o Mini" },
-  { id: "o3-mini", name: "o3-mini" },
-  { id: "o1", name: "o1" },
-];
-
-const DEFAULT_GEMINI_MODELS = [
-  { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash" },
-  { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro" },
-  { id: "gemini-2.0-flash-exp", name: "Gemini 2.0 Flash Exp" },
-];
 
 export const SettingsPage: React.FC = () => {
   const conveyor = useConveyor();
@@ -49,10 +36,11 @@ export const SettingsPage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState("openrouter/free");
   const [customModelInput, setCustomModelInput] = useState("");
 
-  const [openRouterModels, setOpenRouterModels] = useState<DiscoveredModel[]>([
-    { id: "openrouter/free", name: "openrouter/free" },
-    { id: "openrouter/auto", name: "openrouter/auto" },
+  const [dynamicModels, setDynamicModels] = useState<ProviderModelItem[]>([
+    { id: "openrouter/free", label: "openrouter/free" },
+    { id: "openrouter/auto", label: "openrouter/auto" },
   ]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   const [testStatus, setTestStatus] = useState<{ testing: boolean; success?: boolean; message?: string }>({
     testing: false,
@@ -62,8 +50,11 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     loadSettings();
-    loadLiveOpenRouterModels();
   }, []);
+
+  useEffect(() => {
+    loadLiveModels(activeProviderId, apiKeyInput);
+  }, [activeProviderId]);
 
   const loadSettings = async () => {
     try {
@@ -75,8 +66,8 @@ export const SettingsPage: React.FC = () => {
 
       const providerList: LLMProviderConfig[] = await (window as any).electron?.ipcRenderer?.invoke("llm:list-providers") || [
         { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "openrouter/free", availableModels: [], isEnabled: true },
-        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: DEFAULT_OPENAI_MODELS.map((m) => m.id), isEnabled: true },
-        { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: DEFAULT_GEMINI_MODELS.map((m) => m.id), isEnabled: true },
+        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: [], isEnabled: true },
+        { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: [], isEnabled: true },
       ];
 
       setProviders(providerList.filter((p) => p.id !== "ollama"));
@@ -92,25 +83,33 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const loadLiveOpenRouterModels = async () => {
+  const loadLiveModels = async (provider: string, apiKey?: string) => {
+    setIsLoadingModels(true);
     try {
-      const list: DiscoveredModel[] = await (window as any).electron?.ipcRenderer?.invoke("llm:fetch-openrouter-models");
-      if (list && list.length > 0) {
-        setOpenRouterModels(list);
+      const models: ProviderModelItem[] = await (window as any).electron?.ipcRenderer?.invoke("llm:fetch-provider-models", {
+        provider,
+        apiKey,
+      });
+
+      if (models && models.length > 0) {
+        setDynamicModels(models);
+        if (!models.some((m) => m.id === selectedModel) && models[0]) {
+          setSelectedModel(models[0].id);
+        }
       }
     } catch (err) {
-      console.error("Failed to fetch live OpenRouter models:", err);
+      console.error(`Failed to fetch models for ${provider}:`, err);
+    } finally {
+      setIsLoadingModels(false);
     }
   };
 
   const handleSelectProvider = (id: string) => {
     setActiveProviderId(id);
     const p = providers.find((pr) => pr.id === id);
-    const defaultM = id === "openrouter" ? "openrouter/free" : (id === "openai" ? "gpt-4o-mini" : "gemini-1.5-flash");
 
     if (p) {
       setSelectedProviderConfig(p);
-      setSelectedModel(defaultM);
       setBaseUrlInput(p.baseUrl || "");
       setApiKeyInput("");
       setTestStatus({ testing: false });
@@ -128,7 +127,7 @@ export const SettingsPage: React.FC = () => {
         apiKey: apiKeyInput.trim() || selectedProviderConfig.apiKey,
         baseUrl: baseUrlInput.trim() || selectedProviderConfig.baseUrl,
         defaultModel: finalModel,
-        availableModels: activeProviderId === "openrouter" ? openRouterModels.map((m) => m.id) : (activeProviderId === "openai" ? DEFAULT_OPENAI_MODELS.map((m) => m.id) : DEFAULT_GEMINI_MODELS.map((m) => m.id)),
+        availableModels: dynamicModels.map((m) => m.id),
         isEnabled: true,
       };
 
@@ -180,13 +179,6 @@ export const SettingsPage: React.FC = () => {
     loadSettings();
   };
 
-  const currentModelChoices =
-    activeProviderId === "openrouter"
-      ? openRouterModels
-      : activeProviderId === "openai"
-      ? DEFAULT_OPENAI_MODELS
-      : DEFAULT_GEMINI_MODELS;
-
   return (
     <div className="space-y-8 max-w-4xl mx-auto py-2">
       {/* AI Provider Configuration */}
@@ -210,12 +202,18 @@ export const SettingsPage: React.FC = () => {
                 <option value="openrouter">OpenRouter</option>
                 <option value="openai">OpenAI</option>
                 <option value="gemini">Google Gemini</option>
+                <option value="claude">Anthropic Claude</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="groq">Groq</option>
               </select>
             </div>
 
             {/* Model Dropdown */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium">Model</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">Model</Label>
+                {isLoadingModels && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+              </div>
               <select
                 value={selectedModel}
                 onChange={(e) => {
@@ -224,9 +222,9 @@ export const SettingsPage: React.FC = () => {
                 }}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-semibold text-foreground"
               >
-                {currentModelChoices.map((m) => (
+                {dynamicModels.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.name}
+                    {m.label}
                   </option>
                 ))}
                 <option value="custom">+ Custom Model ID...</option>
@@ -256,7 +254,12 @@ export const SettingsPage: React.FC = () => {
                 <Input
                   type="password"
                   value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  onChange={(e) => {
+                    setApiKeyInput(e.target.value);
+                    if (e.target.value.length > 8) {
+                      loadLiveModels(activeProviderId, e.target.value);
+                    }
+                  }}
                   placeholder={selectedProviderConfig.apiKey ? "••••••••••••••••" : "Enter Provider API Key"}
                   className="pr-8 text-xs font-mono"
                 />

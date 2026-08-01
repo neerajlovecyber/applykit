@@ -1,7 +1,7 @@
 import { ipcMain } from "electron";
 import * as dbQueries from "@/lib/main/db-queries";
 import * as llmRegistry from "@/lib/providers/provider-registry";
-import { fetchOpenRouterModels } from "@/lib/providers/openrouter-fetcher";
+import { fetchOpenRouterModels, fetchProviderModels } from "@/lib/providers/model-fetcher";
 import { executeSearch } from "@/lib/jobs/search/search-manager";
 
 export function registerAppHandlers(): void {
@@ -115,6 +115,7 @@ export function registerAppHandlers(): void {
   ipcMain.handle("llm:configure-provider", (_, config) => llmRegistry.configureProvider(config));
   ipcMain.handle("llm:test-connection", (_, config) => llmRegistry.testProviderConnection(config));
   ipcMain.handle("llm:fetch-openrouter-models", () => fetchOpenRouterModels());
+  ipcMain.handle("llm:fetch-provider-models", (_, { provider, apiKey }) => fetchProviderModels(provider, apiKey));
   ipcMain.handle("llm:score-job", (_, { profileSummary, jobDescription }) => llmRegistry.scoreJobFit(profileSummary, jobDescription));
   ipcMain.handle("llm:generate-cover-letter", (_, { profileSummary, jobDescription }) => llmRegistry.generateCoverLetter(profileSummary, jobDescription));
   ipcMain.handle("llm:answer-question", (_, { profileSummary, question, context }) => llmRegistry.answerQuestion(profileSummary, question, context));
