@@ -20,6 +20,8 @@ export async function fetchProviderModels(
   provider: Provider,
   apiKey?: string
 ): Promise<ProviderModel[]> {
+  console.log(`[IPC model-fetcher] Fetching live models for provider="${provider}"`);
+
   switch (provider) {
     case "openrouter":
       return fetchOpenRouterModels();
@@ -38,7 +40,7 @@ export async function fetchProviderModels(
   }
 }
 
-// ─── OpenRouter (Public Unauthenticated Endpoint) ───────────────────────────
+// ─── OpenRouter ───────────────────────────────────────────────────────────────
 
 export async function fetchOpenRouterModels(): Promise<ProviderModel[]> {
   const freeOption: ProviderModel = { id: "openrouter/free", label: "openrouter/free", isFree: true };
@@ -48,7 +50,7 @@ export async function fetchOpenRouterModels(): Promise<ProviderModel[]> {
     const res = await fetch("https://openrouter.ai/api/v1/models", {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        "Accept": "application/json",
+        Accept: "application/json",
       },
     });
 
@@ -114,8 +116,7 @@ async function fetchOpenAIModels(apiKey?: string): Promise<ProviderModel[]> {
     }
   }
 
-  // Dynamic fallback via OpenRouter live catalog filtering
-  return fetchOpenRouterModelsByPrefix("openai/");
+  return fetchOpenRouterModelsByPrefix("openai/", [], true);
 }
 
 // ─── Groq ────────────────────────────────────────────────────────────────────
@@ -147,7 +148,6 @@ async function fetchGroqModels(apiKey?: string): Promise<ProviderModel[]> {
     }
   }
 
-  // Dynamic fallback via OpenRouter live catalog filtering
   return fetchOpenRouterModelsByPrefix("groq/", ["meta-llama/", "mistralai/"]);
 }
 
@@ -179,7 +179,6 @@ async function fetchAnthropicModels(apiKey?: string): Promise<ProviderModel[]> {
     }
   }
 
-  // Dynamic fallback via OpenRouter live catalog filtering
   return fetchOpenRouterModelsByPrefix("anthropic/");
 }
 
@@ -212,7 +211,6 @@ async function fetchDeepSeekModels(apiKey?: string): Promise<ProviderModel[]> {
     }
   }
 
-  // Dynamic fallback via OpenRouter live catalog filtering
   return fetchOpenRouterModelsByPrefix("deepseek/");
 }
 
@@ -251,15 +249,15 @@ async function fetchGeminiModels(apiKey?: string): Promise<ProviderModel[]> {
     }
   }
 
-  // Dynamic fallback via OpenRouter live catalog filtering
-  return fetchOpenRouterModelsByPrefix("google/");
+  return fetchOpenRouterModelsByPrefix("google/", [], true);
 }
 
-// ─── Helper: Dynamic Live Filter via OpenRouter Catalog ─────────────────────
+// ─── Helper: Live Filter via OpenRouter Catalog ────────────────────────────
 
 async function fetchOpenRouterModelsByPrefix(
   primaryPrefix: string,
-  extraPrefixes: string[] = []
+  extraPrefixes: string[] = [],
+  stripPrefix: boolean = false
 ): Promise<ProviderModel[]> {
   const allOpenRouterModels = await fetchOpenRouterModels();
   const prefixes = [primaryPrefix, ...extraPrefixes];
@@ -270,22 +268,25 @@ async function fetchOpenRouterModelsByPrefix(
     return prefixes.some((prefix) => lowerId.startsWith(prefix.toLowerCase()));
   });
 
-  // Strip prefix for provider-native presentation if desired, keeping model ID intact
   const result: ProviderModel[] = matched.map((m) => {
     const rawId = m.id;
+    let cleanId = rawId;
     let cleanLabel = m.label || rawId;
     for (const prefix of prefixes) {
       if (cleanLabel.toLowerCase().startsWith(prefix.toLowerCase())) {
         cleanLabel = cleanLabel.slice(prefix.length);
+        if (stripPrefix) {
+          cleanId = cleanId.slice(prefix.length);
+        }
         break;
       }
     }
     return {
-      id: rawId,
-      label: cleanLabel || rawId,
+      id: cleanId,
+      label: cleanLabel || cleanId,
       isFree: m.isFree,
     };
   });
 
-  return result.length > 0 ? result : allOpenRouterModels.slice(0, 10);
+  return result;
 }

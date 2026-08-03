@@ -14,17 +14,25 @@ import {
   Globe,
   Loader2,
   Save,
+  ExternalLink,
 } from "lucide-react";
 import type { Platform } from "@/lib/main/db-queries";
 import type { LLMProviderConfig } from "@/lib/providers/types";
-
-interface ProviderModelItem {
-  id: string;
-  label: string;
-  isFree?: boolean;
-}
+import { ProviderModel } from "@/lib/providers/model-fetcher";
 
 const ALLOWED_PROVIDERS = ["openrouter", "openai", "gemini"];
+
+const DEFAULT_MODELS_BY_PROVIDER: Record<string, string> = {
+  openrouter: "openrouter/free",
+  openai: "gpt-4o-mini",
+  gemini: "gemini-2.0-flash",
+};
+
+const PROVIDER_KEY_LINKS: Record<string, { label: string; url: string }> = {
+  openrouter: { label: "Get OpenRouter API Key", url: "https://openrouter.ai/workspaces/default/keys" },
+  openai: { label: "Get OpenAI API Key", url: "https://platform.openai.com/api-keys" },
+  gemini: { label: "Get Google Gemini API Key", url: "https://aistudio.google.com/app/apikey" },
+};
 
 export const SettingsPage: React.FC = () => {
   const conveyor = useConveyor();
@@ -73,34 +81,41 @@ export const SettingsPage: React.FC = () => {
       const activeConfig = filtered.find((p) => p.id === activeId) ?? filtered[0];
       if (activeConfig) {
         setSelectedProviderConfig(activeConfig);
-        setSelectedModel(activeConfig.defaultModel ?? "");
+        setSelectedModel(activeConfig.defaultModel || DEFAULT_MODELS_BY_PROVIDER[activeId] || "openrouter/free");
         setBaseUrlInput(activeConfig.baseUrl ?? "");
       }
     } catch (err) {
-      console.error("Failed to load settings:", err);
+      console.error("[SettingsPage] Failed to load settings:", err);
     }
   };
 
-  // ── Model list — React Query handles loading, caching, dedup ──────────────
-  // Key includes provider + apiKeyInput so switching provider or typing a new
-  // key automatically re-fetches. Results are cached 5 min per key.
+  // ── 100% Pure Dynamic Model Fetching ──────────────────────────────────────
   const {
     data: dynamicModels = [],
     isFetching: isLoadingModels,
-  } = useQuery<ProviderModelItem[]>({
+    error: modelsError,
+  } = useQuery<ProviderModel[]>({
     queryKey: ["models", activeProviderId, apiKeyInput || selectedProviderConfig?.apiKey],
-    queryFn: () =>
-      conveyor.data.fetchProviderModels(
+    queryFn: async () => {
+      console.log(`%c[UI queryFn] Fetching live models for provider: ${activeProviderId}`, "color: #3b82f6; font-weight: bold;");
+      const res = await conveyor.data.fetchProviderModels(
         activeProviderId,
         apiKeyInput.trim() || selectedProviderConfig?.apiKey
-      ),
+      );
+      console.log(`%c[UI queryFn] Received ${res?.length ?? 0} live models for ${activeProviderId}:`, "color: #10b981; font-weight: bold;", res?.slice(0, 5));
+      return res || [];
+    },
     enabled: !!activeProviderId,
-    staleTime: 5 * 60 * 1000,
-    placeholderData: (prev) => prev, // keep previous list visible while re-fetching
+    staleTime: 60 * 1000,
   });
+
+  if (modelsError) {
+    console.error("[SettingsPage] Models query error:", modelsError);
+  }
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleSelectProvider = (id: string) => {
+    console.log(`[SettingsPage] Provider changed to: ${id}`);
     setActiveProviderId(id);
     setCustomModelInput("");
     setApiKeyInput("");
@@ -110,8 +125,9 @@ export const SettingsPage: React.FC = () => {
     if (p) {
       setSelectedProviderConfig(p);
       setBaseUrlInput(p.baseUrl ?? "");
-      setSelectedModel(p.defaultModel ?? "");
     }
+    const nextDefaultModel = p?.defaultModel || DEFAULT_MODELS_BY_PROVIDER[id] || "openrouter/free";
+    setSelectedModel(nextDefaultModel);
   };
 
   const handleSaveLLM = async () => {
@@ -136,7 +152,7 @@ export const SettingsPage: React.FC = () => {
       setTimeout(() => setSaveSuccess(false), 3000);
       loadSettings();
     } catch (err) {
-      console.error("Failed to save LLM settings:", err);
+      console.error("[SettingsPage] Failed to save LLM settings:", err);
     }
   };
 
@@ -206,7 +222,7 @@ export const SettingsPage: React.FC = () => {
             {/* Model Searchable Combobox */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium">Model</Label>
+                <Label className="text-xs font-medium">Model ({dynamicModels?.length || 0} available)</Label>
                 {isLoadingModels && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
               </div>
               <ModelCombobox
@@ -216,7 +232,6 @@ export const SettingsPage: React.FC = () => {
                   setSelectedModel(val);
                   setCustomModelInput("");
                 }}
-                disabled={isLoadingModels && dynamicModels.length === 0}
               />
             </div>
           </div>
@@ -238,7 +253,20 @@ export const SettingsPage: React.FC = () => {
           {/* Config Inputs: API Key & Base URL */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 border-t border-border/40">
             <div className="space-y-2">
-              <Label className="text-xs font-medium">API Key</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">API Key</Label>
+                {PROVIDER_KEY_LINKS[activeProviderId] && (
+                  <a
+                    href={PROVIDER_KEY_LINKS[activeProviderId].url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
+                  >
+                    {PROVIDER_KEY_LINKS[activeProviderId].label}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
               <div className="relative">
                 <Input
                   type="password"
