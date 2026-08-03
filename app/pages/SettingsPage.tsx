@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useConveyor } from "@/app/hooks/use-conveyor";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Switch } from "@/app/components/ui/switch";
-import { Badge } from "@/app/components/ui/badge";
 import { Label } from "@/app/components/ui/label";
 import { ModelCombobox } from "@/app/components/ui/model-combobox";
 import {
@@ -24,9 +24,12 @@ interface ProviderModelItem {
   isFree?: boolean;
 }
 
+const ALLOWED_PROVIDERS = ["openrouter", "openai", "gemini"];
+
 export const SettingsPage: React.FC = () => {
   const conveyor = useConveyor();
 
+  // ── Provider / Config state ────────────────────────────────────────────────
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [providers, setProviders] = useState<LLMProviderConfig[]>([]);
   const [activeProviderId, setActiveProviderId] = useState<string>("openrouter");
@@ -37,89 +40,78 @@ export const SettingsPage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState("openrouter/free");
   const [customModelInput, setCustomModelInput] = useState("");
 
-  const [dynamicModels, setDynamicModels] = useState<ProviderModelItem[]>([]);
-  const [isLoadingModels, setIsLoadingModels] = useState(false);
-
-  const currentProviderRef = useRef<string>("openrouter");
-
+  // ── UI state ───────────────────────────────────────────────────────────────
   const [testStatus, setTestStatus] = useState<{ testing: boolean; success?: boolean; message?: string }>({
     testing: false,
   });
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
+  // ── Load settings once on mount ────────────────────────────────────────────
   useEffect(() => {
     loadSettings();
   }, []);
 
   const loadSettings = async () => {
     try {
-      const dbPlatforms = await conveyor.data.getPlatforms();
+      const [dbPlatforms, savedActiveId, providerList] = await Promise.all([
+        conveyor.data.getPlatforms(),
+        conveyor.data.getSetting("llm_active_provider"),
+        conveyor.data.listProviders(),
+      ]);
+
       setPlatforms(dbPlatforms);
 
-      const activeId = (await conveyor.data.getSetting("llm_active_provider")) || "openrouter";
+      const activeId = ALLOWED_PROVIDERS.includes(savedActiveId ?? "") ? (savedActiveId ?? "openrouter") : "openrouter";
       setActiveProviderId(activeId);
-      currentProviderRef.current = activeId;
 
-      const providerList: LLMProviderConfig[] = await conveyor.data.listProviders() || [
-        { id: "openrouter", name: "OpenRouter", type: "openrouter", defaultModel: "openrouter/free", availableModels: [], isEnabled: true },
-        { id: "openai", name: "OpenAI", type: "openai", defaultModel: "gpt-4o-mini", availableModels: [], isEnabled: true },
-        { id: "gemini", name: "Google Gemini", type: "gemini", defaultModel: "gemini-1.5-flash", availableModels: [], isEnabled: true },
-        { id: "claude", name: "Anthropic Claude", type: "claude", defaultModel: "claude-3-7-sonnet-20250219", availableModels: [], isEnabled: true },
-        { id: "deepseek", name: "DeepSeek", type: "deepseek", defaultModel: "deepseek-v4-flash", availableModels: [], isEnabled: true },
-        { id: "groq", name: "Groq", type: "groq", defaultModel: "llama-3.3-70b-versatile", availableModels: [], isEnabled: true },
-      ];
+      const filtered: LLMProviderConfig[] = (providerList ?? []).filter((p: LLMProviderConfig) =>
+        ALLOWED_PROVIDERS.includes(p.id)
+      );
+      setProviders(filtered);
 
-      setProviders(providerList.filter((p) => p.id !== "ollama"));
-
-      const activeConfig = providerList.find((p) => p.id === activeId) || providerList[0];
+      const activeConfig = filtered.find((p) => p.id === activeId) ?? filtered[0];
       if (activeConfig) {
         setSelectedProviderConfig(activeConfig);
-        setSelectedModel(activeConfig.defaultModel || "");
-        setBaseUrlInput(activeConfig.baseUrl || "");
+        setSelectedModel(activeConfig.defaultModel ?? "");
+        setBaseUrlInput(activeConfig.baseUrl ?? "");
       }
-
-      loadLiveModels(activeId, activeConfig?.apiKey);
     } catch (err) {
       console.error("Failed to load settings:", err);
     }
   };
 
-  const loadLiveModels = async (provider: string, apiKey?: string) => {
-    currentProviderRef.current = provider;
-    setIsLoadingModels(true);
-    try {
-      const models: ProviderModelItem[] = await conveyor.data.fetchProviderModels(provider, apiKey);
+  // ── Model list — React Query handles loading, caching, dedup ──────────────
+  // Key includes provider + apiKeyInput so switching provider or typing a new
+  // key automatically re-fetches. Results are cached 5 min per key.
+  const {
+    data: dynamicModels = [],
+    isFetching: isLoadingModels,
+  } = useQuery<ProviderModelItem[]>({
+    queryKey: ["models", activeProviderId, apiKeyInput || selectedProviderConfig?.apiKey],
+    queryFn: () =>
+      conveyor.data.fetchProviderModels(
+        activeProviderId,
+        apiKeyInput.trim() || selectedProviderConfig?.apiKey
+      ),
+    enabled: !!activeProviderId,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev, // keep previous list visible while re-fetching
+  });
 
-      if (currentProviderRef.current === provider && models && models.length > 0) {
-        setDynamicModels(models);
-        if (!models.some((m) => m.id === selectedModel)) {
-          setSelectedModel(models[0].id);
-        }
-      }
-    } catch (err) {
-      console.error(`Failed to fetch live models for ${provider}:`, err);
-    } finally {
-      if (currentProviderRef.current === provider) {
-        setIsLoadingModels(false);
-      }
-    }
-  };
-
+  // ── Handlers ───────────────────────────────────────────────────────────────
   const handleSelectProvider = (id: string) => {
     setActiveProviderId(id);
-    currentProviderRef.current = id;
     setCustomModelInput("");
+    setApiKeyInput("");
+    setTestStatus({ testing: false });
 
     const p = providers.find((pr) => pr.id === id);
     if (p) {
       setSelectedProviderConfig(p);
-      setBaseUrlInput(p.baseUrl || "");
-      setApiKeyInput("");
-      setTestStatus({ testing: false });
+      setBaseUrlInput(p.baseUrl ?? "");
+      setSelectedModel(p.defaultModel ?? "");
     }
-
-    loadLiveModels(id, "");
   };
 
   const handleSaveLLM = async () => {
@@ -127,9 +119,9 @@ export const SettingsPage: React.FC = () => {
       const finalModel = customModelInput.trim() || selectedModel;
 
       const updatedConfig: LLMProviderConfig = {
-        id: selectedProviderConfig.id || activeProviderId,
-        name: selectedProviderConfig.name || activeProviderId,
-        type: selectedProviderConfig.type || (activeProviderId as any),
+        id: selectedProviderConfig.id ?? activeProviderId,
+        name: selectedProviderConfig.name ?? activeProviderId,
+        type: selectedProviderConfig.type ?? (activeProviderId as any),
         apiKey: apiKeyInput.trim() || selectedProviderConfig.apiKey,
         baseUrl: baseUrlInput.trim() || selectedProviderConfig.baseUrl,
         defaultModel: finalModel,
@@ -154,9 +146,9 @@ export const SettingsPage: React.FC = () => {
       const finalModel = customModelInput.trim() || selectedModel;
 
       const configToTest: LLMProviderConfig = {
-        id: selectedProviderConfig.id || activeProviderId,
-        name: selectedProviderConfig.name || activeProviderId,
-        type: selectedProviderConfig.type || (activeProviderId as any),
+        id: selectedProviderConfig.id ?? activeProviderId,
+        name: selectedProviderConfig.name ?? activeProviderId,
+        type: selectedProviderConfig.type ?? (activeProviderId as any),
         apiKey: apiKeyInput.trim() || selectedProviderConfig.apiKey,
         baseUrl: baseUrlInput.trim() || selectedProviderConfig.baseUrl,
         defaultModel: finalModel,
@@ -208,9 +200,6 @@ export const SettingsPage: React.FC = () => {
                 <option value="openrouter">OpenRouter</option>
                 <option value="openai">OpenAI</option>
                 <option value="gemini">Google Gemini</option>
-                <option value="claude">Anthropic Claude</option>
-                <option value="deepseek">DeepSeek</option>
-                <option value="groq">Groq</option>
               </select>
             </div>
 
@@ -227,7 +216,7 @@ export const SettingsPage: React.FC = () => {
                   setSelectedModel(val);
                   setCustomModelInput("");
                 }}
-                disabled={isLoadingModels}
+                disabled={isLoadingModels && dynamicModels.length === 0}
               />
             </div>
           </div>
@@ -254,12 +243,7 @@ export const SettingsPage: React.FC = () => {
                 <Input
                   type="password"
                   value={apiKeyInput}
-                  onChange={(e) => {
-                    setApiKeyInput(e.target.value);
-                    if (e.target.value.length > 8) {
-                      loadLiveModels(activeProviderId, e.target.value);
-                    }
-                  }}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
                   placeholder={selectedProviderConfig.apiKey ? "••••••••••••••••" : "Enter Provider API Key"}
                   className="pr-8 text-xs font-mono"
                 />
