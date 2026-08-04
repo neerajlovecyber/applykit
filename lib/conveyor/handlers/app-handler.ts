@@ -95,8 +95,18 @@ export function registerAppHandlers(): void {
   ipcMain.handle("platforms:get", () => dbQueries.getPlatforms());
   ipcMain.handle("platforms:get-by-id", (_, id) => dbQueries.getPlatformById(id));
   ipcMain.handle("platforms:update-status", (_, { id, status, cookies }) => dbQueries.updatePlatformStatus(id, status, cookies));
+  ipcMain.handle("platforms:update-auth-token", (_, { id, authToken, status }) => dbQueries.updatePlatformAuthToken(id, authToken, status));
+  ipcMain.handle("platforms:login-naukri", async (_, { username, password }) => {
+    const { loginNaukriAPI } = await import("@/lib/execution/platforms/naukri-api");
+    const result = await loginNaukriAPI(username, password);
+    if (result.success && result.authToken) {
+      dbQueries.updatePlatformAuthToken("naukri", result.authToken, "connected");
+    }
+    return result;
+  });
   ipcMain.handle("platforms:update-daily-count", (_, { id, count }) => dbQueries.updatePlatformDailyCount(id, count));
   ipcMain.handle("platforms:reset-daily-counts", () => dbQueries.resetPlatformDailyCounts());
+
 
   // ═══════════════════════════════════════════════════════════
   // SETTINGS

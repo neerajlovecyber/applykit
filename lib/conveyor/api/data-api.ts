@@ -311,6 +311,12 @@ export class DataApi {
   updatePlatformStatus = async (id: string, status: string, cookies?: string): Promise<void> => {
     return this.api.ipcRenderer.invoke("platforms:update-status", { id, status, cookies });
   };
+  updatePlatformAuthToken = async (id: string, authToken: string, status: string = "connected"): Promise<void> => {
+    return this.api.ipcRenderer.invoke("platforms:update-auth-token", { id, authToken, status });
+  };
+  loginNaukri = async (credentials: { username: string; password?: string }): Promise<{ success: boolean; authToken?: string; errorMessage?: string }> => {
+    return this.api.ipcRenderer.invoke("platforms:login-naukri", credentials);
+  };
   updatePlatformDailyCount = async (id: string, count: number): Promise<void> => {
     return this.api.ipcRenderer.invoke("platforms:update-daily-count", { id, count });
   };

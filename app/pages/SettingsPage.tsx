@@ -55,6 +55,10 @@ export const SettingsPage: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
+  // ── Direct Platform Credentials State per Platform ──────────────────────────
+  const [credentials, setCredentials] = useState<Record<string, { username: string; password: string; token: string }>>({});
+  const [portalStatus, setPortalStatus] = useState<Record<string, { loading: boolean; success?: boolean; message?: string }>>({});
+
   // ── Load settings once on mount ────────────────────────────────────────────
   useEffect(() => {
     loadSettings();
@@ -69,6 +73,13 @@ export const SettingsPage: React.FC = () => {
       ]);
 
       setPlatforms(dbPlatforms);
+
+      // Pre-fill token inputs from DB for connected platforms
+      const initialCreds: Record<string, { username: string; password: string; token: string }> = {};
+      for (const p of dbPlatforms) {
+        initialCreds[p.id] = { username: "", password: "", token: p.auth_token || "" };
+      }
+      setCredentials((prev) => ({ ...initialCreds, ...prev }));
 
       const activeId = ALLOWED_PROVIDERS.includes(savedActiveId ?? "") ? (savedActiveId ?? "openrouter") : "openrouter";
       setActiveProviderId(activeId);
@@ -97,12 +108,10 @@ export const SettingsPage: React.FC = () => {
   } = useQuery<ProviderModel[]>({
     queryKey: ["models", activeProviderId, apiKeyInput || selectedProviderConfig?.apiKey],
     queryFn: async () => {
-      console.log(`%c[UI queryFn] Fetching live models for provider: ${activeProviderId}`, "color: #3b82f6; font-weight: bold;");
       const res = await conveyor.data.fetchProviderModels(
         activeProviderId,
         apiKeyInput.trim() || selectedProviderConfig?.apiKey
       );
-      console.log(`%c[UI queryFn] Received ${res?.length ?? 0} live models for ${activeProviderId}:`, "color: #10b981; font-weight: bold;", res?.slice(0, 5));
       return res || [];
     },
     enabled: !!activeProviderId,
@@ -115,7 +124,6 @@ export const SettingsPage: React.FC = () => {
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleSelectProvider = (id: string) => {
-    console.log(`[SettingsPage] Provider changed to: ${id}`);
     setActiveProviderId(id);
     setCustomModelInput("");
     setApiKeyInput("");
@@ -187,9 +195,83 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const togglePlatform = async (id: string, currentStatus: string) => {
-    const nextStatus = currentStatus === "connected" ? "disconnected" : "connected";
-    await conveyor.data.updatePlatformStatus(id, nextStatus);
+  const updateCredState = (platformId: string, field: "username" | "password" | "token", val: string) => {
+    setCredentials((prev) => ({
+      ...prev,
+      [platformId]: {
+        ...(prev[platformId] || { username: "", password: "", token: "" }),
+        [field]: val,
+      },
+    }));
+  };
+
+  const handleSaveAndTestPortal = async (platformId: string) => {
+    const cred = credentials[platformId] || { username: "", password: "", token: "" };
+    setPortalStatus((prev) => ({ ...prev, [platformId]: { loading: true } }));
+
+    try {
+      if (platformId === "naukri") {
+        if (cred.token.trim()) {
+          await conveyor.data.updatePlatformAuthToken("naukri", cred.token.trim(), "connected");
+          setPortalStatus((prev) => ({
+            ...prev,
+            [platformId]: { loading: false, success: true, message: "Naukri connected via Auth Token!" },
+          }));
+          loadSettings();
+          return;
+        }
+
+        if (!cred.username || !cred.password) {
+          setPortalStatus((prev) => ({
+            ...prev,
+            [platformId]: { loading: false, success: false, message: "Please enter Username and Password." },
+          }));
+          return;
+        }
+
+        const res = await conveyor.data.loginNaukri({ username: cred.username, password: cred.password });
+        if (res.success) {
+          setPortalStatus((prev) => ({
+            ...prev,
+            [platformId]: { loading: false, success: true, message: "Naukri logged in & connected successfully!" },
+          }));
+          loadSettings();
+        } else {
+          setPortalStatus((prev) => ({
+            ...prev,
+            [platformId]: { loading: false, success: false, message: res.errorMessage || "Login failed" },
+          }));
+        }
+      } else {
+        if (cred.token.trim()) {
+          await conveyor.data.updatePlatformAuthToken(platformId, cred.token.trim(), "connected");
+        } else {
+          await conveyor.data.updatePlatformStatus(platformId, "connected");
+        }
+        setPortalStatus((prev) => ({
+          ...prev,
+          [platformId]: { loading: false, success: true, message: `${platformId} connected!` },
+        }));
+        loadSettings();
+      }
+    } catch (err) {
+      setPortalStatus((prev) => ({
+        ...prev,
+        [platformId]: {
+          loading: false,
+          success: false,
+          message: err instanceof Error ? err.message : "Authentication error",
+        },
+      }));
+    }
+  };
+
+  const handleDisconnectPortal = async (platformId: string) => {
+    await conveyor.data.updatePlatformStatus(platformId, "disconnected");
+    setPortalStatus((prev) => ({
+      ...prev,
+      [platformId]: { loading: false, success: false, message: "Disconnected" },
+    }));
     loadSettings();
   };
 
@@ -340,31 +422,107 @@ export const SettingsPage: React.FC = () => {
       <div className="space-y-4 border-t border-border/50 pt-6">
         <div>
           <h3 className="font-semibold text-lg">Target Job Portals</h3>
-          <p className="text-sm text-muted-foreground">Manage platform connectors for job discovery and automated submissions</p>
+          <p className="text-sm text-muted-foreground">Enter your portal credentials to log in and enable job search & auto-apply</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {platforms.map((platform) => {
             const isConn = platform.status === "connected";
+            const cred = credentials[platform.id] || { username: "", password: "", token: platform.auth_token || "" };
+            const statusInfo = portalStatus[platform.id] || {};
+
             return (
-              <div key={platform.id} className="p-4 bg-card border border-border rounded-xl flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`h-2.5 w-2.5 rounded-full ${isConn ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
-                  <div>
-                    <div className="font-medium text-sm">{platform.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {isConn ? "Connected & Active" : "Disconnected"}
-                    </div>
+              <div key={platform.id} className="p-4 bg-card border border-border rounded-xl space-y-4">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`h-2.5 w-2.5 rounded-full ${isConn ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
+                    <div className="font-medium text-sm text-foreground">{platform.name}</div>
+                  </div>
+
+                  <div className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    {isConn ? "Connected & Active" : "Disconnected"}
                   </div>
                 </div>
 
-                <Button
-                  size="sm"
-                  variant={isConn ? "outline" : "default"}
-                  onClick={() => togglePlatform(platform.id, platform.status)}
-                >
-                  {isConn ? "Disconnect" : "Connect"}
-                </Button>
+                {/* Direct Username / Email Field */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Username / Email</Label>
+                  <Input
+                    type="text"
+                    value={cred.username}
+                    onChange={(e) => updateCredState(platform.id, "username", e.target.value)}
+                    placeholder="Enter your email or username..."
+                    className="text-xs h-9"
+                  />
+                </div>
+
+                {/* Direct Password Field */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Password</Label>
+                  <Input
+                    type="password"
+                    value={cred.password}
+                    onChange={(e) => updateCredState(platform.id, "password", e.target.value)}
+                    placeholder="••••••••••••"
+                    className="text-xs h-9"
+                  />
+                </div>
+
+                {/* Optional Auth Token */}
+                <div className="space-y-1.5 pt-1 border-t border-border/30">
+                  <Label className="text-[11px] text-muted-foreground">Or Session Auth Token (Optional)</Label>
+                  <Input
+                    type="password"
+                    value={cred.token}
+                    onChange={(e) => updateCredState(platform.id, "token", e.target.value)}
+                    placeholder="Bearer or cookie token..."
+                    className="text-xs h-8 font-mono"
+                  />
+                </div>
+
+                {/* Status Feedback */}
+                {statusInfo.message && (
+                  <div
+                    className={`p-2 rounded text-xs flex items-center gap-1.5 ${
+                      statusInfo.success ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                    }`}
+                  >
+                    {statusInfo.success ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> : <XCircle className="h-3.5 w-3.5 shrink-0" />}
+                    <span>{statusInfo.message}</span>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between pt-1">
+                  {isConn ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDisconnectPortal(platform.id)}
+                      className="text-xs h-8 text-rose-400 hover:text-rose-300"
+                    >
+                      Disconnect
+                    </Button>
+                  ) : <div />}
+
+                  <Button
+                    size="sm"
+                    onClick={() => handleSaveAndTestPortal(platform.id)}
+                    disabled={statusInfo.loading}
+                    className="text-xs h-8 gap-1.5"
+                  >
+                    {statusInfo.loading ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-3.5 w-3.5" /> Save & Test Connection
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             );
           })}

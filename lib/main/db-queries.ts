@@ -935,6 +935,20 @@ export function updatePlatformStatus(id: string, status: string, cookies?: strin
     .run(status, cookies ?? null, connectedAt, id);
 }
 
+export function updatePlatformAuthToken(id: string, authToken: string, status: string = "connected"): void {
+  const connectedAt = status === "connected" ? new Date().toISOString() : null;
+  getDb().prepare("UPDATE platforms SET status = ?, auth_token = ?, connected_at = ?, last_checked_at = datetime('now') WHERE id = ?")
+    .run(status, authToken, connectedAt, id);
+}
+
+export function updatePlatformCredentials(id: string, data: { status: string; authToken?: string; cookies?: string }): void {
+  const connectedAt = data.status === "connected" ? new Date().toISOString() : null;
+  getDb().prepare(`
+    UPDATE platforms SET status = ?, auth_token = ?, cookies = ?, connected_at = ?, last_checked_at = datetime('now')
+    WHERE id = ?
+  `).run(data.status, data.authToken ?? null, data.cookies ?? null, connectedAt, id);
+}
+
 export function updatePlatformDailyCount(id: string, count: number): void {
   getDb().prepare("UPDATE platforms SET applied_today = ? WHERE id = ?").run(count, id);
 }
@@ -942,6 +956,7 @@ export function updatePlatformDailyCount(id: string, count: number): void {
 export function resetPlatformDailyCounts(): void {
   getDb().prepare("UPDATE platforms SET applied_today = 0, limit_reset_at = datetime('now')").run();
 }
+
 
 // ═══════════════════════════════════════════════════════════
 // SETTINGS

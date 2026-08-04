@@ -1,23 +1,76 @@
 /**
- * Naukri Job Search Scraper using Playwright with Multi-Tab Parallel Search.
+ * Naukri Job Search Scraper using Hybrid API & Multi-Tab Parallel Browser Search.
  *
- * Inspired by Naukri-autoapply-bot: opens keyword search categories
- * across parallel browser tabs to find more jobs faster.
+ * Adapted from Naukri-Automation reference repository & Naukri-autoapply-bot.
  */
 
 import { chromium, type Browser } from "playwright";
 import type { RawJobPosting, SearchOptions, SearchResultPayload } from "../types";
 import { actionDelay, randomDelay } from "@/lib/utils/delay";
+import { searchNaukriJobsAPI } from "@/lib/execution/platforms/naukri-api";
+import { getPlatformById } from "@/lib/main/db-queries";
 
 export async function searchNaukriJobs(options: SearchOptions): Promise<SearchResultPayload> {
   const keywordsList = options.keywords.split(",").map((k) => k.trim()).filter(Boolean);
-  const location = (options.location || "bangalore").toLowerCase().replace(/\s+/g, "-");
+  const location = options.location || "bangalore";
+  const locSlug = location.toLowerCase().replace(/\s+/g, "-");
   const maxPages = options.maxPages || 2;
   const scrapedAt = new Date().toISOString();
   const allJobs: RawJobPosting[] = [];
+  const seenJobIds = new Set<string>();
 
+  // Fetch stored auth token for Naukri if available
+  const platform = getPlatformById("naukri");
+  const authToken = platform?.auth_token || undefined;
+
+  // 1. Try Direct API Search first for high speed and rich metadata
+  try {
+    for (const kw of keywordsList) {
+      for (let p = 1; p <= maxPages; p++) {
+        const apiData = await searchNaukriJobsAPI(kw, location, p, authToken);
+        if (apiData?.jobDetails && Array.isArray(apiData.jobDetails)) {
+          for (const item of apiData.jobDetails) {
+            const sourceId = String(item.jobId || "");
+            if (sourceId && !seenJobIds.has(sourceId)) {
+              seenJobIds.add(sourceId);
+              allJobs.push({
+                source: "naukri",
+                sourceId,
+                title: item.title || "",
+                company: item.companyName || "",
+                location: location,
+                seniority: item.minimumExperience !== undefined ? `${item.minimumExperience}+ yrs` : undefined,
+                salaryInfo:
+                  item.minimumSalary || item.maximumSalary
+                    ? `${item.minimumSalary || 0} - ${item.maximumSalary || 0} INR`
+                    : undefined,
+                description: item.jobDescription,
+                applicationUrl: `https://www.naukri.com/job-listings-${sourceId}`,
+                postedAt: item.createdDate || scrapedAt,
+                rawData: item,
+              });
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.debug("[NaukriSearch] API search attempt failed or blocked, proceeding with browser fallback:", err);
+  }
+
+  // If API returned sufficient results, return immediately
+  if (allJobs.length > 0) {
+    return {
+      source: "naukri",
+      query: options,
+      jobs: allJobs,
+      totalFound: allJobs.length,
+      scrapedAt,
+    };
+  }
+
+  // 2. Browser Multi-Tab DOM Scraping Fallback
   let browser: Browser | null = null;
-
   try {
     browser = await chromium.launch({
       headless: true,
@@ -26,11 +79,10 @@ export async function searchNaukriJobs(options: SearchOptions): Promise<SearchRe
 
     const context = await browser.newContext({
       userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/139.0.0.0 Safari/537.36",
       viewport: { width: 1366, height: 768 },
     });
 
-    // Multi-tab parallel search across all keyword categories
     const tabPromises = keywordsList.map(async (kw) => {
       const page = await context.newPage();
       const kwSlug = kw.toLowerCase().replace(/\s+/g, "-");
@@ -38,16 +90,19 @@ export async function searchNaukriJobs(options: SearchOptions): Promise<SearchRe
 
       try {
         for (let p = 1; p <= maxPages; p++) {
-          const searchUrl = p === 1
-            ? `https://www.naukri.com/${kwSlug}-jobs-in-${location}`
-            : `https://www.naukri.com/${kwSlug}-jobs-in-${location}-${p}`;
+          const searchUrl =
+            p === 1
+              ? `https://www.naukri.com/${kwSlug}-jobs-in-${locSlug}`
+              : `https://www.naukri.com/${kwSlug}-jobs-in-${locSlug}-${p}`;
 
           console.log(`[NaukriSearch Tab: "${kw}"] Navigating to page ${p}: ${searchUrl}`);
-          await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 20000 });
+          await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 25000 });
           await randomDelay(1000, 2000);
 
-          // Extract 2026 Naukri redesign tuple selectors (from reference Naukri bot README)
-          const tuples = await page.$$("div.srp-jobtuple-wrapper > div.cust-job-tuple, article.jobTuple, div.tuple");
+          // Extract Naukri redesign tuple selectors
+          const tuples = await page.$$(
+            "div.srp-jobtuple-wrapper > div.cust-job-tuple, article.jobTuple, div.tuple, div.jobTuple"
+          );
 
           for (const tuple of tuples) {
             try {
@@ -66,27 +121,32 @@ export async function searchNaukriJobs(options: SearchOptions): Promise<SearchRe
 
               if (title && company) {
                 const match = href?.match(/-(\d+)\?/);
-                const sourceId = match ? match[1] : `nk-${title.toLowerCase().replace(/\W+/g, "-")}-${company.toLowerCase().replace(/\W+/g, "-")}`;
+                const sourceId = match
+                  ? match[1]
+                  : `nk-${title.toLowerCase().replace(/\W+/g, "-")}-${company.toLowerCase().replace(/\W+/g, "-")}`;
 
-                pageJobs.push({
-                  source: "naukri",
-                  sourceId,
-                  title,
-                  company,
-                  location: loc || options.location,
-                  seniority: exp,
-                  salaryInfo: sal,
-                  applicationUrl: href || undefined,
-                  postedAt: scrapedAt,
-                });
+                if (!seenJobIds.has(sourceId)) {
+                  seenJobIds.add(sourceId);
+                  pageJobs.push({
+                    source: "naukri",
+                    sourceId,
+                    title,
+                    company,
+                    location: loc || options.location,
+                    seniority: exp,
+                    salaryInfo: sal,
+                    applicationUrl: href || undefined,
+                    postedAt: scrapedAt,
+                  });
+                }
               }
             } catch {
-              // skip malformed card
+              // skip malformed element
             }
           }
         }
       } catch (err) {
-        console.error(`[NaukriSearch Tab: "${kw}"] Failed:`, err);
+        console.error(`[NaukriSearch Tab: "${kw}"] Browser scrap error:`, err);
       } finally {
         await page.close();
       }
@@ -95,8 +155,8 @@ export async function searchNaukriJobs(options: SearchOptions): Promise<SearchRe
     });
 
     const results = await Promise.all(tabPromises);
-    for (const jobBatch of results) {
-      allJobs.push(...jobBatch);
+    for (const batch of results) {
+      allJobs.push(...batch);
     }
 
     return {
@@ -108,7 +168,7 @@ export async function searchNaukriJobs(options: SearchOptions): Promise<SearchRe
     };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error("[NaukriSearch] Multi-tab search failed:", errorMsg);
+    console.error("[NaukriSearch] Hybrid search failed:", errorMsg);
     return {
       source: "naukri",
       query: options,
