@@ -94,35 +94,101 @@ export const jobScoringSchema = z.object({
 export type JobScoringResult = z.infer<typeof jobScoringSchema>;
 
 export const resumeParseSchema = z.object({
+  personal_info: z
+    .object({
+      full_name: z.string().default(""),
+      title: z.string().default(""),
+      email: z.string().default(""),
+      phone: z.string().default(""),
+      location: z.string().default(""),
+      linkedin_url: z.string().nullable().optional(),
+      github_url: z.string().nullable().optional(),
+      website_url: z.string().nullable().optional(),
+    })
+    .default({
+      full_name: "",
+      title: "",
+      email: "",
+      phone: "",
+      location: "",
+    })
+    .optional(),
+  // Top-level flat fields (old format fallback)
   full_name: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   location: z.string().nullable().optional(),
-  linkedin_url: z.string().nullable().optional(),
-  portfolio_url: z.string().nullable().optional(),
-  summary: z.string().nullable().optional(),
+  summary: z.string().default(""),
   skills: z.array(z.string()).default([]),
-  experience_years: z.number().nullable().optional(),
+  experience_years: z.number().default(3),
   seniority: z.string().default("mid"),
-  work_experience: z
-    .array(
-      z.object({
-        title: z.string(),
-        company: z.string(),
-        duration: z.string().optional(),
-        description: z.string().optional(),
-      })
-    )
-    .default([]),
-  education: z
-    .array(
-      z.object({
-        degree: z.string(),
-        institution: z.string(),
-        year: z.string().optional(),
-      })
-    )
-    .default([]),
+  work_experience: z.array(z.object({
+    id: z.string().optional(),
+    title: z.string().default(""),
+    company: z.string().default(""),
+    location: z.string().nullable().optional(),
+    duration: z.string().optional(),
+    years: z.string().optional(),
+    description: z.union([z.string(), z.array(z.string())]).optional(),
+  })).default([]),
+  projects: z.array(z.object({
+    id: z.string().optional(),
+    title: z.string().optional(),
+    name: z.string().optional(),
+    role: z.string().nullable().optional(),
+    years: z.string().nullable().optional(),
+    github: z.string().nullable().optional(),
+    website: z.string().nullable().optional(),
+    description: z.union([z.string(), z.array(z.string())]).optional(),
+  })).default([]),
+  certifications: z.array(z.object({
+    id: z.string().optional(),
+    title: z.string().default(""),
+    issuer: z.string().default(""),
+    year: z.string().nullable().optional(),
+  })).default([]),
+  education: z.array(z.object({
+    id: z.string().optional(),
+    degree: z.string().default(""),
+    institution: z.string().default(""),
+    years: z.string().optional(),
+    year: z.string().optional(),
+    description: z.string().nullable().optional(),
+  })).default([]),
+  additional: z.object({
+    technicalSkills: z.array(z.string()).default([]),
+    certificationsTraining: z.array(z.string()).default([]),
+    languages: z.array(z.string()).default([]),
+    awards: z.array(z.string()).default([]),
+  }).default({ technicalSkills: [], certificationsTraining: [], languages: [], awards: [] }).optional(),
+  // Resume-Matcher camelCase output fields (primary LLM output format)
+  personalInfo: z.object({
+    name: z.string().optional(),
+    title: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    location: z.string().optional(),
+    linkedin: z.string().nullable().optional(),
+    github: z.string().nullable().optional(),
+    website: z.string().nullable().optional(),
+  }).optional(),
+  workExperience: z.array(z.object({
+    id: z.number().optional(),
+    title: z.string().default(""),
+    company: z.string().default(""),
+    location: z.string().nullable().optional(),
+    years: z.string().optional(),
+    description: z.union([z.string(), z.array(z.string())]).optional(),
+    descriptionStyles: z.array(z.string()).optional(),
+  })).optional(),
+  personalProjects: z.array(z.object({
+    id: z.number().optional(),
+    name: z.string().optional(),
+    role: z.string().nullable().optional(),
+    years: z.string().nullable().optional(),
+    description: z.union([z.string(), z.array(z.string())]).optional(),
+    descriptionStyles: z.array(z.string()).optional(),
+  })).optional(),
 });
 
 export type ResumeParseResult = z.infer<typeof resumeParseSchema>;

@@ -351,6 +351,21 @@ export class DataApi {
   testProviderConnection = async (config: any): Promise<any> => {
     return this.api.ipcRenderer.invoke("llm:test-connection", config);
   };
+  parseResume = async (resumeText: string): Promise<any> => {
+    return this.api.ipcRenderer.invoke("llm:parse-resume", resumeText);
+  };
+  scoreJob = async (profileSummary: string, jobDescription: string): Promise<any> => {
+    return this.api.ipcRenderer.invoke("llm:score-job", { profileSummary, jobDescription });
+  };
+  generateCoverLetter = async (profileSummary: string, jobDescription: string): Promise<string> => {
+    return this.api.ipcRenderer.invoke("llm:generate-cover-letter", { profileSummary, jobDescription });
+  };
+  answerQuestion = async (profileSummary: string, question: string, context?: string): Promise<string> => {
+    return this.api.ipcRenderer.invoke("llm:answer-question", { profileSummary, question, context });
+  };
+  tailorResume = async (profileSummary: string, jobDescription: string): Promise<string> => {
+    return this.api.ipcRenderer.invoke("llm:tailor-resume", { profileSummary, jobDescription });
+  };
 
   // ═══════════════════════════════════════════════════════════
   // LEGACY: Jobs & History

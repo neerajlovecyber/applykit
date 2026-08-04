@@ -7,18 +7,22 @@ import { Label } from "@/app/components/ui/label";
 import { Badge } from "@/app/components/ui/badge";
 import {
   Plus,
-  Upload,
-  Check,
   Trash2,
-  FileText,
-  Briefcase,
-  MapPin,
-  DollarSign,
-  Edit2,
   Sparkles,
   Save,
+  CheckCircle2,
+  Edit2,
+  User,
+  Target,
+  Briefcase,
+  MapPin,
+  IndianRupee,
+  Calendar,
+  Layers,
 } from "lucide-react";
 import type { Profile } from "@/lib/main/db-queries";
+import { RoleOnboardingWizard } from "@/app/components/RoleOnboardingWizard";
+import { ResumeParsedView } from "@/app/components/ResumeParsedView";
 
 export const RoleProfilesPage: React.FC = () => {
   const conveyor = useConveyor();
@@ -26,6 +30,7 @@ export const RoleProfilesPage: React.FC = () => {
 
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [showWizardModal, setShowWizardModal] = useState(false);
 
   // Form states for editor
   const [name, setName] = useState("");
@@ -39,7 +44,7 @@ export const RoleProfilesPage: React.FC = () => {
   const [locationsStr, setLocationsStr] = useState("");
   const [experienceYears, setExperienceYears] = useState<number>(3);
   const [seniority, setSeniority] = useState("mid");
-  const [salaryMin, setSalaryMin] = useState<number>(100000);
+  const [salaryMin, setSalaryMin] = useState<number>(800000);
   const [workMode, setWorkMode] = useState("any");
 
   useEffect(() => {
@@ -76,26 +81,8 @@ export const RoleProfilesPage: React.FC = () => {
     setLocationsStr(parseJsonArray(p.target_locations).join(", "));
     setExperienceYears(p.experience_years || 3);
     setSeniority(p.seniority || "mid");
-    setSalaryMin(p.salary_min || 100000);
+    setSalaryMin(p.salary_min || 800000);
     setWorkMode(p.work_mode || "any");
-  };
-
-  const handleStartCreate = () => {
-    setEditingProfile(null);
-    setIsCreating(true);
-    setName("Software Engineer");
-    setFullName("");
-    setEmail("");
-    setPhone("");
-    setLocation("");
-    setSummary("");
-    setTitlesStr("Frontend Engineer, React Developer");
-    setSkillsStr("React, TypeScript, Node.js, TailwindCSS");
-    setLocationsStr("Remote, Bangalore");
-    setExperienceYears(4);
-    setSeniority("mid");
-    setSalaryMin(1200000);
-    setWorkMode("any");
   };
 
   const parseJsonArray = (jsonStr: string): string[] => {
@@ -113,7 +100,7 @@ export const RoleProfilesPage: React.FC = () => {
 
   const handleSaveProfile = async () => {
     const payload: Partial<Profile> = {
-      name,
+      name: name || "DevSecOps & Security Profile",
       full_name: fullName,
       email,
       phone,
@@ -124,7 +111,8 @@ export const RoleProfilesPage: React.FC = () => {
       target_locations: stringToJsonArray(locationsStr),
       experience_years: experienceYears,
       seniority,
-      salary_min: salaryMin,
+      salary_min: salaryMin || 800000,
+      salary_currency: "INR",
       work_mode: workMode,
     };
 
@@ -148,25 +136,48 @@ export const RoleProfilesPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto py-2">
+      {/* Role Onboarding Wizard Modal */}
+      <RoleOnboardingWizard isOpen={showWizardModal} onClose={() => { setShowWizardModal(false); loadProfiles(); }} />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-tight">Applicant Profiles</h2>
-          <p className="text-sm text-muted-foreground">Manage profile evidence pools, targeted titles, and job preferences</p>
+          <h2 className="text-xl font-bold tracking-tight">Candidate Profiles & Full Evidence Pool</h2>
+          <p className="text-sm text-muted-foreground">View complete candidate details, work experience, skills & target job roles</p>
         </div>
-        <Button onClick={handleStartCreate} className="gap-2">
-          <Plus className="h-4 w-4" /> Create Profile
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setShowWizardModal(true)} className="gap-2 text-xs font-semibold">
+            <Plus className="h-4 w-4" /> Add Role Track / Profile
+          </Button>
+        </div>
       </div>
 
-      {/* Editor Drawer / Modal inline */}
+      {/* Empty State Banner */}
+      {profiles.length === 0 && !isCreating && !editingProfile && (
+        <div className="p-8 rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/10 via-card to-card text-center space-y-4 shadow-xl">
+          <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto text-primary p-3">
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">No Candidate Profiles Configured Yet</h3>
+            <p className="text-sm text-muted-foreground max-w-lg mx-auto mt-1">
+              Create your candidate profile using the 3-step AI onboarding wizard. Paste your resume text to extract full experience, contact info & target role tracks in seconds!
+            </p>
+          </div>
+          <Button size="lg" onClick={() => setShowWizardModal(true)} className="gap-2 font-semibold">
+            <Sparkles className="h-4 w-4" /> Start Profile Onboarding Wizard
+          </Button>
+        </div>
+      )}
+
+      {/* Profile Form Editor (Create or Edit) */}
       {(editingProfile || isCreating) && (
         <div className="p-6 rounded-2xl border border-primary/40 bg-card shadow-lg space-y-5 animate-in fade-in duration-200">
           <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
               <h3 className="font-bold text-lg">
-                {isCreating ? "New Role Profile" : `Edit Profile: ${editingProfile?.name}`}
+                {isCreating ? "New Candidate Profile Track" : `Edit Profile: ${editingProfile?.name}`}
               </h3>
             </div>
             <Button size="sm" variant="ghost" onClick={() => { setEditingProfile(null); setIsCreating(false); }}>
@@ -176,166 +187,201 @@ export const RoleProfilesPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label className="text-xs">Profile Preset Name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Senior React Developer" />
+              <Label className="text-xs font-semibold">Profile Track Name</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. DevSecOps & Security Track" className="text-xs" />
             </div>
-
             <div className="space-y-2">
-              <Label className="text-xs">Full Name</Label>
-              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" />
+              <Label className="text-xs font-semibold">Full Candidate Name</Label>
+              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" className="text-xs" />
             </div>
-
             <div className="space-y-2">
-              <Label className="text-xs">Email</Label>
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" />
+              <Label className="text-xs font-semibold">Email Address</Label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" className="text-xs" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label className="text-xs">Target Job Titles (comma separated)</Label>
-              <Input value={titlesStr} onChange={(e) => setTitlesStr(e.target.value)} placeholder="Frontend Engineer, React Lead" />
+              <Label className="text-xs font-semibold">Phone Number</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" className="text-xs" />
             </div>
-
             <div className="space-y-2">
-              <Label className="text-xs">Skills (comma separated)</Label>
-              <Input value={skillsStr} onChange={(e) => setSkillsStr(e.target.value)} placeholder="React, TypeScript, Next.js, Node.js" />
+              <Label className="text-xs font-semibold">Current Location</Label>
+              <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Bangalore, India / Remote" className="text-xs" />
             </div>
-
             <div className="space-y-2">
-              <Label className="text-xs">Preferred Locations (comma separated)</Label>
-              <Input value={locationsStr} onChange={(e) => setLocationsStr(e.target.value)} placeholder="Remote, Bangalore, Mumbai" />
+              <Label className="text-xs font-semibold">Target Job Titles (comma separated)</Label>
+              <Input value={titlesStr} onChange={(e) => setTitlesStr(e.target.value)} placeholder="DevSecOps Engineer, Penetration Tester" className="text-xs" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label className="text-xs">Years of Experience</Label>
-              <Input type="number" value={experienceYears} onChange={(e) => setExperienceYears(Number(e.target.value))} />
+              <Label className="text-xs font-semibold">Key Technical Skills & Tools</Label>
+              <Input value={skillsStr} onChange={(e) => setSkillsStr(e.target.value)} placeholder="Burp Suite, Metasploit, DevSecOps, Kubernetes, Docker, Python" className="text-xs font-mono" />
             </div>
-
             <div className="space-y-2">
-              <Label className="text-xs">Seniority Level</Label>
+              <Label className="text-xs font-semibold">Preferred Job Locations</Label>
+              <Input value={locationsStr} onChange={(e) => setLocationsStr(e.target.value)} placeholder="Remote, Bangalore, India" className="text-xs" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold font-mono">Min Salary (₹ INR / year)</Label>
+              <Input type="number" value={salaryMin} onChange={(e) => setSalaryMin(Number(e.target.value))} placeholder="800000" className="text-xs font-mono" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Total Experience (Years)</Label>
+              <Input type="number" value={experienceYears} onChange={(e) => setExperienceYears(Number(e.target.value))} className="text-xs" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Seniority Level</Label>
               <select
                 value={seniority}
                 onChange={(e) => setSeniority(e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm"
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs"
               >
-                <option value="junior">Junior</option>
-                <option value="mid">Mid-Level</option>
-                <option value="senior">Senior</option>
-                <option value="lead">Lead / Principal</option>
+                <option value="junior">Junior (0-2 yrs)</option>
+                <option value="mid">Mid-Level (3-5 yrs)</option>
+                <option value="senior">Senior (5-8 yrs)</option>
+                <option value="lead">Lead / Principal (8+ yrs)</option>
               </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs">Minimum Expected Salary</Label>
-              <Input type="number" value={salaryMin} onChange={(e) => setSalaryMin(Number(e.target.value))} />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs">Professional Summary / AI Background</Label>
+            <Label className="text-xs font-semibold">Full Professional Summary & Work Experience</Label>
             <textarea
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
-              placeholder="Detailed overview of your technical achievements, background, and career highlights..."
-              rows={4}
-              className="w-full rounded-md border border-input bg-background p-3 text-xs shadow-sm"
+              placeholder="Detailed overview of technical achievements, work experience, certifications, penetration test reports, and cloud security projects..."
+              rows={5}
+              className="w-full rounded-md border border-input bg-background p-3 text-xs shadow-xs"
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button size="sm" onClick={handleSaveProfile} className="gap-2">
-              <Save className="h-4 w-4" /> Save Profile
+            <Button size="sm" onClick={handleSaveProfile} className="gap-2 font-semibold">
+              <Save className="h-4 w-4" /> Save Profile Details
             </Button>
           </div>
         </div>
       )}
 
-      {/* Profiles Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Profiles Cards List with Full Candidate Evidence Details */}
+      <div className="space-y-6">
         {profiles.map((profile) => {
           const isActive = profile.is_active === 1;
           const titles = parseJsonArray(profile.target_titles);
           const skills = parseJsonArray(profile.skills);
           const locations = parseJsonArray(profile.target_locations);
+          const formattedSalary = (profile.salary_min || 800000).toLocaleString("en-IN");
 
           return (
             <div
               key={profile.id}
-              className={`p-6 rounded-2xl border bg-card space-y-5 relative transition-all ${
-                isActive ? "border-primary shadow-md ring-1 ring-primary/20" : "border-border hover:border-border/80"
+              className={`p-6 rounded-2xl border bg-card/90 space-y-5 transition-all shadow-md ${
+                isActive ? "border-primary shadow-lg ring-1 ring-primary/20" : "border-border hover:border-border/80"
               }`}
             >
-              {/* Title & Active Status */}
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-lg">{profile.name}</h3>
-                    {isActive && <Badge variant="default" className="bg-emerald-500 text-xs">Active Profile</Badge>}
+              {/* Profile Card Header */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="h-12 w-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg shrink-0">
+                    <User className="h-6 w-6" />
                   </div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                    <FileText className="h-3.5 w-3.5" /> {profile.resume_path || "No resume uploaded"}
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-lg text-foreground">{profile.name}</h3>
+                      {isActive ? (
+                        <Badge variant="default" className="bg-emerald-500 text-xs">Active Profile Track</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">Inactive Track</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-3 mt-1 font-medium">
+                      {profile.full_name && <span className="text-foreground font-semibold">👤 {profile.full_name}</span>}
+                      {profile.email && <span>📧 {profile.email}</span>}
+                      {profile.phone && <span>📱 {profile.phone}</span>}
+                      {profile.location && <span>📍 {profile.location}</span>}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleStartEdit(profile)}>
-                    <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+                <div className="flex items-center gap-2 shrink-0">
+                  {!isActive && (
+                    <Button size="sm" variant="outline" onClick={() => handleSetActive(profile.id)} className="gap-1.5 text-xs font-semibold">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Set Active
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => handleStartEdit(profile)} className="gap-1.5 text-xs">
+                    <Edit2 className="h-3.5 w-3.5" /> Edit Profile
                   </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-400" onClick={() => handleDeleteProfile(profile.id)}>
+                  <Button size="icon" variant="ghost" onClick={() => handleDeleteProfile(profile.id)} className="h-8 w-8 text-rose-400 hover:bg-rose-500/10">
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
-                  {!isActive && (
-                    <Button size="sm" variant="outline" onClick={() => handleSetActive(profile.id)}>
-                      Set Active
-                    </Button>
+                </div>
+              </div>
+
+              {/* Candidate Work Experience & Professional Summary */}
+              <div className="space-y-2">
+                <div className="text-xs font-bold text-foreground flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-primary" /> Full Professional Summary & Work History
+                </div>
+                <div className="p-4 rounded-xl bg-muted/30 border border-border/50 text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap max-h-72 overflow-y-auto font-mono">
+                  {profile.summary || "No master summary added yet. Click 'Edit Profile' to add your full work experience."}
+                </div>
+              </div>
+
+              {/* Master Technical Skills */}
+              <div className="space-y-2">
+                <div className="text-xs font-bold text-foreground flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" /> Technical Skills & Toolsets ({skills.length})
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {skills.length > 0 ? (
+                    skills.map((skill, idx) => (
+                      <Badge key={idx} variant="secondary" className="font-mono text-xs py-1 px-2.5 bg-muted/60">
+                        {skill}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">No skills listed</span>
                   )}
                 </div>
               </div>
 
-              {/* Profile Details */}
-              <div className="space-y-3 pt-2 text-xs border-t border-border/40">
-                <div>
-                  <div className="text-muted-foreground mb-1 font-medium">Target Titles</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {titles.length > 0 ? (
-                      titles.map((t, idx) => (
-                        <Badge key={idx} variant="secondary" className="font-normal">{t}</Badge>
-                      ))
-                    ) : (
-                      <span className="text-muted-foreground italic">None specified</span>
-                    )}
+              {/* Target Job Titles & Preferences Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-border/40 text-xs">
+                <div className="space-y-1">
+                  <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5 text-primary" /> Target Job Titles
                   </div>
-                </div>
-
-                <div>
-                  <div className="text-muted-foreground mb-1 font-medium">Key Skills</div>
-                  <div className="flex flex-wrap gap-1">
-                    {skills.slice(0, 6).map((s, idx) => (
-                      <span key={idx} className="px-2 py-0.5 rounded bg-muted/60 text-[11px] font-mono">
-                        {s}
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {titles.map((t, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-medium">
+                        {t}
                       </span>
                     ))}
-                    {skills.length > 6 && (
-                      <span className="text-[10px] text-muted-foreground self-center">+{skills.length - 6} more</span>
-                    )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/20">
-                  <div>
-                    <div className="text-muted-foreground font-medium">Experience</div>
-                    <div className="font-medium text-foreground mt-0.5">{profile.experience_years ?? 0} Years ({profile.seniority})</div>
+                <div className="space-y-1">
+                  <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-primary" /> Experience & Level
                   </div>
-                  <div>
-                    <div className="text-muted-foreground font-medium">Locations</div>
-                    <div className="font-medium text-foreground mt-0.5">{locations.join(", ") || "Any"}</div>
+                  <div className="font-medium text-foreground text-xs pt-0.5">
+                    {profile.experience_years ?? 3} Years ({profile.seniority || "Mid-Level"})
                   </div>
-                  <div>
-                    <div className="text-muted-foreground font-medium">Min Salary</div>
-                    <div className="font-medium text-foreground mt-0.5">{profile.salary_min ? `${profile.salary_min}` : "Flex"}</div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                    <IndianRupee className="h-3.5 w-3.5 text-primary" /> Min Expected Salary
+                  </div>
+                  <div className="font-medium text-emerald-400 text-xs pt-0.5 font-mono">
+                    ₹{formattedSalary} / year ({profile.salary_min ? `${(profile.salary_min / 100000).toFixed(1)} LPA` : "8 LPA"})
                   </div>
                 </div>
               </div>

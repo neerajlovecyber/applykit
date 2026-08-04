@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQueueStore } from "@/app/stores/queue-store";
 import { useProfileStore } from "@/app/stores/profile-store";
+import { useConveyor } from "@/app/hooks/use-conveyor";
 import {
   LayoutDashboard,
   ListTodo,
@@ -15,6 +16,7 @@ import {
   Pause,
   Briefcase,
   ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
@@ -34,6 +36,7 @@ import {
   SidebarTrigger,
   SidebarSeparator,
 } from "@/app/components/ui/sidebar";
+import { RoleOnboardingWizard } from "@/app/components/RoleOnboardingWizard";
 import { cn } from "@/lib/utils";
 
 const mainNavItems = [
@@ -50,14 +53,40 @@ const allNavItems = [...mainNavItems, { path: "/settings", label: "Settings", ic
 
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const conveyor = useConveyor();
   const { isRunning, pendingCount, startQueue, pauseQueue } = useQueueStore();
-  const { activeProfile } = useProfileStore();
+  const { activeProfile, profiles, setProfiles, setActiveProfile } = useProfileStore();
+
+  const [showWizard, setShowWizard] = useState(false);
+
+  // Load profiles on mount
+  useEffect(() => {
+    const initProfiles = async () => {
+      try {
+        const list = await conveyor.data.getProfiles();
+        setProfiles(list);
+        const active = list.find((p) => p.is_active === 1) || list[0] || null;
+        if (active) setActiveProfile(active);
+
+        // Auto-prompt wizard if no profiles exist
+        if (!list || list.length === 0) {
+          setShowWizard(true);
+        }
+      } catch (err) {
+        console.error("Failed to load profiles:", err);
+      }
+    };
+    initProfiles();
+  }, []);
 
   return (
     <SidebarProvider
       className="web3-dashboard bg-background text-foreground min-h-screen font-sans select-none overflow-hidden"
       style={{ "--sidebar-width": "16rem", "--sidebar-width-icon": "3.5rem" } as React.CSSProperties}
     >
+      {/* Role-First Onboarding Wizard Modal */}
+      <RoleOnboardingWizard isOpen={showWizard} onClose={() => setShowWizard(false)} />
+
       <Sidebar collapsible="icon" className="border-r border-border">
         <SidebarHeader className="p-3">
           <SidebarMenu>
@@ -152,26 +181,41 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             </SidebarMenuItem>
           </SidebarMenu>
 
-          <div className="pt-1 group-data-[collapsible=icon]:hidden">
-            <Link
-              to="/profiles"
-              className="flex items-center justify-between p-2 rounded-xl bg-muted/30 border border-border/40 hover:bg-muted/60 transition-all duration-150 group/prof"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="size-7 rounded-lg bg-emerald-500/20 text-emerald-400 font-semibold text-xs flex items-center justify-center shrink-0">
-                  {activeProfile?.name ? activeProfile.name.charAt(0).toUpperCase() : "P"}
+          <div className="pt-1 group-data-[collapsible=icon]:hidden space-y-1.5">
+            <div className="relative group/prof">
+              <div
+                className="flex items-center justify-between p-2 rounded-xl bg-muted/30 border border-border/40 hover:bg-muted/60 transition-all duration-150 cursor-pointer"
+                onClick={() => {
+                  if (profiles.length > 1) {
+                    const idx = profiles.findIndex((p) => p.id === activeProfile?.id);
+                    const next = profiles[(idx + 1) % profiles.length];
+                    if (next) {
+                      conveyor.data.setActiveProfile(next.id).then(() => {
+                        conveyor.data.getProfiles().then(setProfiles);
+                        setActiveProfile(next);
+                      });
+                    }
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="size-7 rounded-lg bg-emerald-500/20 text-emerald-400 font-semibold text-xs flex items-center justify-center shrink-0">
+                    {activeProfile?.name ? activeProfile.name.charAt(0).toUpperCase() : "P"}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider leading-none">
+                      Active Profile ({profiles.length})
+                    </span>
+                    <span className="text-xs font-medium text-foreground truncate mt-0.5">
+                      {activeProfile?.name ?? "Select Role Profile"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider leading-none">
-                    Active Profile
-                  </span>
-                  <span className="text-xs font-medium text-foreground truncate mt-0.5">
-                    {activeProfile?.name ?? "Select Role Profile"}
-                  </span>
-                </div>
+                <Link to="/profiles" title="Manage Profiles" onClick={(e) => e.stopPropagation()} className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
+                  <ChevronDown className="size-3.5 shrink-0" />
+                </Link>
               </div>
-              <ChevronDown className="size-3.5 text-muted-foreground group-hover/prof:text-foreground shrink-0 ml-1 transition-colors" />
-            </Link>
+            </div>
           </div>
         </SidebarFooter>
       </Sidebar>
