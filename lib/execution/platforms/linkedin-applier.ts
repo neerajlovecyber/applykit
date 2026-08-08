@@ -221,6 +221,7 @@ export class LinkedInApplier implements PlatformApplier {
           await submitBtn.click();
           await actionDelay();
           isCompleted = true;
+          await this.dismissPostApplyModal(page);
           break;
         }
 
@@ -238,6 +239,7 @@ export class LinkedInApplier implements PlatformApplier {
       }
 
       if (isCompleted) {
+        await this.dismissPostApplyModal(page);
         updateApplicationStatus(options.applicationId, "submitted");
         updateApplicationFillDetails(options.applicationId, {
           fields_filled: totalFilled,
@@ -616,11 +618,8 @@ export class LinkedInApplier implements PlatformApplier {
       }
     }
 
-    // Dismiss any post-submission modal
-    try {
-      const dismissBtn = await page.$('button[aria-label*="Dismiss"]');
-      if (dismissBtn) await dismissBtn.click();
-    } catch { /* ignore */ }
+    // Dismiss post-submission success modal ("Application sent" -> "Done")
+    await this.dismissPostApplyModal(page);
 
     if (isCompleted) {
       return { success: true, status: "submitted", fieldsFilled: totalFilled, fieldsTotal: totalFields, screenshotPath };
@@ -633,6 +632,56 @@ export class LinkedInApplier implements PlatformApplier {
       fieldsTotal: totalFields,
       errorMessage: "Wizard did not reach submit button within step limit.",
     };
+  }
+
+  /**
+   * Helper to dismiss post-application modal popups ("Application sent", "Your application was sent to...")
+   */
+  private async dismissPostApplyModal(page: Page): Promise<void> {
+    try {
+      await randomDelay(1200, 2500);
+
+      // Search for post-apply modal container
+      const postModal = await page.$(
+        'div.artdeco-modal:has-text("Application sent"), div.artdeco-modal:has-text("Your application was sent"), div[data-test-modal], div.artdeco-modal'
+      );
+
+      if (postModal) {
+        console.log("[LinkedInApplier] Post-apply modal detected. Attempting to click Done / Dismiss...");
+
+        // Try finding and clicking "Done" button or primary action button
+        const doneBtn = await postModal.$(
+          'button:has-text("Done"), .artdeco-modal__actionbar button, button[data-test-modal-close-btn], button.artdeco-modal__dismiss, button[aria-label="Dismiss"], button:has-text("Dismiss")'
+        );
+
+        if (doneBtn) {
+          console.log("[LinkedInApplier] Clicking Done button on post-apply modal...");
+          await doneBtn.click({ force: true }).catch(async () => {
+            await doneBtn.evaluate((el: any) => el.click());
+          });
+          await randomDelay(1000, 2000);
+        }
+      }
+
+      // Double check if any modal is still visible and dismiss via close icon or Escape key
+      const remainingModal = await page.$("div.artdeco-modal, [data-test-modal]");
+      if (remainingModal && (await remainingModal.isVisible().catch(() => false))) {
+        console.log("[LinkedInApplier] Modal still present. Clicking close button or pressing Escape key...");
+        const closeIcon = await remainingModal.$(
+          "button.artdeco-modal__dismiss, [data-test-modal-close-btn], button[aria-label*='Dismiss']"
+        );
+        if (closeIcon) {
+          await closeIcon.click({ force: true }).catch(async () => {
+            await closeIcon.evaluate((el: any) => el.click());
+          });
+        } else {
+          await page.keyboard.press("Escape").catch(() => {});
+        }
+        await randomDelay(800, 1500);
+      }
+    } catch (err) {
+      console.warn("[LinkedInApplier] Warning dismissPostApplyModal:", err);
+    }
   }
 
   // ── Screenshot Utility ─────────────────────────────────────────────────

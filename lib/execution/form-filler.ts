@@ -43,11 +43,37 @@ export class FormFiller {
       if (res) results.push(res);
     }
 
-    // 3. Process Radio Button Groups / Fieldsets
-    const fieldsets = await container.$$("fieldset");
-    for (const fieldset of fieldsets) {
-      const res = await this.fillRadioFieldset(page, fieldset);
-      if (res) results.push(res);
+    // 3. Process Radio Button Groups & Custom LinkedIn Components
+    const radioContainers = await container.$$(
+      'fieldset, [data-test-form-builder-radio-button-form-component], [data-test-form-builder-checkbox-form-component], div.fb-dash-form-element:has(input[type="radio"]), div:has(> input[type="radio"])'
+    );
+
+    const processedRadioNames = new Set<string>();
+
+    for (const groupEl of radioContainers) {
+      const radios = await groupEl.$$('input[type="radio"], input[type="checkbox"]');
+      if (radios.length > 0) {
+        const nameAttr = await radios[0].getAttribute("name");
+        if (nameAttr) processedRadioNames.add(nameAttr);
+        const res = await this.fillRadioFieldset(page, groupEl);
+        if (res) results.push(res);
+      }
+    }
+
+    // Process any remaining orphaned radio inputs by name
+    const allRadios = await container.$$('input[type="radio"]');
+    for (const radio of allRadios) {
+      const nameAttr = await radio.getAttribute("name");
+      if (nameAttr && !processedRadioNames.has(nameAttr)) {
+        processedRadioNames.add(nameAttr);
+        const parentContainer = await radio.evaluateHandle((el) =>
+          el.closest("[data-test-form-builder-radio-button-form-component], fieldset, .fb-dash-form-element, div.relative") || el.parentElement
+        );
+        if (parentContainer) {
+          const res = await this.fillRadioFieldset(page, parentContainer as any);
+          if (res) results.push(res);
+        }
+      }
     }
 
     const filledCount = results.filter((r) => r.success).length;
@@ -123,8 +149,13 @@ export class FormFiller {
         if (digitMatch) {
           valueToType = digitMatch[0];
         } else {
-          // If no number found in AI response, fallback to 30 for notice/days or 0
-          valueToType = /notice|period|days/i.test(labelText) ? "30" : "0";
+          if (/rate|rating|scale|understanding|knowledge|experience|confidence/i.test(labelText)) {
+            valueToType = "8";
+          } else if (/notice|period|days/i.test(labelText)) {
+            valueToType = "30";
+          } else {
+            valueToType = "8";
+          }
         }
       }
 
@@ -274,9 +305,11 @@ export class FormFiller {
       for (const radio of radios) {
         const optionText = await radio.evaluate((el) => {
           const id = el.getAttribute("id");
-          if (id) {
-            const lbl = document.querySelector(`label[for="${CSS.escape(id)}"]`);
-            if (lbl?.textContent?.trim()) return lbl.textContent.trim();
+          if (id && typeof CSS !== "undefined" && CSS.escape) {
+            try {
+              const lbl = document.querySelector(`label[for="${CSS.escape(id)}"]`);
+              if (lbl?.textContent?.trim()) return lbl.textContent.trim();
+            } catch { /* ignore */ }
           }
           const container = el.closest("[data-test-text-selectable-option], label, div");
           const valAttr = el.getAttribute("value") || el.getAttribute("data-test-text-selectable-option__input");
@@ -301,44 +334,42 @@ export class FormFiller {
       }
 
       if (matchedRadio) {
-        const isChecked = await matchedRadio.isChecked().catch(() => false);
-        if (!isChecked) {
-          const radioId = await matchedRadio.getAttribute("id");
+        await matchedRadio.evaluate((el) => {
+          const inputEl = el as HTMLInputElement;
+
+          // 1. Try finding label by for="id"
+          const id = inputEl.id;
           let clicked = false;
 
-          // 1. Try clicking the associated <label for="...">
-          if (radioId) {
+          if (id && typeof CSS !== "undefined" && CSS.escape) {
             try {
-              const labelEl = await page.$(`label[for="${CSS.escape(radioId)}"]`);
-              if (labelEl) {
-                await labelEl.click({ force: true });
+              const label = document.querySelector(`label[for="${CSS.escape(id)}"]`) as HTMLElement;
+              if (label) {
+                label.click();
                 clicked = true;
               }
             } catch { /* ignore */ }
           }
 
-          // 2. Try clicking option container [data-test-text-selectable-option]
+          // 2. Try closest container [data-test-text-selectable-option]
           if (!clicked) {
-            try {
-              const container = await matchedRadio.evaluateHandle((el) =>
-                el.closest("[data-test-text-selectable-option], label, div")
-              );
-              if (container) {
-                await (container as any).click({ force: true });
-                clicked = true;
-              }
-            } catch { /* ignore */ }
-          }
-
-          // 3. Fallback to direct input click and DOM event
-          if (!clicked) {
-            try {
-              await matchedRadio.click({ force: true });
-            } catch {
-              await matchedRadio.evaluate((el: any) => el.click());
+            const container = inputEl.closest("[data-test-text-selectable-option], label, div") as HTMLElement;
+            if (container) {
+              container.click();
+              clicked = true;
             }
           }
-        }
+
+          // 3. Native input click
+          if (!clicked) {
+            inputEl.click();
+          }
+
+          // Ensure checked state & dispatch change events for React/Ember
+          inputEl.checked = true;
+          inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+          inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+        });
       }
 
       await fieldDelay();
@@ -405,6 +436,12 @@ export class FormFiller {
       return { value: "Yes", source: "profile" };
     }
     if (/18 years|over 18|legal age|diploma|degree/i.test(normQ)) {
+      return { value: "Yes", source: "profile" };
+    }
+    if (/rate|rating|scale|understanding|knowledge|self-eval|how would you rate|score|confidence|flaws|whiteboard/i.test(normQ)) {
+      return { value: "8", source: "profile" };
+    }
+    if (/security automation|shift.*left|effective concept|critical role|automation/i.test(normQ)) {
       return { value: "Yes", source: "profile" };
     }
 
