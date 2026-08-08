@@ -329,6 +329,28 @@ export class DataApi {
   launchNaukriBrowser = async (): Promise<any> => {
     return this.api.ipcRenderer.invoke("naukri:launch-browser");
   };
+
+  // ── LinkedIn connect-first flow ──────────────────────────────────────────
+
+  /** Check if LinkedIn is connected (fast, no browser). */
+  isLinkedInConnected = async (): Promise<{ connected: boolean }> => {
+    return this.api.ipcRenderer.invoke("linkedin:is-connected");
+  };
+
+  /**
+   * Open Playwright Chromium → user logs in → auto-detected → marked connected.
+   * Long-running — awaiting this call shows a loading UI.
+   */
+  connectLinkedIn = async (): Promise<{ success: boolean; message?: string; error?: string }> => {
+    return this.api.ipcRenderer.invoke("linkedin:connect");
+  };
+
+  /** Mark LinkedIn as disconnected (clears status, not cookies). */
+  disconnectLinkedIn = async (): Promise<{ success: boolean }> => {
+    return this.api.ipcRenderer.invoke("linkedin:disconnect");
+  };
+
+  /** Run the LinkedIn auto-apply batch. Must be connected first. */
   runLinkedInAutoApply = async (options: {
     keywords: string;
     location?: string;
@@ -342,13 +364,8 @@ export class DataApi {
       under10Applicants?: boolean;
     };
     pauseBeforeSubmit?: boolean;
-    username?: string;
-    password?: string;
   }): Promise<any> => {
     return this.api.ipcRenderer.invoke("linkedin:auto-apply", options);
-  };
-  launchLinkedInBrowser = async (): Promise<any> => {
-    return this.api.ipcRenderer.invoke("linkedin:launch-browser");
   };
 
   // ═══════════════════════════════════════════════════════════

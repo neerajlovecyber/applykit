@@ -267,53 +267,101 @@ export function registerAppHandlers(): void {
 
 
   // ═══════════════════════════════════════════════════════════
-  // LINKEDIN AUTOMATION
+  // LINKEDIN AUTOMATION — Connect-First Flow
   // ═══════════════════════════════════════════════════════════
+  //
+  // Strategy: ONE isolated Playwright profile (~/.applykit/browser_profile)
+  // persists all sessions. User logs in once via "Connect Account" — all
+  // future auto-apply runs reuse the saved session automatically.
+  //
 
-  ipcMain.handle("linkedin:launch-browser", async () => {
-    const { createStealthPage } = await import("@/lib/execution/browser-pool");
-    const page = await createStealthPage({ headless: false });
-    await page.goto("https://www.linkedin.com", { waitUntil: "domcontentloaded" });
-    return { success: true, message: "Browser launched on LinkedIn.com" };
+  /**
+   * Check if LinkedIn is currently connected (logged in) in the persistent profile.
+   * Fast check — reads from DB setting, no browser needed.
+   */
+  ipcMain.handle("linkedin:is-connected", () => {
+    const status = dbQueries.getSetting("linkedin_connected");
+    return { connected: status === "true" };
   });
 
-  ipcMain.handle("linkedin:auto-apply", async (_, { keywords, location, maxJobs, filters, pauseBeforeSubmit, username, password }) => {
-    const profile = dbQueries.getActiveProfile();
-    if (!profile) return { error: "No active profile found. Please select a profile in Role Profiles." };
-
-    console.log(`[LinkedInAutoApply] Starting batch auto-apply for keywords: "${keywords}", loc: "${location}"...`);
-
-    const { createStealthPage } = await import("@/lib/execution/browser-pool");
-    const { LinkedInApplier } = await import("@/lib/execution/platforms/linkedin-applier");
-
-    const linkedInApplier = new LinkedInApplier();
-    let page;
+  /**
+   * Open the ApplyKit Chromium window and navigate to linkedin.com/login.
+   * Polls every 2s until the user logs in (URL becomes /feed/).
+   * Times out after 5 minutes. Saves connection status on success.
+   *
+   * This is a long-running IPC — the UI shows a "Waiting for login…" state.
+   */
+  ipcMain.handle("linkedin:connect", async () => {
+    const { getSharedContext } = await import("@/lib/execution/browser-pool");
+    let page: any = null;
 
     try {
-      page = await createStealthPage({ headless: false });
+      const ctx = await getSharedContext(false); // headless=false so user can see & log in
+      page = await ctx.newPage();
 
-      // Store credentials if provided
-      if (username && password) {
-        dbQueries.setSetting("linkedin_credentials", JSON.stringify({ username, password }));
-      }
+      // Navigate to LinkedIn
+      await page.goto("https://www.linkedin.com/login", { waitUntil: "domcontentloaded", timeout: 15000 });
 
-      // Fall back to stored creds
-      let loginUser = username;
-      let loginPass = password;
-      if (!loginUser || !loginPass) {
-        const raw = dbQueries.getSetting("linkedin_credentials");
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            loginUser = loginUser || parsed.username;
-            loginPass = loginPass || parsed.password;
-          } catch { /* ignore */ }
+      console.log("[LinkedInConnect] Waiting for user to log in (up to 5 min)...");
+
+      // Poll every 2 seconds for up to 5 minutes
+      const deadline = Date.now() + 5 * 60 * 1000;
+      while (Date.now() < deadline) {
+        await page.waitForTimeout(2000);
+        const url: string = page.url();
+        if (
+          url.includes("linkedin.com/feed") ||
+          url.includes("linkedin.com/mynetwork") ||
+          url.includes("linkedin.com/jobs") ||
+          url.includes("linkedin.com/in/")
+        ) {
+          console.log("[LinkedInConnect] Login detected! URL:", url);
+          dbQueries.setSetting("linkedin_connected", "true");
+          // Keep page open — user sees their LinkedIn feed
+          return { success: true, message: "LinkedIn connected successfully!" };
         }
       }
 
+      return { success: false, error: "Login timeout — please try again." };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  /**
+   * Mark LinkedIn as disconnected (does not clear cookies — just the status flag).
+   * User can reconnect anytime via the connect flow.
+   */
+  ipcMain.handle("linkedin:disconnect", () => {
+    dbQueries.setSetting("linkedin_connected", "false");
+    return { success: true };
+  });
+
+  /**
+   * Run the LinkedIn Easy Apply batch loop.
+   * Requires linkedin:connect to have been called first (profile has session).
+   * No credentials needed — session comes from the persistent profile.
+   */
+  ipcMain.handle("linkedin:auto-apply", async (_, { keywords, location, maxJobs, filters, pauseBeforeSubmit }) => {
+    const profile = dbQueries.getActiveProfile();
+    if (!profile) return { error: "No active profile found. Please select a profile in Role Profiles." };
+
+    const isConnected = dbQueries.getSetting("linkedin_connected") === "true";
+    if (!isConnected) return { error: "LinkedIn not connected. Please connect your account first." };
+
+    console.log(`[LinkedInAutoApply] Starting batch apply: "${keywords}" in "${location}"...`);
+
+    const { createStealthPage } = await import("@/lib/execution/browser-pool");
+    const { LinkedInApplier } = await import("@/lib/execution/platforms/linkedin-applier");
+    const linkedInApplier = new LinkedInApplier();
+    let page: any = null;
+
+    try {
+      // Open a NEW page in the same shared context (same LinkedIn session)
+      page = await createStealthPage({ headless: false });
+
       const batchResult = await linkedInApplier.runBatchApply(page, {
-        username: loginUser,
-        password: loginPass,
+        // No username/password — session already exists in shared profile
         keywords: keywords || "Software Engineer",
         location: location || "",
         maxJobs: maxJobs || 10,
