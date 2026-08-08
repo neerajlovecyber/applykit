@@ -441,7 +441,7 @@ Rules:
   return parseResumeSectionsStructured(cleanText);
 }
 
-function parseResumeSectionsStructured(text: string): ResumeParseResult {
+export function parseResumeSectionsStructured(text: string): ResumeParseResult {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
   const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);

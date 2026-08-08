@@ -257,31 +257,88 @@ export class FormFiller {
       const isVisible = await fieldset.isVisible();
       if (!isVisible) return null;
 
-      const legend = await fieldset.$("legend, label, h3");
+      const legend = await fieldset.$(
+        "legend, label, h3, [data-test-form-builder-radio-button-form-component__title], .fb-dash-form-element__label"
+      );
       const labelText = legend ? (await legend.textContent())?.trim() || "" : "";
 
-      const radios = await fieldset.$$('input[type="radio"]');
+      const radios = await fieldset.$$('input[type="radio"], input[type="checkbox"]');
       if (radios.length === 0) return null;
 
       const answer = await this.resolveAnswerForQuestion(labelText, "radio");
-      const targetValue = (answer?.value || "no").toLowerCase();
+      const targetValue = (answer?.value || "yes").toLowerCase().trim();
 
-      let clicked = false;
+      let matchedRadio: ElementHandle<SVGElement | HTMLElement> | null = null;
+      let matchedLabelText = "";
+
       for (const radio of radios) {
-        const parentLabel = await radio.evaluate((el) => {
-          const lbl = el.closest("label") || el.parentElement;
-          return lbl?.textContent?.trim() || "";
+        const optionText = await radio.evaluate((el) => {
+          const id = el.getAttribute("id");
+          if (id) {
+            const lbl = document.querySelector(`label[for="${CSS.escape(id)}"]`);
+            if (lbl?.textContent?.trim()) return lbl.textContent.trim();
+          }
+          const container = el.closest("[data-test-text-selectable-option], label, div");
+          const valAttr = el.getAttribute("value") || el.getAttribute("data-test-text-selectable-option__input");
+          return (container?.textContent?.trim() || valAttr || "").trim();
         });
 
-        if (parentLabel.toLowerCase().includes(targetValue) || (targetValue === "no" && parentLabel.toLowerCase().includes("no"))) {
-          await radio.click();
-          clicked = true;
+        const normOpt = optionText.toLowerCase();
+        if (
+          normOpt === targetValue ||
+          normOpt.includes(targetValue) ||
+          (targetValue === "yes" && (normOpt === "yes" || normOpt.startsWith("yes"))) ||
+          (targetValue === "no" && (normOpt === "no" || normOpt.startsWith("no")))
+        ) {
+          matchedRadio = radio;
+          matchedLabelText = optionText;
           break;
         }
       }
 
-      if (!clicked && radios.length > 0) {
-        await radios[0].click(); // Fallback click
+      if (!matchedRadio && radios.length > 0) {
+        matchedRadio = radios[0]; // Fallback to first option (usually Yes)
+      }
+
+      if (matchedRadio) {
+        const isChecked = await matchedRadio.isChecked().catch(() => false);
+        if (!isChecked) {
+          const radioId = await matchedRadio.getAttribute("id");
+          let clicked = false;
+
+          // 1. Try clicking the associated <label for="...">
+          if (radioId) {
+            try {
+              const labelEl = await page.$(`label[for="${CSS.escape(radioId)}"]`);
+              if (labelEl) {
+                await labelEl.click({ force: true });
+                clicked = true;
+              }
+            } catch { /* ignore */ }
+          }
+
+          // 2. Try clicking option container [data-test-text-selectable-option]
+          if (!clicked) {
+            try {
+              const container = await matchedRadio.evaluateHandle((el) =>
+                el.closest("[data-test-text-selectable-option], label, div")
+              );
+              if (container) {
+                await (container as any).click({ force: true });
+                clicked = true;
+              }
+            } catch { /* ignore */ }
+          }
+
+          // 3. Fallback to direct input click and DOM event
+          if (!clicked) {
+            try {
+              await matchedRadio.click({ force: true });
+            } catch {
+              await matchedRadio.evaluate((el: any) => el.click());
+            }
+          }
+        }
       }
 
       await fieldDelay();
@@ -289,7 +346,7 @@ export class FormFiller {
       return {
         label: labelText,
         fieldType: "radio",
-        filledValue: targetValue,
+        filledValue: matchedLabelText || targetValue,
         success: true,
         source: answer?.source || "default",
       };
@@ -335,6 +392,20 @@ export class FormFiller {
           ? JSON.parse(this.profile.resume_parsed)
           : this.profile.resume_parsed;
       } catch { /* ignore */ }
+    }
+
+    // Common Application Radio / Yes-No Heuristics
+    if (/commute|commuting|relocate|relocation|hybrid|onsite|work location|in-person/i.test(normQ)) {
+      return { value: "Yes", source: "profile" };
+    }
+    if (/authorized|legally authorized|eligible to work|lawfully authorized/i.test(normQ)) {
+      return { value: "Yes", source: "profile" };
+    }
+    if (/background check|drug test|drug screen|agree to terms/i.test(normQ)) {
+      return { value: "Yes", source: "profile" };
+    }
+    if (/18 years|over 18|legal age|diploma|degree/i.test(normQ)) {
+      return { value: "Yes", source: "profile" };
     }
 
     // 1. Check profile & education defaults

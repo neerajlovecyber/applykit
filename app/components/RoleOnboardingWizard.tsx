@@ -405,6 +405,39 @@ ${certFormatted}
 ${eduFormatted}
 `.trim();
 
+      const structuredResumeParsed = {
+        personalInfo: {
+          name: fullName || "Applicant Candidate",
+          email: email || "",
+          phone: phone || "",
+          location: location || "",
+        },
+        summary: profSummary,
+        workExperience: workExperiences.map((exp) => ({
+          title: exp.role,
+          company: exp.company,
+          location: exp.location,
+          years: exp.period,
+          description: exp.bulletsStr.split("\n").map((b) => b.replace(/^[•\-\*]\s*/, "").trim()).filter(Boolean),
+        })),
+        education: educations.map((e) => ({
+          degree: e.degree,
+          institution: e.institution,
+          years: e.year,
+        })),
+        personalProjects: projects.map((p) => ({
+          name: p.title,
+          description: p.description,
+        })),
+        certifications: certifications.map((c) => ({
+          title: c.title,
+          issuer: c.issuer,
+        })),
+        additional: {
+          technicalSkills: skillsStr.split(",").map((s) => s.trim()).filter(Boolean),
+        },
+      };
+
       // 1. Create SQLite Profile
       const createdProfile = await conveyor.data.createProfile({
         name: profileTrackName.trim() || "Target Profile Track",
@@ -421,6 +454,7 @@ ${eduFormatted}
         salary_min: salaryMin || 800000,
         salary_currency: "INR",
         work_mode: "any",
+        resume_parsed: JSON.stringify(structuredResumeParsed),
       });
 
       if (createdProfile?.id) {
