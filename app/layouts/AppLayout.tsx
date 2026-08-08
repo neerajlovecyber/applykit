@@ -17,6 +17,7 @@ import {
   Briefcase,
   ChevronDown,
   Sparkles,
+  Rocket,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
@@ -41,6 +42,7 @@ import { cn } from "@/lib/utils";
 
 const mainNavItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/auto-apply", label: "Auto-Apply Hub", icon: Rocket },
   { path: "/queue", label: "Job Queue", icon: ListTodo },
   { path: "/finder", label: "Job Finder", icon: Compass },
   { path: "/profiles", label: "Role Profiles", icon: UserCheck },

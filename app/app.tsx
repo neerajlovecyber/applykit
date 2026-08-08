@@ -9,6 +9,7 @@ import { DocumentsPage } from "@/app/pages/DocumentsPage";
 import { QABankPage } from "@/app/pages/QABankPage";
 import { HistoryPage } from "@/app/pages/HistoryPage";
 import { SettingsPage } from "@/app/pages/SettingsPage";
+import { AutoApplyPage } from "@/app/pages/AutoApplyPage";
 import "./styles/app.css";
 
 export default function App() {
@@ -18,6 +19,9 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/auto-apply" element={<AutoApplyPage />} />
+          {/* Keep /naukri for backward compatibility — redirects to unified hub */}
+          <Route path="/naukri" element={<Navigate to="/auto-apply" replace />} />
           <Route path="/queue" element={<JobQueuePage />} />
           <Route path="/finder" element={<JobFinderPage />} />
           <Route path="/profiles" element={<RoleProfilesPage />} />
@@ -31,3 +35,4 @@ export default function App() {
     </BrowserRouter>
   );
 }
+

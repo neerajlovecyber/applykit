@@ -192,7 +192,6 @@ export class NaukriApplier implements PlatformApplier {
       };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      updateApplicationStatus(options.applicationId, "failed", errorMsg);
       return {
         success: false,
         status: "failed",
@@ -200,6 +199,60 @@ export class NaukriApplier implements PlatformApplier {
         fieldsTotal: totalFields,
         errorMessage: errorMsg,
       };
+    }
+  }
+
+  async login(page: Page, username?: string, password?: string): Promise<{ success: boolean; authToken?: string; errorMessage?: string }> {
+    if (!username || !password) {
+      return { success: false, errorMessage: "Username and password are required" };
+    }
+
+    try {
+      console.log(`[NaukriApplier] Navigating to Naukri login page with Playwright...`);
+      await page.goto("https://www.naukri.com/nlogin/login", { waitUntil: "domcontentloaded", timeout: 30000 });
+      await randomDelay(1000, 2000);
+
+      const userField = await page.$(
+        "#usernameField, input[placeholder*='Email'], input[placeholder*='Username'], input[type='text']"
+      );
+      if (userField) {
+        await userField.fill(username);
+        await randomDelay(300, 700);
+      }
+
+      const passField = await page.$(
+        "#passwordField, input[placeholder*='Password'], input[type='password']"
+      );
+      if (passField) {
+        await passField.fill(password);
+        await randomDelay(300, 700);
+      }
+
+      const submitBtn = await page.$(
+        "button[type='submit'], button.btn-primary, button:has-text('Login')"
+      );
+      if (submitBtn) {
+        await submitBtn.click();
+        await randomDelay(3000, 5000);
+      }
+
+      const cookies = await page.context().cookies("https://www.naukri.com");
+      const naukAtCookie = cookies.find((c) => c.name === "nauk_at");
+
+      if (naukAtCookie?.value) {
+        console.log("[NaukriApplier] Playwright login successful! Token acquired.");
+        return { success: true, authToken: naukAtCookie.value };
+      }
+
+      const currentUrl = page.url();
+      if (!currentUrl.includes("/nlogin/login")) {
+        return { success: true, authToken: `nauk_session_${Date.now()}` };
+      }
+
+      return { success: false, errorMessage: "Login failed or captcha encountered." };
+    } catch (err) {
+      console.error("[NaukriApplier] Playwright login error:", err);
+      return { success: false, errorMessage: err instanceof Error ? err.message : String(err) };
     }
   }
 }

@@ -155,13 +155,7 @@ export const JobFinderPage: React.FC = () => {
     loadJobs();
   };
 
-  const filteredJobs = jobPostings.filter((job) => {
-    const matchesSearch =
-      job.title.toLowerCase().includes(keywords.toLowerCase()) ||
-      job.company.toLowerCase().includes(keywords.toLowerCase()) ||
-      (job.location || "").toLowerCase().includes(keywords.toLowerCase());
-    return matchesSearch;
-  });
+  const filteredJobs = jobPostings;
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto py-2">

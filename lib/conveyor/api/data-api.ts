@@ -323,6 +323,33 @@ export class DataApi {
   resetPlatformDailyCounts = async (): Promise<void> => {
     return this.api.ipcRenderer.invoke("platforms:reset-daily-counts");
   };
+  runNaukriAutoApply = async (options: { keywords: string; location?: string; maxJobs?: number; pauseBeforeSubmit?: boolean }): Promise<any> => {
+    return this.api.ipcRenderer.invoke("naukri:auto-apply", options);
+  };
+  launchNaukriBrowser = async (): Promise<any> => {
+    return this.api.ipcRenderer.invoke("naukri:launch-browser");
+  };
+  runLinkedInAutoApply = async (options: {
+    keywords: string;
+    location?: string;
+    maxJobs?: number;
+    filters?: {
+      datePosted?: "past24Hours" | "pastWeek" | "pastMonth" | "anyTime";
+      experienceLevel?: string[];
+      jobType?: string[];
+      workMode?: string[];
+      easyApplyOnly?: boolean;
+      under10Applicants?: boolean;
+    };
+    pauseBeforeSubmit?: boolean;
+    username?: string;
+    password?: string;
+  }): Promise<any> => {
+    return this.api.ipcRenderer.invoke("linkedin:auto-apply", options);
+  };
+  launchLinkedInBrowser = async (): Promise<any> => {
+    return this.api.ipcRenderer.invoke("linkedin:launch-browser");
+  };
 
   // ═══════════════════════════════════════════════════════════
   // SETTINGS

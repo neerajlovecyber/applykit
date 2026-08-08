@@ -172,13 +172,14 @@ export interface NaukriSearchApiResult {
  */
 export async function searchNaukriJobsAPI(
   keywords: string,
-  location: string = "bangalore,pune,mumbai",
+  location: string = "",
   pageNo: number = 1,
   authToken?: string
 ): Promise<NaukriSearchApiResult | null> {
   const encKeywords = encodeURIComponent(keywords);
-  const encLoc = encodeURIComponent(location);
-  const url = `https://www.naukri.com/jobapi/v3/search?noOfResults=20&urlType=search_by_key_loc&searchType=adv&location=${encLoc}&keyword=${encKeywords}&sort=p&pageNo=${pageNo}&k=${encKeywords}&l=${encLoc}&src=cluster`;
+  const encLoc = location ? encodeURIComponent(location) : "";
+  const locParam = encLoc ? `&location=${encLoc}&l=${encLoc}&urlType=search_by_key_loc` : `&urlType=search_by_keyword`;
+  const url = `https://www.naukri.com/jobapi/v3/search?noOfResults=20&searchType=adv&keyword=${encKeywords}&sort=p&pageNo=${pageNo}&k=${encKeywords}&src=jobsearchDesk${locParam}`;
 
   try {
     const res = await fetch(url, {

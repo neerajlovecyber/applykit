@@ -85,23 +85,21 @@ export async function searchNaukriJobs(options: SearchOptions): Promise<SearchRe
 
     const tabPromises = keywordsList.map(async (kw) => {
       const page = await context.newPage();
-      const kwSlug = kw.toLowerCase().replace(/\s+/g, "-");
       const pageJobs: RawJobPosting[] = [];
 
       try {
         for (let p = 1; p <= maxPages; p++) {
-          const searchUrl =
-            p === 1
-              ? `https://www.naukri.com/${kwSlug}-jobs-in-${locSlug}`
-              : `https://www.naukri.com/${kwSlug}-jobs-in-${locSlug}-${p}`;
+          const encKw = encodeURIComponent(kw);
+          const encL = location ? encodeURIComponent(location) : "";
+          const searchUrl = `https://www.naukri.com/job-search?k=${encKw}${encL ? `&l=${encL}` : ""}&pageNo=${p}`;
 
           console.log(`[NaukriSearch Tab: "${kw}"] Navigating to page ${p}: ${searchUrl}`);
           await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 25000 });
           await randomDelay(1000, 2000);
 
-          // Extract Naukri redesign tuple selectors
+          // Extract Naukri tuple selectors
           const tuples = await page.$$(
-            "div.srp-jobtuple-wrapper > div.cust-job-tuple, article.jobTuple, div.tuple, div.jobTuple"
+            "div.srp-jobtuple-wrapper, article.jobTuple, div.cust-job-tuple, div.tuple, div.jobTuple, div[data-job-id], article.srp-jobtuple"
           );
 
           for (const tuple of tuples) {
