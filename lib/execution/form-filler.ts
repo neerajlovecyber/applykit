@@ -70,26 +70,109 @@ export class FormFiller {
       const isVisible = await input.isVisible();
       if (!isVisible) return null;
 
+      // Check if the field is a Typeahead/Combobox search field
+      const isTypeahead = await input.evaluate((el) => {
+        const role = el.getAttribute("role") || "";
+        const autocomplete = el.getAttribute("aria-autocomplete") || "";
+        const container = el.closest(
+          "[data-test-single-typeahead-entity-form-component], .search-basic-typeahead, .search-vertical-typeahead, .typeahead-input, [data-test-typeahead-results]"
+        );
+        return role === "combobox" || autocomplete === "list" || !!container;
+      });
+
       const currentValue = await input.inputValue();
-      if (currentValue && currentValue.trim().length > 0) {
+
+      // Only skip regular (non-typeahead) text inputs if already filled
+      if (!isTypeahead && currentValue && currentValue.trim().length > 0) {
         return { fieldType: "text", filledValue: currentValue, success: true, source: "default" };
       }
 
       const labelText = await this.resolveFieldLabel(input);
       const answer = await this.resolveAnswerForQuestion(labelText, "text");
 
-      if (!answer) {
-        return { label: labelText, fieldType: "text", success: false, source: "default", error: "No answer resolved" };
+      let valueToType = (currentValue && currentValue.trim().length > 0)
+        ? currentValue.trim()
+        : (answer?.value || "");
+
+      if (!valueToType) {
+        if (isTypeahead) {
+          valueToType = this.profile.location || "Delhi";
+        } else {
+          return { label: labelText, fieldType: "text", success: false, source: "default", error: "No answer resolved" };
+        }
+      }
+
+      // For location/city typeaheads, extract clean base city name (e.g. "Delhi NCR, India" -> "Delhi")
+      if (isTypeahead && /location|city|geo/i.test(labelText + " " + (await input.getAttribute("id") || ""))) {
+        const cleanCity = valueToType.split(/,|\(|\/|-|\bNCR\b/i)[0].trim();
+        if (cleanCity.length >= 2) {
+          valueToType = cleanCity;
+        }
+      }
+
+      // Check if the input field expects a numeric answer
+      const isNumericField = await input.evaluate((el) => {
+        const id = el.id || "";
+        const mode = el.getAttribute("inputmode") || "";
+        const type = el.getAttribute("type") || "";
+        return id.includes("numeric") || mode.includes("numeric") || mode.includes("decimal") || type === "number";
+      });
+
+      if (isNumericField) {
+        const digitMatch = valueToType.match(/\d+(\.\d+)?/);
+        if (digitMatch) {
+          valueToType = digitMatch[0];
+        } else {
+          // If no number found in AI response, fallback to 30 for notice/days or 0
+          valueToType = /notice|period|days/i.test(labelText) ? "30" : "0";
+        }
       }
 
       // Focus & type character-by-character (from autoapplycv anti-bot behavior)
       await input.focus();
       await page.keyboard.press("Control+A");
       await page.keyboard.press("Backspace");
+      await randomDelay(100, 300);
 
-      for (const char of answer.value) {
+      for (const char of valueToType) {
         await page.keyboard.type(char);
         await keystrokeDelay();
+      }
+
+      // Handle Combobox / Typeahead search dropdown selection (e.g. Location, City, Skill)
+      if (isTypeahead) {
+        await randomDelay(800, 1500);
+
+        let selectedOption = false;
+        try {
+          const suggestionSelector = [
+            "div.basic-typeahead__results li",
+            "div[role='option']",
+            "li.search-vertical-typeahead__list-item",
+            "div.basic-typeahead__option",
+            "ul.typeahead-results li",
+            "div[data-test-typeahead-result]",
+            ".search-basic-typeahead__results-list li",
+            ".search-basic-typeahead__list-item",
+            "ul[role='listbox'] li",
+            "li[data-test-typeahead-option]",
+          ].join(", ");
+
+          const suggestion = await page.$(suggestionSelector);
+          if (suggestion && (await suggestion.isVisible())) {
+            await suggestion.click();
+            selectedOption = true;
+          }
+        } catch {
+          // ignore error and fall back to keyboard
+        }
+
+        if (!selectedOption) {
+          await page.keyboard.press("ArrowDown");
+          await randomDelay(300, 500);
+          await page.keyboard.press("Enter");
+          await randomDelay(200, 400);
+        }
       }
 
       await fieldDelay();
@@ -97,9 +180,9 @@ export class FormFiller {
       return {
         label: labelText,
         fieldType: "text",
-        filledValue: answer.value,
+        filledValue: valueToType,
         success: true,
-        source: answer.source,
+        source: answer?.source || "default",
       };
     } catch (err) {
       return { fieldType: "text", success: false, source: "default", error: String(err) };
@@ -119,18 +202,37 @@ export class FormFiller {
         opts.map((o) => ({ text: o.textContent?.trim() || "", value: o.value }))
       );
 
-      const validOptions = options.filter(
-        (o) => o.value && !/^(select|choose|please select|--)$/i.test(o.text)
-      );
+      const validOptions = options.filter((o) => {
+        if (!o.value || !o.text) return false;
+        const t = o.text.trim().toLowerCase();
+        const v = o.value.trim().toLowerCase();
+        return (
+          !/^(select|choose|please select|select an option|--)$/i.test(t) &&
+          !/^(select|choose|please select|select an option|--)$/i.test(v)
+        );
+      });
 
       if (validOptions.length === 0) return null;
 
       const answer = await this.resolveAnswerForQuestion(labelText, "select");
-      const matched = validOptions.find(
+      const searchTarget = (answer?.value || "").toLowerCase().trim();
+
+      let matched = validOptions.find(
         (o) =>
-          o.text.toLowerCase().includes((answer?.value || "").toLowerCase()) ||
-          o.value.toLowerCase().includes((answer?.value || "").toLowerCase())
-      ) || validOptions[0];
+          o.text.toLowerCase().includes(searchTarget) ||
+          o.value.toLowerCase().includes(searchTarget)
+      );
+
+      // Special heuristic for country code / phone code dropdowns
+      if (!matched && /country|dialing|phone.*code/i.test(labelText)) {
+        matched =
+          validOptions.find((o) => /india|\+91/i.test(o.text) || /india|\+91/i.test(o.value)) ||
+          validOptions[0];
+      }
+
+      if (!matched) {
+        matched = validOptions[0];
+      }
 
       await select.selectOption(matched.value);
       await fieldDelay();
@@ -226,6 +328,15 @@ export class FormFiller {
     const normQ = questionText.toLowerCase();
 
     // 1. Check profile defaults (from Auto_job_applier_linkedIn questions.py pattern)
+    if (/notice|notice period|serving.*notice|remaining.*days|immediate.*joiner/i.test(normQ)) {
+      return { value: "30", source: "profile" };
+    }
+    if (/country code|phone.*code|dialing code/i.test(normQ)) {
+      const loc = (this.profile.location || "").toLowerCase();
+      if (loc.includes("us") || loc.includes("states") || loc.includes("america")) return { value: "United States (+1)", source: "profile" };
+      if (loc.includes("uk") || loc.includes("britain") || loc.includes("kingdom")) return { value: "United Kingdom (+44)", source: "profile" };
+      return { value: "India (+91)", source: "profile" };
+    }
     if (/years of experience|how many years/i.test(normQ)) {
       return { value: String(this.profile.experience_years || 4), source: "profile" };
     }
@@ -235,6 +346,7 @@ export class FormFiller {
     if (/phone|mobile/i.test(normQ)) {
       return { value: this.profile.phone || "9876543210", source: "profile" };
     }
+
     if (/email/i.test(normQ)) {
       return { value: this.profile.email || "applicant@example.com", source: "profile" };
     }

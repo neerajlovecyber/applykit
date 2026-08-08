@@ -331,20 +331,61 @@ export class LinkedInApplier implements PlatformApplier {
     while (jobsProcessed < maxJobs && page_num <= maxPages) {
       console.log(`[LinkedInApplier] Scraping job cards on page ${page_num}...`);
 
-      // Wait for job list to load
+      const containerSelector = [
+        "li.scaffold-layout__list-item",
+        "li.jobs-search-results-list__list-item",
+        "div.job-card-container",
+        "[data-occludable-job-id]",
+        ".jobs-search-results-list",
+        ".scaffold-layout__list",
+        "ul.scaffold-layout__list-container",
+      ].join(", ");
+
+      // Wait for job list / cards to load
       try {
-        await page.waitForSelector(".jobs-search__results-list, ul.scaffold-layout__list-container", {
-          timeout: 10000,
-        });
+        await page.waitForSelector(containerSelector, { timeout: 15000 });
       } catch {
-        console.warn("[LinkedInApplier] Job list not found on this page.");
+        console.warn("[LinkedInApplier] Job list / cards not found on this page.");
         break;
       }
 
+      // Scroll the job list panel to trigger lazy loading of all job cards
+      await page.evaluate(() => {
+        const list = document.querySelector(
+          ".jobs-search-results-list, .scaffold-layout__list, .scaffold-layout__list-container, div.jobs-search-two-pane__results"
+        );
+        if (list) {
+          list.scrollTop = 300;
+        } else {
+          window.scrollBy(0, 300);
+        }
+      });
+      await randomDelay(800, 1500);
+
       // Get all job cards on this page
-      const jobCards = await page.$$(
-        "li.jobs-search__results-list-item, li.scaffold-layout__list-item"
-      );
+      const jobCardSelector = [
+        "li.scaffold-layout__list-item",
+        "li.jobs-search-results-list__list-item",
+        "li.jobs-search__results-list-item",
+        "[data-occludable-job-id]",
+        "div.job-card-container",
+      ].join(", ");
+
+      const rawJobCards = await page.$$(jobCardSelector);
+
+      // Filter out duplicate elements if nested
+      const jobCards: typeof rawJobCards = [];
+      const seenIds = new Set<string>();
+
+      for (const card of rawJobCards) {
+        const jobId = (await card.getAttribute("data-occludable-job-id")) || (await card.getAttribute("data-job-id"));
+        if (jobId) {
+          if (seenIds.has(jobId)) continue;
+          seenIds.add(jobId);
+        }
+        jobCards.push(card);
+      }
+
       console.log(`[LinkedInApplier] Found ${jobCards.length} job cards on page ${page_num}.`);
 
       for (const card of jobCards) {
@@ -358,7 +399,9 @@ export class LinkedInApplier implements PlatformApplier {
 
         try {
           // Extract job details from card (get_job_main_details pattern)
-          const titleEl = await card.$("a.job-card-list__title, a.job-card-container__link");
+          const titleEl = await card.$(
+            "a.job-card-list__title, a.job-card-container__link, a.job-card-list__title--link, a[data-control-id]"
+          );
           if (titleEl) {
             const rawText = await titleEl.innerText();
             title = rawText.split("\n")[0].trim();
@@ -370,10 +413,21 @@ export class LinkedInApplier implements PlatformApplier {
               if (match) linkedInJobId = match[1];
             }
           }
-          const companyEl = await card.$(".artdeco-entity-lockup__subtitle span, .job-card-container__primary-description");
+          if (!linkedInJobId) {
+            linkedInJobId =
+              (await card.getAttribute("data-occludable-job-id")) ||
+              (await card.getAttribute("data-job-id")) ||
+              "";
+          }
+
+          const companyEl = await card.$(
+            ".artdeco-entity-lockup__subtitle, .job-card-container__primary-description, .job-card-container__company-name"
+          );
           if (companyEl) company = (await companyEl.innerText()).trim();
 
-          const locationEl = await card.$(".job-card-container__metadata-item, .artdeco-entity-lockup__caption");
+          const locationEl = await card.$(
+            ".artdeco-entity-lockup__caption, .job-card-container__metadata-item, .job-card-container__metadata-wrapper"
+          );
           if (locationEl) location = (await locationEl.innerText()).trim();
 
           // Skip if already applied
@@ -382,24 +436,47 @@ export class LinkedInApplier implements PlatformApplier {
             const badgeText = await appliedBadge.innerText();
             if (badgeText.toLowerCase().includes("applied")) {
               console.log(`[LinkedInApplier] Skipping already-applied job: ${title}`);
-              results.push({ jobId: linkedInJobId, linkedInJobId, title, company, location, status: "skipped", success: false, errorMessage: "Already applied" });
+              results.push({
+                jobId: linkedInJobId,
+                linkedInJobId,
+                title,
+                company,
+                location,
+                status: "skipped",
+                success: false,
+                errorMessage: "Already applied",
+              });
               skipped++;
               jobsProcessed++;
               continue;
             }
           }
 
-          // Click the job card to load details panel
-          await titleEl?.click();
+          // Scroll card into view and click to load details panel
+          await card.scrollIntoViewIfNeeded().catch(() => {});
+          if (titleEl) {
+            await titleEl.click();
+          } else {
+            await card.click();
+          }
           await randomDelay(1200, 2500);
 
           // Check if Easy Apply button exists in detail panel
           const easyApplyBtn = await page.$(
-            'button.jobs-apply-button:has-text("Easy Apply"), button[aria-label*="Easy Apply"]'
+            'button.jobs-apply-button:has-text("Easy Apply"), button[aria-label*="Easy Apply"], button.jobs-apply-button'
           );
           if (!easyApplyBtn) {
             console.log(`[LinkedInApplier] Skipping (no Easy Apply): ${title} @ ${company}`);
-            results.push({ jobId: linkedInJobId, linkedInJobId, title, company, location, status: "skipped", success: false, errorMessage: "No Easy Apply button" });
+            results.push({
+              jobId: linkedInJobId,
+              linkedInJobId,
+              title,
+              company,
+              location,
+              status: "skipped",
+              success: false,
+              errorMessage: "No Easy Apply button",
+            });
             skipped++;
             jobsProcessed++;
             continue;

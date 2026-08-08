@@ -46,15 +46,8 @@ let sharedContext: BrowserContext | null = null;
  * All pages share cookies and login sessions through this context.
  */
 export async function getSharedContext(headless = false): Promise<BrowserContext> {
-  // Reuse if alive
-  if (sharedContext) {
-    try {
-      sharedContext.pages(); // throws if closed
-      return sharedContext;
-    } catch {
-      sharedContext = null;
-    }
-  }
+  // Reuse if alive — null check is kept reliable by the 'close' listener below
+  if (sharedContext) return sharedContext;
 
   fs.mkdirSync(APPLYKIT_PROFILE_DIR, { recursive: true });
   console.log(`[BrowserPool] Launching shared context at: ${APPLYKIT_PROFILE_DIR}`);
