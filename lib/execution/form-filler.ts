@@ -327,7 +327,17 @@ export class FormFiller {
   ): Promise<{ value: string; source: "profile" | "qa_bank" | "ai_generated" | "default" } | null> {
     const normQ = questionText.toLowerCase();
 
-    // 1. Check profile defaults (from Auto_job_applier_linkedIn questions.py pattern)
+    // Parse structured resume data if available
+    let parsed: any = null;
+    if (this.profile.resume_parsed) {
+      try {
+        parsed = typeof this.profile.resume_parsed === "string"
+          ? JSON.parse(this.profile.resume_parsed)
+          : this.profile.resume_parsed;
+      } catch { /* ignore */ }
+    }
+
+    // 1. Check profile & education defaults
     if (/notice|notice period|serving.*notice|remaining.*days|immediate.*joiner/i.test(normQ)) {
       return { value: "30", source: "profile" };
     }
@@ -337,16 +347,42 @@ export class FormFiller {
       if (loc.includes("uk") || loc.includes("britain") || loc.includes("kingdom")) return { value: "United Kingdom (+44)", source: "profile" };
       return { value: "India (+91)", source: "profile" };
     }
+
+    // Education & University heuristics
+    if (/degree|qualification|major|field of study/i.test(normQ)) {
+      const degree = parsed?.education?.[0]?.degree || "Bachelor of Technology in Computer Science and Engineering";
+      return { value: degree, source: "profile" };
+    }
+    if (/university|college|institution|school/i.test(normQ)) {
+      const uni = parsed?.education?.[0]?.institution || "Lovely Professional University";
+      return { value: uni, source: "profile" };
+    }
+    if (/gpa|cgpa|grade|score|marks/i.test(normQ)) {
+      const gpa = parsed?.education?.[0]?.description?.match(/\d+(\.\d+)?/)?.[0] || "8.29";
+      return { value: gpa, source: "profile" };
+    }
+    if (/graduation year|grad year|end year|completion year/i.test(normQ)) {
+      const gradYear = parsed?.education?.[0]?.years?.match(/\b20\d\d\b/g)?.pop() || "2024";
+      return { value: gradYear, source: "profile" };
+    }
+    if (/company|employer|current.*organisation|present.*company/i.test(normQ)) {
+      const comp = parsed?.workExperience?.[0]?.company || "xIoTz Private Limited";
+      return { value: comp, source: "profile" };
+    }
+    if (/current.*title|job.*title|designation|current.*role/i.test(normQ)) {
+      const title = parsed?.workExperience?.[0]?.title || "DevOps Engineer";
+      return { value: title, source: "profile" };
+    }
+
     if (/years of experience|how many years/i.test(normQ)) {
-      return { value: String(this.profile.experience_years || 4), source: "profile" };
+      return { value: String(this.profile.experience_years || 2), source: "profile" };
     }
     if (/visa|sponsorship|require.*visa/i.test(normQ)) {
       return { value: this.profile.visa_required ? "Yes" : "No", source: "profile" };
     }
     if (/phone|mobile/i.test(normQ)) {
-      return { value: this.profile.phone || "9876543210", source: "profile" };
+      return { value: this.profile.phone || "+91 7988815263", source: "profile" };
     }
-
     if (/email/i.test(normQ)) {
       return { value: this.profile.email || "applicant@example.com", source: "profile" };
     }
@@ -354,7 +390,7 @@ export class FormFiller {
       return { value: String(this.profile.salary_min || 1200000), source: "profile" };
     }
     if (/location|city/i.test(normQ)) {
-      return { value: this.profile.location || "Bangalore", source: "profile" };
+      return { value: this.profile.location || "Delhi NCR, India", source: "profile" };
     }
 
     // 2. Check QA Bank SQLite lookup
@@ -363,9 +399,30 @@ export class FormFiller {
       return { value: bankEntry.answer, source: "qa_bank" };
     }
 
-    // 3. Fallback to Vercel AI SDK completion
+    // 3. Fallback to Vercel AI SDK completion with rich full resume context
     try {
-      const profileSummary = `Candidate: ${this.profile.name}. Skills: ${this.profile.skills}. Experience: ${this.profile.experience_years} years. Location: ${this.profile.location}.`;
+      const eduInfo = parsed?.education?.map((e: any) => `${e.degree || ""} at ${e.institution || ""} (${e.years || ""}) ${e.description || ""}`).join("; ") || "B.Tech Computer Science, Lovely Professional University";
+      const expInfo = parsed?.workExperience?.map((w: any) => `${w.title || ""} at ${w.company || ""} (${w.years || ""}): ${Array.isArray(w.description) ? w.description.join(". ") : (w.description || "")}`).join("\n") || "";
+
+      const profileSummary = `
+Candidate Name: ${this.profile.full_name || this.profile.name}
+Email: ${this.profile.email || "N/A"}
+Phone: ${this.profile.phone || "N/A"}
+Location: ${this.profile.location || "Delhi NCR, India"}
+Years of Experience: ${this.profile.experience_years || 2}
+Seniority Level: ${this.profile.seniority || "mid"}
+Skills: ${this.profile.skills || "AWS, Docker, Kubernetes, CI/CD, Python"}
+
+Education & Degrees:
+${eduInfo}
+
+Work Experience & Employers:
+${expInfo}
+
+Professional Summary:
+${this.profile.summary || "DevOps Engineer with experience in cloud automation and release pipelines."}
+`.trim();
+
       const aiAns = await answerQuestion(profileSummary, questionText);
       if (aiAns) {
         // Save to QA Bank for future runs
