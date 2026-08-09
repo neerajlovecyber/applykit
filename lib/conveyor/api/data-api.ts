@@ -323,9 +323,41 @@ export class DataApi {
   resetPlatformDailyCounts = async (): Promise<void> => {
     return this.api.ipcRenderer.invoke("platforms:reset-daily-counts");
   };
-  runNaukriAutoApply = async (options: { keywords: string; location?: string; maxJobs?: number; pauseBeforeSubmit?: boolean }): Promise<any> => {
+  // ── Naukri connect-first flow ────────────────────────────────────────────
+
+  /** Check if Naukri is connected (fast, no browser). */
+  isNaukriConnected = async (): Promise<{ connected: boolean }> => {
+    return this.api.ipcRenderer.invoke("naukri:is-connected");
+  };
+
+  /** Open Playwright Chromium → user logs in → auto-detected → marked connected. */
+  connectNaukri = async (): Promise<{ success: boolean; message?: string; error?: string }> => {
+    return this.api.ipcRenderer.invoke("naukri:connect");
+  };
+
+  /** Mark Naukri as disconnected. */
+  disconnectNaukri = async (): Promise<{ success: boolean }> => {
+    return this.api.ipcRenderer.invoke("naukri:disconnect");
+  };
+
+  /** Run Naukri auto-apply batch. */
+  runNaukriAutoApply = async (options: {
+    keywords: string;
+    location?: string;
+    maxJobs?: number;
+    filters?: {
+      datePosted?: "past24Hours" | "pastWeek" | "pastMonth" | "anyTime";
+      experienceLevel?: string[];
+      workMode?: string[];
+      easyApplyOnly?: boolean;
+    };
+    pauseBeforeSubmit?: boolean;
+    username?: string;
+    password?: string;
+  }): Promise<any> => {
     return this.api.ipcRenderer.invoke("naukri:auto-apply", options);
   };
+
   launchNaukriBrowser = async (): Promise<any> => {
     return this.api.ipcRenderer.invoke("naukri:launch-browser");
   };

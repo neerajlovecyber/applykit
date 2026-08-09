@@ -5,9 +5,9 @@ import { fetchOpenRouterModels, fetchProviderModels } from "@/lib/providers/mode
 import { executeSearch } from "@/lib/jobs/search/search-manager";
 
 export function registerAppHandlers(): void {
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // PROFILES
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("profiles:get", () => dbQueries.getProfiles());
   ipcMain.handle("profiles:get-active", () => dbQueries.getActiveProfile());
@@ -17,9 +17,9 @@ export function registerAppHandlers(): void {
   ipcMain.handle("profiles:set-active", (_, id) => dbQueries.setActiveProfile(id));
   ipcMain.handle("profiles:delete", (_, id) => dbQueries.deleteProfile(id));
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // JOB POSTINGS & SEARCH SCRAPING
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("job-postings:get", (_, filters) => dbQueries.getJobPostings(filters));
   ipcMain.handle("job-postings:get-by-id", (_, id) => dbQueries.getJobPostingById(id));
@@ -30,9 +30,9 @@ export function registerAppHandlers(): void {
   ipcMain.handle("job-postings:get-stats", () => dbQueries.getJobPostingStats());
   ipcMain.handle("search:execute", (_, { options, queryId }) => executeSearch(options, queryId));
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // APPLICATIONS
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("applications:get", (_, profileId) => dbQueries.getApplications(profileId));
   ipcMain.handle("applications:get-by-id", (_, id) => dbQueries.getApplicationById(id));
@@ -44,18 +44,18 @@ export function registerAppHandlers(): void {
   ipcMain.handle("applications:update-fill-details", (_, { id, data }) => dbQueries.updateApplicationFillDetails(id, data));
   ipcMain.handle("applications:get-stats", () => dbQueries.getApplicationStats());
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // QA BANK
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("qa-bank:get", (_, profileId) => dbQueries.getQABankEntries(profileId));
   ipcMain.handle("qa-bank:find", (_, { profileId, pattern }) => dbQueries.findQAAnswer(profileId, pattern));
   ipcMain.handle("qa-bank:upsert", (_, data) => dbQueries.upsertQABankEntry(data));
   ipcMain.handle("qa-bank:delete", (_, id) => dbQueries.deleteQABankEntry(id));
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // SEARCH QUERIES
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("search-queries:get", (_, profileId) => dbQueries.getSearchQueries(profileId));
   ipcMain.handle("search-queries:create", (_, data) => dbQueries.createSearchQuery(data));
@@ -63,9 +63,9 @@ export function registerAppHandlers(): void {
   ipcMain.handle("search-queries:record-run", (_, { id, foundCount }) => dbQueries.recordSearchRun(id, foundCount));
   ipcMain.handle("search-queries:delete", (_, id) => dbQueries.deleteSearchQuery(id));
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // TASKS
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("tasks:get", (_, status) => dbQueries.getTasks(status));
   ipcMain.handle("tasks:get-by-id", (_, id) => dbQueries.getTaskById(id));
@@ -73,18 +73,18 @@ export function registerAppHandlers(): void {
   ipcMain.handle("tasks:update-status", (_, { id, status, resultData, errorMessage }) => dbQueries.updateTaskStatus(id, status, resultData, errorMessage));
   ipcMain.handle("tasks:get-stats", () => dbQueries.getTaskStats());
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // DOCUMENTS
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("documents:get", (_, profileId) => dbQueries.getDocuments(profileId));
   ipcMain.handle("documents:get-by-id", (_, id) => dbQueries.getDocumentById(id));
   ipcMain.handle("documents:insert", (_, data) => dbQueries.insertDocument(data));
   ipcMain.handle("documents:delete", (_, id) => dbQueries.deleteDocument(id));
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // AUTOMATION PLANS
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("automation-plans:get", (_, profileId) => dbQueries.getAutomationPlans(profileId));
   ipcMain.handle("automation-plans:get-by-id", (_, id) => dbQueries.getAutomationPlanById(id));
@@ -93,9 +93,9 @@ export function registerAppHandlers(): void {
   ipcMain.handle("automation-plans:record-run", (_, { id, appliedCount }) => dbQueries.recordAutomationRun(id, appliedCount));
   ipcMain.handle("automation-plans:delete", (_, id) => dbQueries.deleteAutomationPlan(id));
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // PLATFORMS (enhanced)
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("platforms:get", () => dbQueries.getPlatforms());
   ipcMain.handle("platforms:get-by-id", (_, id) => dbQueries.getPlatformById(id));
@@ -166,109 +166,115 @@ export function registerAppHandlers(): void {
     return { success: true, message: "Browser launched on Naukri.com with session" };
   });
 
-  ipcMain.handle("naukri:auto-apply", async (_, { keywords, location, maxJobs, pauseBeforeSubmit, username, password }) => {
+  // ===========================================================
+  // NAUKRI AUTOMATION — Connect-First Flow
+  // ===========================================================
+
+  /** Check if Naukri is connected (fast check via setting / auth token). */
+  ipcMain.handle("naukri:is-connected", () => {
+    const status = dbQueries.getSetting("naukri_connected");
+    const platform = dbQueries.getPlatformById("naukri");
+    return { connected: status === "true" || platform?.status === "connected" || !!platform?.auth_token };
+  });
+
+  /**
+   * Open the ApplyKit Chromium window to naukri.com/nlogin/login.
+   * Polls every 2s until user logs in. Saves status and auth token on success.
+   */
+  ipcMain.handle("naukri:connect", async () => {
+    const { getSharedContext } = await import("@/lib/execution/browser-pool");
+    let page: any = null;
+
+    try {
+      const ctx = await getSharedContext(false);
+      page = await ctx.newPage();
+
+      await page.goto("https://www.naukri.com/nlogin/login", { waitUntil: "domcontentloaded", timeout: 15000 });
+      console.log("[NaukriConnect] Waiting for user to log in (up to 5 min)...");
+
+      const deadline = Date.now() + 5 * 60 * 1000;
+      while (Date.now() < deadline) {
+        await page.waitForTimeout(2000);
+        const url: string = page.url();
+        const cookies = await page.context().cookies("https://www.naukri.com");
+        const naukAt = cookies.find((c: any) => c.name === "nauk_at");
+
+        if (
+          url.includes("naukri.com/mnjuser/homepage") ||
+          url.includes("naukri.com/my-naukri") ||
+          url.includes("naukri.com/naukri") ||
+          naukAt?.value
+        ) {
+          console.log("[NaukriConnect] Login detected! URL:", url);
+          dbQueries.setSetting("naukri_connected", "true");
+          if (naukAt?.value) {
+            dbQueries.updatePlatformAuthToken("naukri", naukAt.value, "connected");
+          } else {
+            dbQueries.updatePlatformStatus("naukri", "connected");
+          }
+          return { success: true, message: "Naukri connected successfully!" };
+        }
+      }
+
+      return { success: false, error: "Login timeout — please try again." };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  /** Mark Naukri as disconnected. */
+  ipcMain.handle("naukri:disconnect", () => {
+    dbQueries.setSetting("naukri_connected", "false");
+    dbQueries.updatePlatformStatus("naukri", "disconnected");
+    return { success: true };
+  });
+
+  /** Run Naukri Auto-Apply batch loop. */
+  ipcMain.handle("naukri:auto-apply", async (_, { keywords, location, maxJobs, filters, pauseBeforeSubmit, username, password }) => {
     const profile = dbQueries.getActiveProfile();
     if (!profile) return { error: "No active profile found. Please select a profile in Role Profiles." };
 
-    console.log(`[NaukriAutoApply] Starting search & auto-apply for keywords: "${keywords}", loc: "${location}"...`);
+    console.log(`[NaukriAutoApply] Starting batch apply: "${keywords}" in "${location}"...`);
 
-    // 1. Run Search Manager for Naukri
-    await executeSearch({
-      source: "naukri",
-      keywords: keywords || "DevOps Engineer",
-      location: location || "Bangalore",
-      maxPages: 2,
-    });
-
-    // 2. Fetch discovered Naukri jobs
-    const jobs = dbQueries.getJobPostings({ source: "naukri", limit: maxJobs || 10 });
-    if (jobs.length === 0) {
-      return { error: "No jobs discovered for given criteria." };
-    }
-
-    // 3. Instantiate Naukri Applier & Playwright stealth page
     const { createStealthPage } = await import("@/lib/execution/browser-pool");
     const { NaukriApplier } = await import("@/lib/execution/platforms/naukri-applier");
-
     const naukriApplier = new NaukriApplier();
-    let page;
-    const results = [];
+    let page: any = null;
 
     try {
       page = await createStealthPage({ headless: false });
 
-      // Step 1: Perform automated Playwright login using provided or stored credentials
-      const storedCredsRaw = dbQueries.getSetting("naukri_credentials");
-      let storedCreds: { username?: string; password?: string } = {};
-      if (storedCredsRaw) {
-        try { storedCreds = JSON.parse(storedCredsRaw); } catch {}
-      }
+      const batchResult = await naukriApplier.runBatchApply(page, {
+        username,
+        password,
+        keywords: keywords || "Software Engineer",
+        location: location || "",
+        maxJobs: maxJobs || 10,
+        filters: filters || {},
+        pauseBeforeSubmit: !!pauseBeforeSubmit,
+        profileId: profile.id,
+      });
 
-      const loginUser = username || storedCreds.username;
-      const loginPass = password || storedCreds.password;
-      const platform = dbQueries.getPlatformById("naukri");
-
-      if (loginUser && loginPass) {
-        console.log(`[NaukriAutoApply] Executing Playwright UI login for ${loginUser}...`);
-        const loginRes = await naukriApplier.login(page, loginUser, loginPass);
-        if (loginRes.authToken) {
-          dbQueries.updatePlatformAuthToken("naukri", loginRes.authToken, "connected");
-        }
-      } else if (platform?.auth_token) {
-        await page.context().addCookies([
-          { name: "nauk_at", value: platform.auth_token, domain: ".naukri.com", path: "/", httpOnly: true, secure: true }
-        ]);
-        await page.goto("https://www.naukri.com", { waitUntil: "domcontentloaded" });
-      } else {
-        await page.goto("https://www.naukri.com/nlogin/login", { waitUntil: "domcontentloaded" });
-      }
-
-      for (const job of jobs.slice(0, maxJobs || 10)) {
-        const app = dbQueries.createApplication({
-          job_id: job.id,
-          profile_id: profile.id,
-          status: "pending_review",
-        });
-
-        console.log(`[NaukriAutoApply] Applying to ${job.title} at ${job.company}...`);
-
-        const execRes = await naukriApplier.apply(page, {
-          applicationId: app.id,
-          jobUrl: job.application_url || `https://www.naukri.com/job-listings-${job.source_id}`,
-          platform: "naukri",
-          profileId: profile.id,
-          pauseBeforeSubmit: !!pauseBeforeSubmit,
-        });
-
-        results.push({
-          jobId: job.id,
-          title: job.title,
-          company: job.company,
-          status: execRes.status,
-          success: execRes.success,
-          fieldsFilled: execRes.fieldsFilled,
-          errorMessage: execRes.errorMessage,
-        });
-      }
-
-      return { success: true, processed: results.length, results };
+      return {
+        success: true,
+        processed: batchResult.processed,
+        applied: batchResult.applied,
+        skipped: batchResult.skipped,
+        failed: batchResult.failed,
+        results: batchResult.results,
+      };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
     } finally {
       if (page) {
-        try {
-          await page.close();
-        } catch {
-          // ignore
-        }
+        try { await page.close(); } catch { /* ignore */ }
       }
     }
   });
 
-
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // LINKEDIN AUTOMATION — Connect-First Flow
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   //
   // Strategy: ONE isolated Playwright profile (~/.applykit/browser_profile)
   // persists all sessions. User logs in once via "Connect Account" — all
@@ -289,7 +295,7 @@ export function registerAppHandlers(): void {
    * Polls every 2s until the user logs in (URL becomes /feed/).
    * Times out after 5 minutes. Saves connection status on success.
    *
-   * This is a long-running IPC — the UI shows a "Waiting for login…" state.
+   * This is a long-running IPC — the UI shows a "Waiting for login..." state.
    */
   ipcMain.handle("linkedin:connect", async () => {
     const { getSharedContext } = await import("@/lib/execution/browser-pool");
@@ -387,17 +393,17 @@ export function registerAppHandlers(): void {
     }
   });
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // SETTINGS
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("settings:get-all", () => dbQueries.getAllSettings());
   ipcMain.handle("settings:get", (_, key) => dbQueries.getSetting(key));
   ipcMain.handle("settings:set", (_, { key, value }) => dbQueries.setSetting(key, value));
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // LLM / VERCEL AI SDK INTEGRATION & DYNAMIC OPENROUTER DISCOVERY
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("llm:list-providers", () => llmRegistry.listProviders());
   ipcMain.handle("llm:set-active-provider", (_, id) => llmRegistry.setActiveProvider(id));
@@ -406,7 +412,7 @@ export function registerAppHandlers(): void {
   ipcMain.handle("llm:fetch-openrouter-models", () => fetchOpenRouterModels());
   ipcMain.handle("llm:fetch-provider-models", (_, { provider, apiKey }) => {
     let keyToUse = apiKey;
-    if (!keyToUse || keyToUse.startsWith("•••")) {
+    if (!keyToUse || keyToUse.startsWith("***")) {
       const savedConfig = llmRegistry.getProviderConfig(provider);
       keyToUse = savedConfig?.apiKey || "";
     }
@@ -418,9 +424,9 @@ export function registerAppHandlers(): void {
   ipcMain.handle("llm:parse-resume", (_, resumeText) => llmRegistry.parseResume(resumeText));
   ipcMain.handle("llm:tailor-resume", (_, { profileSummary, jobDescription }) => llmRegistry.tailorResume(profileSummary, jobDescription));
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // LEGACY: Jobs & History (backward compatibility)
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   ipcMain.handle("jobs:get", (_, status) => dbQueries.getJobs(status));
   ipcMain.handle("jobs:add", (_, data) => dbQueries.addJob(data));
@@ -435,4 +441,3 @@ export function registerAppHandlers(): void {
 
   console.log("[AppHandler] All IPC Handlers Registered.");
 }
-

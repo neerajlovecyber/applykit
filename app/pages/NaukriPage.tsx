@@ -176,28 +176,21 @@ export const NaukriPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Credentials Inputs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border/40">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Naukri Email / Username</Label>
-            <Input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your Naukri email or username"
-              className="text-xs"
-            />
+        {/* Centralized Browser Session Status */}
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/40 text-xs">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-primary shrink-0" />
+            <span>
+              {isConnected
+                ? "Centralized Browser Session Active — Connected via Chromium browser login. Session cookies are automatically synced."
+                : "No active browser session detected. Click 'Connect via Browser' in Settings to log in."}
+            </span>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Naukri Password</Label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-              className="text-xs"
-            />
-          </div>
+          <Link to="/settings">
+            <Button size="sm" variant="outline" className="text-xs h-7 gap-1">
+              <Settings className="h-3 w-3" /> Manage Connection
+            </Button>
+          </Link>
         </div>
 
         {/* Form Controls */}

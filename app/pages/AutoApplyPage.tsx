@@ -70,7 +70,7 @@ export const AutoApplyPage: React.FC = () => {
 
   // ── Connection state ────────────────────────────────────────────────────
   const [liConnectState, setLiConnectState] = useState<ConnectState>("idle");
-  const [naukriConnected, setNaukriConnected] = useState(false);
+  const [naukriConnectState, setNaukriConnectState] = useState<ConnectState>("idle");
 
   // ── Search config ───────────────────────────────────────────────────────
   const [keywords, setKeywords] = useState("Software Engineer");
@@ -78,11 +78,7 @@ export const AutoApplyPage: React.FC = () => {
   const [maxJobs, setMaxJobs] = useState<number>(10);
   const [pauseBeforeSubmit, setPauseBeforeSubmit] = useState(false);
 
-  // ── Naukri creds ────────────────────────────────────────────────────────
-  const [naukriUsername, setNaukriUsername] = useState("");
-  const [naukriPassword, setNaukriPassword] = useState("");
-
-  // ── LinkedIn advanced filters ───────────────────────────────────────────
+  // ── Advanced filters ───────────────────────────────────────────────────
   const [showFilters, setShowFilters] = useState(false);
   const [easyApplyOnly, setEasyApplyOnly] = useState(true);
   const [under10Applicants, setUnder10Applicants] = useState(false);
@@ -104,7 +100,7 @@ export const AutoApplyPage: React.FC = () => {
 
   useEffect(() => {
     checkLinkedInConnection();
-    loadNaukriCreds();
+    checkNaukriConnection();
     if (activeProfile?.target_titles) {
       try {
         const titles = JSON.parse(activeProfile.target_titles);
@@ -126,17 +122,13 @@ export const AutoApplyPage: React.FC = () => {
     }
   };
 
-  const loadNaukriCreds = async () => {
+  const checkNaukriConnection = async () => {
     try {
-      const raw = await conveyor.data.getSetting("naukri_credentials");
-      if (raw) {
-        const p = JSON.parse(raw);
-        if (p.username) setNaukriUsername(p.username);
-        if (p.password) setNaukriPassword(p.password);
-      }
-      const platform = await conveyor.data.getPlatformById("naukri");
-      setNaukriConnected(platform?.status === "connected" || !!platform?.auth_token);
-    } catch { /* ignore */ }
+      const res = await conveyor.data.isNaukriConnected();
+      setNaukriConnectState(res?.connected ? "connected" : "disconnected");
+    } catch {
+      setNaukriConnectState("disconnected");
+    }
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -149,7 +141,7 @@ export const AutoApplyPage: React.FC = () => {
     setStatusMsg("🌐 Opening Chromium browser... Log in to LinkedIn in the window that appears. We'll detect your login automatically.");
 
     try {
-      const res = await conveyor.data.connectLinkedIn(); // long-running, awaits login
+      const res = await conveyor.data.connectLinkedIn();
       if (res?.success) {
         setLiConnectState("connected");
         setStatusType("success");
@@ -170,6 +162,36 @@ export const AutoApplyPage: React.FC = () => {
     await conveyor.data.disconnectLinkedIn();
     setLiConnectState("disconnected");
     setStatusMsg("LinkedIn disconnected. Your session cookies are kept — reconnecting will be instant.");
+    setStatusType("info");
+  };
+
+  const handleConnectNaukri = async () => {
+    setNaukriConnectState("connecting");
+    setStatusType("info");
+    setStatusMsg("🌐 Opening Chromium browser... Log in to Naukri in the window that appears. We'll detect your login automatically.");
+
+    try {
+      const res = await conveyor.data.connectNaukri();
+      if (res?.success) {
+        setNaukriConnectState("connected");
+        setStatusType("success");
+        setStatusMsg("✅ Naukri connected! Your session is saved — auto-apply is ready to go.");
+      } else {
+        setNaukriConnectState("disconnected");
+        setStatusType("error");
+        setStatusMsg(`⚠️ ${res?.error || "Login not detected. Please try again."}`);
+      }
+    } catch (err) {
+      setNaukriConnectState("disconnected");
+      setStatusType("error");
+      setStatusMsg(err instanceof Error ? err.message : "Connection failed.");
+    }
+  };
+
+  const handleDisconnectNaukri = async () => {
+    await conveyor.data.disconnectNaukri();
+    setNaukriConnectState("disconnected");
+    setStatusMsg("Naukri disconnected. Your session cookies are kept — reconnecting will be instant.");
     setStatusType("info");
   };
 
@@ -228,23 +250,29 @@ export const AutoApplyPage: React.FC = () => {
   };
 
   const handleRunNaukri = async () => {
+    if (naukriConnectState !== "connected") {
+      setStatusType("error");
+      setStatusMsg("⚠️ Please connect your Naukri account first.");
+      return;
+    }
     setIsRunning(true);
     setLogResults([]);
     setRunStats(null);
     setStatusType("info");
-    setStatusMsg("🚀 Starting Naukri auto-apply...");
+    setStatusMsg("🚀 Auto-apply started — navigating Naukri job search, applying to postings...");
 
     try {
-      if (naukriUsername && naukriPassword) {
-        await conveyor.data.setSetting("naukri_credentials", JSON.stringify({ username: naukriUsername, password: naukriPassword }));
-      }
       const response = await conveyor.data.runNaukriAutoApply({
         keywords,
-        location: location || "Bangalore",
+        location: location || undefined,
         maxJobs,
+        filters: {
+          easyApplyOnly,
+          datePosted: datePosted as any,
+          experienceLevel: selectedExperience.length ? selectedExperience : undefined,
+          workMode: selectedWorkMode.length ? selectedWorkMode : undefined,
+        },
         pauseBeforeSubmit,
-        username: naukriUsername,
-        password: naukriPassword,
       });
 
       if (response?.error) {
@@ -252,10 +280,14 @@ export const AutoApplyPage: React.FC = () => {
         setStatusMsg(`⚠️ ${response.error}`);
       } else {
         setStatusType("success");
-        setRunStats({ processed: response.processed || 0 });
-        setStatusMsg(`✅ Applied to ${response.processed || 0} jobs.`);
+        setRunStats({
+          processed: response.processed || 0,
+          applied: response.applied || 0,
+          skipped: response.skipped || 0,
+          failed: response.failed || 0,
+        });
+        setStatusMsg(`✅ Done! Applied: ${response.applied || 0} | Skipped: ${response.skipped || 0} | Failed: ${response.failed || 0}`);
         setLogResults(response.results || []);
-        setNaukriConnected(true);
       }
     } catch (err) {
       setStatusType("error");
@@ -271,6 +303,8 @@ export const AutoApplyPage: React.FC = () => {
   const isLinkedin = activePlatform === "linkedin";
   const liIsConnected = liConnectState === "connected";
   const liIsConnecting = liConnectState === "connecting";
+  const naukriIsConnected = naukriConnectState === "connected";
+  const naukriIsConnecting = naukriConnectState === "connecting";
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
@@ -283,7 +317,7 @@ export const AutoApplyPage: React.FC = () => {
       <div className="flex items-center gap-2">
         {(["linkedin", "naukri"] as Platform[]).map((p) => {
           const isActive = activePlatform === p;
-          const isConn = p === "linkedin" ? liIsConnected : naukriConnected;
+          const isConn = p === "linkedin" ? liIsConnected : naukriIsConnected;
           return (
             <button
               key={p}
@@ -309,115 +343,55 @@ export const AutoApplyPage: React.FC = () => {
       <div className="p-6 bg-card border border-border rounded-2xl space-y-5">
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/40 pb-4">
           <div className="flex items-center gap-3">
-            <div className={cn("p-2 rounded-xl", isLinkedin ? "bg-blue-500/20 text-blue-400" : "bg-emerald-500/20 text-emerald-400")}>
+            <div className={cn("p-2 rounded-xl shrink-0", isLinkedin ? "bg-blue-500/20 text-blue-400" : "bg-emerald-500/20 text-emerald-400")}>
               {isLinkedin ? <Rocket className="h-6 w-6" /> : <Zap className="h-6 w-6" />}
             </div>
             <div>
-              <h2 className="text-lg font-bold text-foreground">
-                {isLinkedin ? "LinkedIn Easy Apply Engine" : "Naukri Auto-Apply Engine"}
-              </h2>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-lg font-bold text-foreground">
+                  {isLinkedin ? "LinkedIn Easy Apply Engine" : "Naukri Auto-Apply Engine"}
+                </h2>
+                <Badge
+                  variant={(isLinkedin ? liIsConnected : naukriIsConnected) ? "secondary" : "outline"}
+                  className={cn(
+                    "text-xs font-semibold px-2.5 py-0.5 gap-1.5 transition-all",
+                    (isLinkedin ? liIsConnected : naukriIsConnected)
+                      ? isLinkedin ? "bg-blue-500/10 text-blue-400 border-blue-500/30" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      : (isLinkedin ? liIsConnecting : naukriIsConnecting)
+                      ? "bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", (isLinkedin ? liIsConnected : naukriIsConnected) ? (isLinkedin ? "bg-blue-400" : "bg-emerald-400") : (isLinkedin ? liIsConnecting : naukriIsConnecting) ? "bg-amber-400 animate-ping" : "bg-muted-foreground")} />
+                  {(isLinkedin ? liIsConnected : naukriIsConnected) ? "Connected ✓" : (isLinkedin ? liIsConnecting : naukriIsConnecting) ? "Waiting for login…" : "Disconnected"}
+                </Badge>
+              </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {isLinkedin
-                  ? "Connect once — auto-apply runs forever using your saved session"
-                  : "One-click job search and auto-application for Naukri.com"}
+                  ? "Automated batch search & application using your saved LinkedIn session."
+                  : "Automated batch search & application across Naukri jobs seamlessly."}
               </p>
             </div>
           </div>
-        </div>
 
-        {/* ── LinkedIn: Connect Account Card ──────────────────────────────── */}
-        {isLinkedin && (
-          <div className={cn(
-            "rounded-xl border p-4 flex items-center justify-between gap-4 transition-all",
-            liIsConnected
-              ? "bg-blue-500/8 border-blue-500/25"
-              : liIsConnecting
-                ? "bg-amber-500/8 border-amber-500/25"
-                : "bg-muted/30 border-border/50"
-          )}>
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                "p-2 rounded-lg",
-                liIsConnected ? "bg-blue-500/20" : liIsConnecting ? "bg-amber-500/20" : "bg-muted"
-              )}>
-                {liIsConnected
-                  ? <Wifi className="h-5 w-5 text-blue-400" />
-                  : liIsConnecting
-                    ? <Loader2 className="h-5 w-5 text-amber-400 animate-spin" />
-                    : <WifiOff className="h-5 w-5 text-muted-foreground" />
+          {!(isLinkedin ? liIsConnected : naukriIsConnected) && (
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              <Button
+                size="sm"
+                onClick={isLinkedin ? handleConnectLinkedIn : handleConnectNaukri}
+                disabled={isLinkedin ? liIsConnecting : naukriIsConnecting}
+                className={cn("text-xs h-8 gap-1.5 text-white", isLinkedin ? "bg-blue-600 hover:bg-blue-500" : "bg-emerald-600 hover:bg-emerald-500")}
+              >
+                {(isLinkedin ? liIsConnecting : naukriIsConnecting)
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Logging in…</>
+                  : <><LogIn className="h-3.5 w-3.5" /> Connect {isLinkedin ? "LinkedIn" : "Naukri"}</>
                 }
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  LinkedIn Account
-                  {liIsConnected && (
-                    <Badge className="text-[10px] px-2 py-0 bg-blue-500/15 text-blue-400 border-blue-500/30">
-                      Connected ✓
-                    </Badge>
-                  )}
-                  {liIsConnecting && (
-                    <Badge className="text-[10px] px-2 py-0 bg-amber-500/15 text-amber-400 border-amber-500/30">
-                      Waiting for login…
-                    </Badge>
-                  )}
-                  {!liIsConnected && !liIsConnecting && (
-                    <Badge variant="outline" className="text-[10px] px-2 py-0 text-muted-foreground">
-                      Not connected
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {liIsConnected
-                    ? "Session saved in ApplyKit browser. Auto-apply will use this session."
-                    : liIsConnecting
-                      ? "Log in to LinkedIn in the browser window that just opened. We'll detect it automatically."
-                      : "Click Connect → log in once → session saved permanently."}
-                </p>
-              </div>
+              </Button>
             </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {liIsConnected ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleDisconnectLinkedIn}
-                  className="text-xs gap-1.5 text-muted-foreground border-border/60 hover:text-rose-400 hover:border-rose-500/40"
-                >
-                  <LogOut className="h-3.5 w-3.5" /> Disconnect
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={handleConnectLinkedIn}
-                  disabled={liIsConnecting}
-                  className="text-xs gap-1.5 bg-blue-600 hover:bg-blue-500 text-white"
-                >
-                  {liIsConnecting
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Waiting for login…</>
-                    : <><LogIn className="h-3.5 w-3.5" /> Connect LinkedIn</>
-                  }
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── Naukri: Credentials ─────────────────────────────────────────── */}
-        {!isLinkedin && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border/40">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Naukri Email / Username</Label>
-              <Input type="text" value={naukriUsername} onChange={(e) => setNaukriUsername(e.target.value)} placeholder="Enter your Naukri email" className="text-xs" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Password</Label>
-              <Input type="password" value={naukriPassword} onChange={(e) => setNaukriPassword(e.target.value)} placeholder="••••••••••••" className="text-xs" />
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* ── Search Config ───────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-border/40">
@@ -447,61 +421,73 @@ export const AutoApplyPage: React.FC = () => {
           </div>
         </div>
 
-        {/* ── LinkedIn Advanced Filters ───────────────────────────────────── */}
-        {isLinkedin && (
-          <div className="border border-border/40 rounded-xl overflow-hidden">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/30 hover:bg-muted/50 transition-colors text-xs font-semibold text-muted-foreground"
-            >
-              <span className="flex items-center gap-2">
-                <Filter className="h-3.5 w-3.5" />
-                Advanced Filters
-                {(selectedExperience.length + selectedJobType.length + selectedWorkMode.length) > 0 && (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-500/20 text-blue-400 border-blue-500/30">
-                    {selectedExperience.length + selectedJobType.length + selectedWorkMode.length} active
-                  </Badge>
-                )}
-              </span>
-              {showFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            </button>
+        {/* ── Advanced Filters ───────────────────────────────────────────── */}
+        <div className="border border-border/40 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/30 hover:bg-muted/50 transition-colors text-xs font-semibold text-muted-foreground"
+          >
+            <span className="flex items-center gap-2">
+              <Filter className="h-3.5 w-3.5" />
+              Advanced Filters
+              {(selectedExperience.length + selectedJobType.length + selectedWorkMode.length) > 0 && (
+                <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0", isLinkedin ? "bg-blue-500/20 text-blue-400 border-blue-500/30" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30")}>
+                  {selectedExperience.length + selectedJobType.length + selectedWorkMode.length} active
+                </Badge>
+              )}
+            </span>
+            {showFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
 
-            {showFilters && (
-              <div className="p-4 space-y-4">
-                <div className="flex flex-wrap gap-4">
-                  <div className="flex items-center gap-2">
-                    <Switch checked={easyApplyOnly} onCheckedChange={setEasyApplyOnly} id="easy-apply-only" />
-                    <Label htmlFor="easy-apply-only" className="text-xs cursor-pointer">Easy Apply only</Label>
-                  </div>
+          {showFilters && (
+            <div className="p-4 space-y-4">
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch checked={easyApplyOnly} onCheckedChange={setEasyApplyOnly} id="easy-apply-only" />
+                  <Label htmlFor="easy-apply-only" className="text-xs cursor-pointer">{isLinkedin ? "Easy Apply only" : "Single-click / Direct Apply only"}</Label>
+                </div>
+                {isLinkedin && (
                   <div className="flex items-center gap-2">
                     <Switch checked={under10Applicants} onCheckedChange={setUnder10Applicants} id="under-10" />
                     <Label htmlFor="under-10" className="text-xs cursor-pointer">Under 10 applicants</Label>
                   </div>
-                </div>
-                {/* Date posted */}
-                <FilterGroup label="Date Posted" items={[
-                  { v: "anyTime", l: "Any time" }, { v: "pastMonth", l: "Past month" },
-                  { v: "pastWeek", l: "Past week" }, { v: "past24Hours", l: "Past 24h" },
-                ]} selected={[datePosted]} onToggle={(v) => setDatePosted(v)} single />
-                {/* Experience */}
-                <FilterGroup label="Experience Level" items={[
+                )}
+              </div>
+
+              {/* Date posted */}
+              <FilterGroup label="Date Posted" items={[
+                { v: "anyTime", l: "Any time" }, { v: "pastMonth", l: "Past month" },
+                { v: "pastWeek", l: "Past week" }, { v: "past24Hours", l: "Past 24h" },
+              ]} selected={[datePosted]} onToggle={(v) => setDatePosted(v)} single activePlatform={activePlatform} />
+
+              {/* Experience */}
+              <FilterGroup label="Experience Level" items={
+                isLinkedin ? [
                   { v: "internship", l: "Internship" }, { v: "entryLevel", l: "Entry level" },
                   { v: "associate", l: "Associate" }, { v: "midSeniorLevel", l: "Mid-Senior" },
                   { v: "director", l: "Director" }, { v: "executive", l: "Executive" },
-                ]} selected={selectedExperience} onToggle={(v) => toggleFilter(selectedExperience, setSelectedExperience, v)} />
-                {/* Job type */}
+                ] : [
+                  { v: "freshers", l: "Freshers (0 yrs)" }, { v: "1to3Years", l: "1-3 Years" },
+                  { v: "3to5Years", l: "3-5 Years" }, { v: "5to10Years", l: "5-10 Years" },
+                  { v: "10plusYears", l: "10+ Years" },
+                ]
+              } selected={selectedExperience} onToggle={(v) => toggleFilter(selectedExperience, setSelectedExperience, v)} activePlatform={activePlatform} />
+
+              {/* Job type (LinkedIn) */}
+              {isLinkedin && (
                 <FilterGroup label="Job Type" items={[
                   { v: "fullTime", l: "Full-time" }, { v: "partTime", l: "Part-time" },
                   { v: "contract", l: "Contract" }, { v: "temporary", l: "Temporary" },
-                ]} selected={selectedJobType} onToggle={(v) => toggleFilter(selectedJobType, setSelectedJobType, v)} />
-                {/* Work mode */}
-                <FilterGroup label="Work Mode" items={[
-                  { v: "onSite", l: "On-site" }, { v: "remote", l: "Remote" }, { v: "hybrid", l: "Hybrid" },
-                ]} selected={selectedWorkMode} onToggle={(v) => toggleFilter(selectedWorkMode, setSelectedWorkMode, v)} />
-              </div>
-            )}
-          </div>
-        )}
+                ]} selected={selectedJobType} onToggle={(v) => toggleFilter(selectedJobType, setSelectedJobType, v)} activePlatform={activePlatform} />
+              )}
+
+              {/* Work mode */}
+              <FilterGroup label="Work Mode" items={[
+                { v: "onSite", l: "On-site" }, { v: "remote", l: "Remote" }, { v: "hybrid", l: "Hybrid" },
+              ]} selected={selectedWorkMode} onToggle={(v) => toggleFilter(selectedWorkMode, setSelectedWorkMode, v)} activePlatform={activePlatform} />
+            </div>
+          )}
+        </div>
 
         {/* ── Run Controls ────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between pt-2 border-t border-border/40">
@@ -512,15 +498,17 @@ export const AutoApplyPage: React.FC = () => {
 
           <Button
             onClick={isLinkedin ? handleRunLinkedIn : handleRunNaukri}
-            disabled={isRunning || (isLinkedin && !liIsConnected) || liIsConnecting}
+            disabled={isRunning || (isLinkedin ? !liIsConnected || liIsConnecting : !naukriIsConnected || naukriIsConnecting)}
             size="lg"
             className={cn(
-              "gap-2 text-xs font-semibold shadow-md",
+              "gap-2 text-xs font-semibold shadow-md text-white",
               isLinkedin
                 ? liIsConnected
-                  ? "bg-blue-600 hover:bg-blue-500 text-white"
+                  ? "bg-blue-600 hover:bg-blue-500"
                   : "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                : naukriIsConnected
+                  ? "bg-emerald-600 hover:bg-emerald-500"
+                  : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
           >
             {isRunning
@@ -529,7 +517,9 @@ export const AutoApplyPage: React.FC = () => {
                 ? liIsConnected
                   ? <><Rocket className="h-4 w-4" /> Start LinkedIn Auto-Apply</>
                   : <><Unplug className="h-4 w-4" /> Connect Account First</>
-                : <><Zap className="h-4 w-4 fill-current" /> Start Naukri Auto-Apply</>
+                : naukriIsConnected
+                  ? <><Zap className="h-4 w-4 fill-current" /> Start Naukri Auto-Apply</>
+                  : <><Unplug className="h-4 w-4" /> Connect Account First</>
             }
           </Button>
         </div>
@@ -626,24 +616,30 @@ const FilterGroup: React.FC<{
   selected: string[];
   onToggle: (v: string) => void;
   single?: boolean;
-}> = ({ label, items, selected, onToggle, single }) => (
+  activePlatform?: Platform;
+}> = ({ label, items, selected, onToggle, activePlatform = "linkedin" }) => (
   <div className="space-y-1.5">
     <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
     <div className="flex flex-wrap gap-2">
-      {items.map((item) => (
-        <button
-          key={item.v}
-          onClick={() => onToggle(item.v)}
-          className={cn(
-            "px-3 py-1 rounded-lg text-xs font-medium border transition-all",
-            selected.includes(item.v)
-              ? "bg-blue-500/15 text-blue-400 border-blue-500/40"
-              : "bg-muted/30 text-muted-foreground border-border hover:border-blue-500/30"
-          )}
-        >
-          {item.l}
-        </button>
-      ))}
+      {items.map((item) => {
+        const isSel = selected.includes(item.v);
+        return (
+          <button
+            key={item.v}
+            onClick={() => onToggle(item.v)}
+            className={cn(
+              "px-3 py-1 rounded-lg text-xs font-medium border transition-all",
+              isSel
+                ? activePlatform === "linkedin"
+                  ? "bg-blue-500/15 text-blue-400 border-blue-500/40"
+                  : "bg-emerald-500/15 text-emerald-400 border-emerald-500/40"
+                : "bg-muted/30 text-muted-foreground border-border hover:border-muted-foreground/40"
+            )}
+          >
+            {item.l}
+          </button>
+        );
+      })}
     </div>
   </div>
 );
