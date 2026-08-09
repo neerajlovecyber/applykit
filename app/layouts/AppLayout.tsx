@@ -233,40 +233,38 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             </span>
           </div>
 
-          {/* Global Run / Pause Engine Status & Active Execution Pill */}
+          {/* Global Run / Stop Dynamic Engine Control */}
           <div className="flex items-center gap-4">
-            {execution.isRunning && (
-              <Link
-                to="/auto-apply"
-                className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/25 transition-colors"
-              >
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>Auto-Applying ({execution.platform.toUpperCase()})</span>
-                <span className="text-[11px] text-emerald-300 font-mono underline">View Log</span>
-              </Link>
-            )}
-
             <div className="text-xs text-muted-foreground flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full ${isRunning || execution.isRunning ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"}`} />
-              <span>{isRunning || execution.isRunning ? "Engine Running" : "Engine Idle"}</span>
+              <span>
+                {execution.isRunning
+                  ? `Auto-Applying (${execution.platform.toUpperCase()})`
+                  : isRunning
+                  ? "Engine Running"
+                  : "Engine Idle"}
+              </span>
             </div>
 
-            {isRunning ? (
+            {isRunning || execution.isRunning ? (
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={pauseQueue}
-                className="gap-2 h-7 text-xs px-3 shadow-xs"
+                onClick={() => {
+                  if (isRunning) pauseQueue();
+                  if (execution.isRunning) execution.finishExecution(false, "Execution stopped by user");
+                }}
+                className="gap-2 h-7 text-xs px-3 shadow-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white"
               >
-                <Pause className="h-3.5 w-3.5" />
-                Pause
+                <Pause className="h-3.5 w-3.5 fill-current" />
+                Stop {execution.isRunning ? execution.platform.toUpperCase() : "Queue"}
               </Button>
             ) : (
               <Button
                 variant="default"
                 size="sm"
                 onClick={startQueue}
-                className="gap-2 h-7 text-xs px-3 shadow-xs"
+                className="gap-2 h-7 text-xs px-3 shadow-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
               >
                 <Play className="h-3.5 w-3.5 fill-current" />
                 Run Queue ({pendingCount})

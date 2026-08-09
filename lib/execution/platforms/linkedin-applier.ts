@@ -403,7 +403,7 @@ export class LinkedInApplier implements PlatformApplier {
         try {
           // Extract job details from card (get_job_main_details pattern)
           const titleEl = await card.$(
-            "a.job-card-list__title, a.job-card-container__link, a.job-card-list__title--link, a[data-control-id]"
+            "a[href*='/jobs/view/'], a.job-card-list__title, a.job-card-container__link, a.job-card-list__title--link, a[data-control-id], a.fb61fb54"
           );
           if (titleEl) {
             const rawText = await titleEl.innerText();
@@ -424,12 +424,12 @@ export class LinkedInApplier implements PlatformApplier {
           }
 
           const companyEl = await card.$(
-            ".artdeco-entity-lockup__subtitle, .job-card-container__primary-description, .job-card-container__company-name"
+            "a[href*='/company/'], .artdeco-entity-lockup__subtitle, .job-card-container__primary-description, .job-card-container__company-name"
           );
           if (companyEl) company = (await companyEl.innerText()).trim();
 
           const locationEl = await card.$(
-            ".artdeco-entity-lockup__caption, .job-card-container__metadata-item, .job-card-container__metadata-wrapper"
+            ".artdeco-entity-lockup__caption, .job-card-container__metadata-item, .job-card-container__metadata-wrapper, span._3876217e"
           );
           if (locationEl) location = (await locationEl.innerText()).trim();
 
@@ -463,6 +463,30 @@ export class LinkedInApplier implements PlatformApplier {
             await card.click();
           }
           await randomDelay(1200, 2500);
+
+          // Fallback: If title or company is generic/unknown, extract from open detail panel on right
+          if (title === "Unknown" || company === "Unknown" || !title || !company) {
+            try {
+              const detailTitle = await page.$eval(
+                "h1, h2.job-details-jobs-unified-top-card__job-title, .jobs-unified-top-card__job-title, a[href*='/jobs/view/']",
+                (el) => el.textContent?.trim()
+              ).catch(() => null);
+
+              const detailCompany = await page.$eval(
+                "a[href*='/company/'], .job-details-jobs-unified-top-card__company-name",
+                (el) => el.textContent?.trim()
+              ).catch(() => null);
+
+              const detailLocation = await page.$eval(
+                ".job-details-jobs-unified-top-card__bullet, .jobs-unified-top-card__bullet, span._3876217e",
+                (el) => el.textContent?.trim()
+              ).catch(() => null);
+
+              if (detailTitle) title = detailTitle;
+              if (detailCompany) company = detailCompany;
+              if (detailLocation) location = detailLocation;
+            } catch { /* ignore fallback errors */ }
+          }
 
           // Check if Easy Apply button exists in detail panel
           const easyApplyBtn = await page.$(

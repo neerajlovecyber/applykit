@@ -496,22 +496,42 @@ export function getApplicationsWithJobs(profileId?: string): (Application & {
   let sql = `
     SELECT 
       a.*,
-      j.title,
-      j.company,
+      COALESCE(j.title, 'Untitled Role') as title,
+      COALESCE(j.company, 'Unknown Company') as company,
       j.location,
-      j.source as platform,
+      COALESCE(j.source, 'linkedin') as platform,
       j.application_url
     FROM applications a
-    JOIN job_postings j ON a.job_id = j.id
+    LEFT JOIN job_postings j ON (a.job_id = j.id OR a.job_id = j.source_id)
   `;
   const params: string[] = [];
   if (profileId) {
-    sql += " WHERE a.profile_id = ?";
+    sql += " WHERE (a.profile_id = ? OR a.profile_id IS NULL OR a.profile_id = '')";
     params.push(profileId);
   }
-  sql += " GROUP BY LOWER(j.title), LOWER(j.company), j.source ORDER BY a.created_at DESC";
+  sql += " ORDER BY a.created_at DESC";
 
-  return getDb().prepare(sql).all(...params) as any[];
+  let results = getDb().prepare(sql).all(...params) as any[];
+
+  // Fallback: If filtered list is empty, query all applications across all profiles
+  if (results.length === 0 && profileId) {
+    const fallbackSql = `
+      SELECT 
+        a.*,
+        COALESCE(j.title, 'Untitled Role') as title,
+        COALESCE(j.company, 'Unknown Company') as company,
+        j.location,
+        COALESCE(j.source, 'linkedin') as platform,
+        j.application_url
+      FROM applications a
+      LEFT JOIN job_postings j ON (a.job_id = j.id OR a.job_id = j.source_id)
+      ORDER BY a.created_at DESC
+    `;
+    results = getDb().prepare(fallbackSql).all() as any[];
+  }
+
+  console.log(`[DB] getApplicationsWithJobs returning ${results.length} application records.`);
+  return results;
 }
 
 export function clearApplicationHistory(profileId?: string): void {
@@ -686,6 +706,32 @@ export function recordAutoApplyResult(
       });
     }
     appRecord = getApplicationById(appRecord.id)!;
+  }
+
+  // Record entry into history log table for the History UI tab
+  try {
+    const profile = getProfileById(profileId);
+    const historyStatus =
+      result.success || result.status === "submitted" || result.status === "applied"
+        ? "applied"
+        : result.status === "pending_review" || result.status === "pending"
+        ? "pending"
+        : "failed";
+
+    addHistoryEntry({
+      job_id: result.jobId || job.id,
+      title: result.title || "Untitled Role",
+      company: result.company || "Unknown Company",
+      platform: platform || "linkedin",
+      url: result.jobUrl || `https://www.linkedin.com/jobs/view/${result.jobId || ""}`,
+      profile_id: profileId,
+      profile_name: profile?.name || "Default Profile",
+      status: historyStatus,
+      error_message: result.errorMessage || null,
+    });
+    console.log(`[DB] Saved Application & History Record -> Job: "${result.title}" @ "${result.company}" | Status: ${result.status} | Platform: ${platform}`);
+  } catch (histErr) {
+    console.warn("[recordAutoApplyResult] Failed to write history entry:", histErr);
   }
 
   return { job, application: appRecord };
@@ -1291,6 +1337,8 @@ export function addHistoryEntry(data: Omit<HistoryEntry, "id" | "applied_at">): 
 
   return getDb().prepare("SELECT * FROM history WHERE id = ?").get(id) as HistoryEntry;
 }
+
+
 
 export function getHistoryStats(): { total: number; applied: number; failed: number; todayCount: number; weekCount: number } {
   const db = getDb();
