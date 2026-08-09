@@ -1,5 +1,5 @@
-appId: com.guasam.era
-productName: electron-react-app
+appId: io.github.neerajlovecyber.applykit
+productName: ApplyKit
 asar: true
 asarUnpack:
   - resources/**
@@ -13,7 +13,7 @@ files:
   - "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"
   - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}"
 win:
-  executableName: electron-react-app
+  executableName: ApplyKit
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -40,5 +40,8 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: neerajlovecyber
+  repo: applykit
+  releaseType: release
+

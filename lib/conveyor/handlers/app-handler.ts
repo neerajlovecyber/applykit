@@ -480,5 +480,21 @@ export function registerAppHandlers(): void {
   ipcMain.handle("history:add", (_, data) => dbQueries.addHistoryEntry(data));
   ipcMain.handle("history:get-stats", () => dbQueries.getHistoryStats());
 
+  // ===========================================================
+  // APP INFO & AUTO-UPDATER
+  // ===========================================================
+
+  ipcMain.handle("app:get-version", () => app.getVersion());
+  ipcMain.handle("app:check-updates", async () => {
+    if (!app.isPackaged) return { isPackaged: false, version: app.getVersion(), message: "Development mode — auto-updates active in packaged build." };
+    try {
+      const { autoUpdater } = await import("electron-updater");
+      const result = await autoUpdater.checkForUpdates();
+      return { success: true, version: app.getVersion(), updateInfo: result?.updateInfo };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
   console.log("[AppHandler] All IPC Handlers Registered.");
 }

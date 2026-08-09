@@ -22,6 +22,9 @@ import {
   ShieldCheck,
   Cpu,
   Sparkles,
+  Info,
+  DownloadCloud,
+  Github,
 } from "lucide-react";
 import type { Platform } from "@/lib/main/db-queries";
 import type { LLMProviderConfig } from "@/lib/providers/types";
@@ -72,6 +75,10 @@ export const SettingsPage: React.FC = () => {
   });
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // ── Version & Updater State ────────────────────────────────────────────────
+  const [appVersion, setAppVersion] = useState("0.1.0-alpha.1");
+  const [updateStatus, setUpdateStatus] = useState<{ checking: boolean; result?: string; isError?: boolean }>({ checking: false });
+
   // ── Direct Platform Credentials State per Platform ──────────────────────────
   const [credentials, setCredentials] = useState<Record<string, { username: string; password: string; token: string }>>({});
   const [portalStatus, setPortalStatus] = useState<Record<string, { loading: boolean; success?: boolean; message?: string }>>({});
@@ -83,13 +90,16 @@ export const SettingsPage: React.FC = () => {
 
   const loadSettings = async () => {
     try {
-      const [dbPlatforms, savedActiveId, providerList, naukriConn, liConn] = await Promise.all([
+      const [dbPlatforms, savedActiveId, providerList, naukriConn, liConn, versionStr] = await Promise.all([
         conveyor.data.getPlatforms(),
         conveyor.data.getSetting("llm_active_provider"),
         conveyor.data.listProviders(),
         conveyor.data.isNaukriConnected().catch(() => ({ connected: false })),
         conveyor.data.isLinkedInConnected().catch(() => ({ connected: false })),
+        conveyor.data.getAppVersion().catch(() => "0.1.0-alpha.1"),
       ]);
+
+      if (versionStr) setAppVersion(versionStr);
 
       const updatedPlatforms = (dbPlatforms || []).map((p: Platform) => {
         if (p.id === "naukri") {
@@ -311,6 +321,26 @@ export const SettingsPage: React.FC = () => {
       await loadSettings();
     } catch (err) {
       console.error("[SettingsPage] Disconnect error:", err);
+    }
+  };
+
+  const handleCheckUpdates = async () => {
+    setUpdateStatus({ checking: true });
+    try {
+      const res = await conveyor.data.checkForUpdates();
+      if (res?.success) {
+        if (res?.updateInfo?.version) {
+          setUpdateStatus({ checking: false, result: `New update available: v${res.updateInfo.version}!` });
+        } else {
+          setUpdateStatus({ checking: false, result: `ApplyKit is up to date (v${res.version || appVersion}).` });
+        }
+      } else if (res?.isPackaged === false) {
+        setUpdateStatus({ checking: false, result: `Development build (v${res.version || appVersion}). Auto-updater activates in production release.` });
+      } else {
+        setUpdateStatus({ checking: false, result: res?.error || res?.message || "Check complete — no new release found.", isError: !!res?.error });
+      }
+    } catch (err) {
+      setUpdateStatus({ checking: false, result: "Failed to check for updates.", isError: true });
     }
   };
 
@@ -625,6 +655,72 @@ export const SettingsPage: React.FC = () => {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* About & System Updates Section */}
+      <div className="space-y-4 border-t border-border/50 pt-6">
+        <div>
+          <h3 className="font-semibold text-lg">About & System Updates</h3>
+          <p className="text-sm text-muted-foreground">
+            App version details, repository links, and automated update status.
+          </p>
+        </div>
+
+        <div className="p-5 bg-card border border-border/80 rounded-xl space-y-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <Info className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm text-foreground">ApplyKit Desktop</span>
+                  <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30 font-mono">
+                    v{appVersion}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  AI-Powered Job Application Automation for LinkedIn & Naukri
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <a
+                href="https://github.com/neerajlovecyber/applykit"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <Github className="h-3.5 w-3.5" />
+                GitHub Repo
+                <ExternalLink className="h-3 w-3" />
+              </a>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCheckUpdates}
+                disabled={updateStatus.checking}
+                className="gap-2 text-xs font-semibold"
+              >
+                {updateStatus.checking ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <DownloadCloud className="h-3.5 w-3.5" />
+                )}
+                Check for Updates
+              </Button>
+            </div>
+          </div>
+
+          {updateStatus.result && (
+            <div className={`p-3 rounded-lg text-xs flex items-center gap-2 ${updateStatus.isError ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`}>
+              {updateStatus.isError ? <XCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
+              <span>{updateStatus.result}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

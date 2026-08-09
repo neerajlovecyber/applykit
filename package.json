@@ -1,6 +1,6 @@
 {
   "name": "applykit",
-  "version": "1.0.0",
+  "version": "0.1.0-alpha.1",
   "description": "AI-powered job application automation for LinkedIn & Naukri",
   "license": "MIT",
   "author": {
@@ -26,7 +26,9 @@
     "build:unpack": "run-s vite:build:app electron:build:dir",
     "build:win": "run-s vite:build:app electron:build:win",
     "build:mac": "run-s vite:build:app electron:build:mac",
-    "build:linux": "run-s vite:build:app electron:build:linux"
+    "build:linux": "run-s vite:build:app electron:build:linux",
+    "publish:win": "run-s vite:build:app \"electron-builder --win --publish always\"",
+    "publish:all": "run-s vite:build:app \"electron-builder -wl --publish always\""
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.31",
@@ -42,6 +44,7 @@
     "better-sqlite3": "^13.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "electron-updater": "^6.8.9",
     "lucide-react": "^0.563.0",
     "next-themes": "^0.4.6",
     "ollama-ai-provider": "^1.2.0",

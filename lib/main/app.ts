@@ -4,6 +4,7 @@ import appIcon from "@/app/assets/applykit-light-rounded.png?asset";
 import { registerResourcesProtocol } from "./protocols";
 import { registerWindowHandlers } from "@/lib/conveyor/handlers/window-handler";
 import { registerAppHandlers } from "@/lib/conveyor/handlers/app-handler";
+import { initAutoUpdater } from "./updater";
 
 export function createAppWindow(): void {
   // Register custom protocol for resources
@@ -35,6 +36,7 @@ export function createAppWindow(): void {
 
   mainWindow.on("ready-to-show", () => {
     mainWindow.show();
+    initAutoUpdater(mainWindow);
   });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {

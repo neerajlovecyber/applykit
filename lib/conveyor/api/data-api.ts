@@ -498,4 +498,15 @@ export class DataApi {
   getHistoryStats = async (): Promise<{ total: number; applied: number; failed: number; todayCount: number; weekCount: number }> => {
     return this.api.ipcRenderer.invoke("history:get-stats");
   };
+
+  // ═══════════════════════════════════════════════════════════
+  // SYSTEM & AUTO-UPDATER
+  // ═══════════════════════════════════════════════════════════
+
+  getAppVersion = async (): Promise<string> => {
+    return this.api.ipcRenderer.invoke("app:get-version");
+  };
+  checkForUpdates = async (): Promise<{ isPackaged?: boolean; success?: boolean; version?: string; updateInfo?: any; error?: string; message?: string }> => {
+    return this.api.ipcRenderer.invoke("app:check-updates");
+  };
 }
