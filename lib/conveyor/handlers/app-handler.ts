@@ -1,4 +1,4 @@
-import { ipcMain } from "electron";
+import { app, ipcMain } from "electron";
 import * as dbQueries from "@/lib/main/db-queries";
 import * as llmRegistry from "@/lib/providers/provider-registry";
 import { fetchOpenRouterModels, fetchProviderModels } from "@/lib/providers/model-fetcher";

@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useConveyor } from "@/app/hooks/use-conveyor";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
-import { Switch } from "@/app/components/ui/switch";
 import { Label } from "@/app/components/ui/label";
 import { Badge } from "@/app/components/ui/badge";
 import { ModelCombobox } from "@/app/components/ui/model-combobox";
@@ -25,6 +23,10 @@ import {
   Info,
   DownloadCloud,
   Github,
+  Sliders,
+  Terminal,
+  Database,
+  Check,
 } from "lucide-react";
 import type { Platform } from "@/lib/main/db-queries";
 import type { LLMProviderConfig } from "@/lib/providers/types";
@@ -40,18 +42,39 @@ const DEFAULT_MODELS_BY_PROVIDER: Record<string, string> = {
 };
 
 const PROVIDER_KEY_LINKS: Record<string, { label: string; url: string }> = {
-  openrouter: { label: "Get OpenRouter API Key", url: "https://openrouter.ai/workspaces/default/keys" },
-  openai: { label: "Get OpenAI API Key", url: "https://platform.openai.com/api-keys" },
-  gemini: { label: "Get Google Gemini API Key", url: "https://aistudio.google.com/app/apikey" },
+  openrouter: { label: "Get OpenRouter Key", url: "https://openrouter.ai/workspaces/default/keys" },
+  openai: { label: "Get OpenAI Key", url: "https://platform.openai.com/api-keys" },
+  gemini: { label: "Get Gemini Key", url: "https://aistudio.google.com/app/apikey" },
+};
+
+const PROVIDER_CARDS_META: Record<string, { name: string; tag: string; desc: string; iconBg: string }> = {
+  openrouter: {
+    name: "OpenRouter",
+    tag: "Free & Paid Models",
+    desc: "Access 300+ LLMs including Llama 3.3, DeepSeek R1, Claude, and free models.",
+    iconBg: "bg-muted text-foreground border-border/40",
+  },
+  openai: {
+    name: "OpenAI",
+    tag: "Official API",
+    desc: "Native integration for GPT-4o, GPT-4o-mini, and custom OpenAI endpoints.",
+    iconBg: "bg-muted text-foreground border-border/40",
+  },
+  gemini: {
+    name: "Google Gemini",
+    tag: "Generous Rate Limits",
+    desc: "Direct connection for Gemini 2.0 Flash, Gemini Pro, and multimodal models.",
+    iconBg: "bg-muted text-foreground border-border/40",
+  },
 };
 
 const PLATFORM_META: Record<string, { desc: string; iconBg: string; textCol: string; label: string }> = {
-  naukri: { desc: "India's #1 Job Portal & Automated Apply", iconBg: "bg-blue-500/10 text-blue-400 border-blue-500/20", textCol: "text-blue-400", label: "Naukri" },
-  linkedin: { desc: "Professional Network & Easy Apply", iconBg: "bg-sky-500/10 text-sky-400 border-sky-500/20", textCol: "text-sky-400", label: "LinkedIn" },
-  indeed: { desc: "Global Job Search Engine", iconBg: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20", textCol: "text-indigo-400", label: "Indeed" },
-  greenhouse: { desc: "Direct ATS Application Portal", iconBg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", textCol: "text-emerald-400", label: "Greenhouse" },
-  lever: { desc: "Applicant Tracking Platform", iconBg: "bg-purple-500/10 text-purple-400 border-purple-500/20", textCol: "text-purple-400", label: "Lever" },
-  workday: { desc: "Enterprise Corporate Career Portal", iconBg: "bg-amber-500/10 text-amber-400 border-amber-500/20", textCol: "text-amber-400", label: "Workday" },
+  naukri: { desc: "India's #1 Job Portal & Automated Apply", iconBg: "bg-muted text-foreground border-border/40", textCol: "text-foreground", label: "Naukri" },
+  linkedin: { desc: "Professional Network & Easy Apply", iconBg: "bg-muted text-foreground border-border/40", textCol: "text-foreground", label: "LinkedIn" },
+  indeed: { desc: "Global Job Search Engine", iconBg: "bg-muted text-foreground border-border/40", textCol: "text-foreground", label: "Indeed" },
+  greenhouse: { desc: "Direct ATS Application Portal", iconBg: "bg-muted text-foreground border-border/40", textCol: "text-foreground", label: "Greenhouse" },
+  lever: { desc: "Applicant Tracking Platform", iconBg: "bg-muted text-foreground border-border/40", textCol: "text-foreground", label: "Lever" },
+  workday: { desc: "Enterprise Corporate Career Portal", iconBg: "bg-muted text-foreground border-border/40", textCol: "text-foreground", label: "Workday" },
 };
 
 export const SettingsPage: React.FC = () => {
@@ -138,7 +161,7 @@ export const SettingsPage: React.FC = () => {
         setSelectedProviderConfig(activeConfig);
         setSelectedModel(activeConfig.defaultModel || DEFAULT_MODELS_BY_PROVIDER[activeId] || "openrouter/free");
         setBaseUrlInput(activeConfig.baseUrl ?? "");
-        setApiKeyInput(activeConfig.apiKey || "");
+        setApiKeyInput("");
         setIsEditingKey(!activeConfig.apiKey);
       }
     } catch (err) {
@@ -146,7 +169,7 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  // ── 100% Pure Dynamic Model Fetching ──────────────────────────────────────
+  // ── Dynamic Model Fetching ──────────────────────────────────────────────────
   const {
     data: dynamicModels = [],
     isFetching: isLoadingModels,
@@ -180,7 +203,7 @@ export const SettingsPage: React.FC = () => {
     if (p) {
       setSelectedProviderConfig(p);
       setBaseUrlInput(p.baseUrl ?? "");
-      setApiKeyInput(p.apiKey || "");
+      setApiKeyInput("");
       setIsEditingKey(!p.apiKey);
     }
     const nextDefaultModel = p?.defaultModel || DEFAULT_MODELS_BY_PROVIDER[id] || "openrouter/free";
@@ -190,12 +213,13 @@ export const SettingsPage: React.FC = () => {
   const handleSaveLLM = async () => {
     try {
       const finalModel = customModelInput.trim() || selectedModel;
+      const finalKey = apiKeyInput.trim() || selectedProviderConfig.apiKey || "";
 
       const updatedConfig: LLMProviderConfig = {
         id: selectedProviderConfig.id ?? activeProviderId,
         name: selectedProviderConfig.name ?? activeProviderId,
         type: selectedProviderConfig.type ?? (activeProviderId as any),
-        apiKey: apiKeyInput.trim() || selectedProviderConfig.apiKey,
+        apiKey: finalKey,
         baseUrl: baseUrlInput.trim() || selectedProviderConfig.baseUrl,
         defaultModel: finalModel,
         availableModels: dynamicModels.map((m) => m.id),
@@ -206,6 +230,7 @@ export const SettingsPage: React.FC = () => {
       await conveyor.data.setActiveLLMProvider(updatedConfig.id);
 
       setSaveSuccess(true);
+      setApiKeyInput("");
       setIsEditingKey(false);
       setTimeout(() => setSaveSuccess(false), 3000);
       loadSettings();
@@ -234,7 +259,7 @@ export const SettingsPage: React.FC = () => {
       if (result?.success) {
         setTestStatus({ testing: false, success: true, message: "Connection successful! Provider ready." });
       } else {
-        setTestStatus({ testing: false, success: false, message: result?.error || "Connection failed." });
+        setTestStatus({ testing: false, success: false, message: result?.error || "Connection failed. Check API key." });
       }
     } catch (err) {
       setTestStatus({
@@ -250,7 +275,7 @@ export const SettingsPage: React.FC = () => {
       ...prev,
       [platformId]: {
         loading: true,
-        message: "🌐 Opening Chromium browser... Please log in to your account in the browser window.",
+        message: "🌐 Opening Chromium browser... Log in to your account in the browser window.",
       },
     }));
 
@@ -288,7 +313,7 @@ export const SettingsPage: React.FC = () => {
           [platformId]: {
             loading: false,
             success: false,
-            message: res?.error || "Connection attempt cancelled or failed.",
+            message: res?.error || "Connection cancelled.",
           },
         }));
       }
@@ -351,89 +376,157 @@ export const SettingsPage: React.FC = () => {
     return id.toUpperCase();
   };
 
+  const getMaskedApiKey = (key?: string) => {
+    if (!key || key.trim() === "") return "No key configured";
+    if (key.length <= 10) return "••••••••" + key.slice(-4);
+    return key.slice(0, 6) + "••••••••" + key.slice(-4);
+  };
+
   return (
-    <div className="space-y-8 max-w-4xl mx-auto py-2">
-      {/* AI Provider Configuration Section */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 className="font-semibold text-lg">AI Configuration</h3>
-            <p className="text-sm text-muted-foreground">Select your AI provider and model for resume tailoring and job scoring.</p>
-          </div>
-          <div>
-            {selectedProviderConfig.apiKey ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Connected
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                <Key className="h-3.5 w-3.5" /> API Key Missing
-              </span>
-            )}
-          </div>
+    <div className="p-6 max-w-4xl mx-auto space-y-8">
+      {/* ── Page Header ────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between pb-3 border-b border-border/40">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <Sliders className="h-6 w-6 text-foreground" />
+            Settings
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            Configure local AI models, job portal sessions, and system updates.
+          </p>
         </div>
 
-        {/* Locked Card UX vs Editable Form UX */}
+        <Badge variant="outline" className="text-xs px-2.5 py-1 font-mono font-normal bg-muted/40 border-border/60">
+          v{appVersion}
+        </Badge>
+      </div>
+
+      {/* ── SECTION 1: AI Provider & Engine ────────────────────────────────── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+            <Sparkles className="h-4 w-4" /> AI Engine & Model Provider
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            Active: <span className="font-semibold text-foreground">{getProviderDisplayName(activeProviderId)}</span>
+          </span>
+        </div>
+
+        {/* Provider Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {ALLOWED_PROVIDERS.map((pId) => {
+            const meta = PROVIDER_CARDS_META[pId];
+            const isSelected = activeProviderId === pId;
+
+            return (
+              <button
+                key={pId}
+                type="button"
+                onClick={() => handleSelectProvider(pId)}
+                className={`p-4 rounded-xl border text-left transition-all duration-150 cursor-pointer flex flex-col justify-between space-y-3 ${
+                  isSelected
+                    ? "bg-card border-border shadow-xs"
+                    : "bg-card/40 border-border/40 hover:bg-card/80 hover:border-border"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`h-8 w-8 rounded-lg border flex items-center justify-center ${meta.iconBg}`}>
+                      <ProviderIcon providerId={pId} className="h-4 w-4" />
+                    </div>
+                    <span className="font-semibold text-sm text-foreground">{meta.name}</span>
+                  </div>
+
+                  <div
+                    className={`h-4 w-4 rounded-full border flex items-center justify-center transition-colors ${
+                      isSelected ? "border-foreground bg-foreground text-background" : "border-border/80 bg-transparent"
+                    }`}
+                  >
+                    {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground leading-relaxed">{meta.desc}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Config / Vault Card */}
         {!isEditingKey && selectedProviderConfig.apiKey ? (
-          /* Sleek Locked Summary Card (Credit Card / Secure Credentials Style) */
-          <div className="p-6 bg-card border border-emerald-500/30 rounded-xl shadow-sm relative overflow-hidden space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-4">
+          /* Locked View */
+          <div className="p-5 bg-card border border-border/80 rounded-xl space-y-5 shadow-xs">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <div className="h-9 w-9 rounded-lg bg-muted border border-border flex items-center justify-center text-foreground shrink-0">
                   <ProviderIcon providerId={activeProviderId} className="h-5 w-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-base text-foreground">
-                      {getProviderDisplayName(activeProviderId)}
+                    <span className="font-bold text-sm text-foreground">
+                      {getProviderDisplayName(activeProviderId)} Configured
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted border border-border text-foreground">
+                      <CheckCircle2 className="h-3 w-3" /> Ready
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Encrypted API Key saved in SQLite database for local AI execution.
-                  </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={handleTestConnection} disabled={testStatus.testing} className="gap-1.5 text-xs font-semibold">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleTestConnection}
+                  disabled={testStatus.testing}
+                  className="gap-1.5 text-xs"
+                >
                   {testStatus.testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  Test
+                  Test Connection
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setIsEditingKey(true)} className="gap-1.5 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10">
-                  <Edit3 className="h-3.5 w-3.5" /> Edit
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsEditingKey(true)}
+                  className="gap-1.5 text-xs"
+                >
+                  <Edit3 className="h-3.5 w-3.5" /> Edit Key
                 </Button>
               </div>
             </div>
 
-            {/* Summary Details Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="p-3.5 rounded-lg bg-muted/30 border border-border/40 space-y-1">
+            {/* Info Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-1">
                 <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                  <Cpu className="h-3 w-3 text-primary" /> Active Model
+                  <Cpu className="h-3 w-3" /> Model
                 </span>
-                <p className="font-semibold text-foreground truncate font-mono">{selectedModel}</p>
+                <p className="font-semibold text-foreground truncate font-mono text-xs">{selectedModel}</p>
               </div>
 
-              <div className="p-3.5 rounded-lg bg-muted/30 border border-border/40 space-y-1">
+              <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-1">
                 <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                  <Key className="h-3 w-3 text-emerald-400" /> Stored Key
+                  <Lock className="h-3 w-3" /> Stored Key
                 </span>
-                <p className="font-mono text-emerald-400 font-semibold">{selectedProviderConfig.apiKey}</p>
+                <p className="font-mono text-foreground font-semibold text-xs truncate">
+                  {getMaskedApiKey(selectedProviderConfig.apiKey)}
+                </p>
               </div>
 
-              <div className="p-3.5 rounded-lg bg-muted/30 border border-border/40 space-y-1">
+              <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-1">
                 <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                  <Globe className="h-3 w-3 text-primary" /> Base Endpoint
+                  <Globe className="h-3 w-3" /> Base URL
                 </span>
-                <p className="font-mono text-foreground truncate">{baseUrlInput || "Default Provider URL"}</p>
+                <p className="font-mono text-foreground truncate text-xs">{baseUrlInput || "Default Endpoint"}</p>
               </div>
             </div>
 
-            {/* Status Message */}
             {testStatus.message && (
               <div
                 className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
-                  testStatus.success ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                  testStatus.success
+                    ? "bg-muted border border-border text-foreground"
+                    : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                 }`}
               >
                 {testStatus.success ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <XCircle className="h-4 w-4 shrink-0" />}
@@ -442,30 +535,30 @@ export const SettingsPage: React.FC = () => {
             )}
           </div>
         ) : (
-          /* Editable Configuration Card */
-          <div className="p-5 bg-card border border-border rounded-xl space-y-5 shadow-sm">
-            {/* Provider & Model Selectors */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Provider Dropdown */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium">Provider</Label>
-                <Select value={activeProviderId} onValueChange={handleSelectProvider}>
-                  <SelectTrigger className="text-xs w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="openrouter">OpenRouter</SelectItem>
-                    <SelectItem value="openai">OpenAI</SelectItem>
-                    <SelectItem value="gemini">Google Gemini</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          /* Editable Form */
+          <div className="p-5 bg-card border border-border rounded-xl space-y-4 shadow-xs">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                <Key className="h-4 w-4" /> Configure {getProviderDisplayName(activeProviderId)}
+              </h3>
+              {PROVIDER_KEY_LINKS[activeProviderId] && (
+                <a
+                  href={PROVIDER_KEY_LINKS[activeProviderId].url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline font-medium"
+                >
+                  {PROVIDER_KEY_LINKS[activeProviderId].label}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
 
-              {/* Model Searchable Combobox */}
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Model ({dynamicModels?.length || 0} available)</Label>
-                  {isLoadingModels && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                  <Label className="text-xs font-semibold">Model ({dynamicModels?.length || 0} models)</Label>
+                  {isLoadingModels && <Loader2 className="h-3 w-3 animate-spin text-foreground" />}
                 </div>
                 <ModelCombobox
                   options={dynamicModels}
@@ -476,12 +569,35 @@ export const SettingsPage: React.FC = () => {
                   }}
                 />
               </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">API Key</Label>
+                  {selectedProviderConfig.apiKey && (
+                    <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> Key Saved in DB
+                    </span>
+                  )}
+                </div>
+                <Input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder={
+                    selectedProviderConfig.apiKey
+                      ? "•••••••••••• (Saved — leave blank to keep)"
+                      : activeProviderId === "openrouter"
+                      ? "Optional for openrouter/free (sk-or-...)"
+                      : "Enter Provider API Key"
+                  }
+                  className="text-xs font-mono"
+                />
+              </div>
             </div>
 
-            {/* Custom Model Input */}
             {(selectedModel === "custom" || customModelInput) && (
-              <div className="space-y-2">
-                <Label className="text-xs font-medium">Custom Model ID</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Custom Model Identifier</Label>
                 <Input
                   type="text"
                   value={customModelInput}
@@ -492,55 +608,23 @@ export const SettingsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Config Inputs: API Key & Base URL */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 border-t border-border/40">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">API Key</Label>
-                  {PROVIDER_KEY_LINKS[activeProviderId] && (
-                    <a
-                      href={PROVIDER_KEY_LINKS[activeProviderId].url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
-                    >
-                      {PROVIDER_KEY_LINKS[activeProviderId].label}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
-                </div>
-                <div className="relative">
-                  <Input
-                    type="password"
-                    value={apiKeyInput}
-                    onChange={(e) => setApiKeyInput(e.target.value)}
-                    placeholder="Enter Provider API Key"
-                    className="pr-8 text-xs font-mono"
-                  />
-                  <Key className="h-4 w-4 text-muted-foreground absolute right-2.5 top-2.5" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-medium">Base URL (Optional Override)</Label>
-                <div className="relative">
-                  <Input
-                    type="text"
-                    value={baseUrlInput}
-                    onChange={(e) => setBaseUrlInput(e.target.value)}
-                    placeholder={selectedProviderConfig.baseUrl || "Default Provider URL"}
-                    className="pr-8 text-xs font-mono"
-                  />
-                  <Globe className="h-4 w-4 text-muted-foreground absolute right-2.5 top-2.5" />
-                </div>
-              </div>
+            <div className="space-y-1.5 pt-2 border-t border-border/30">
+              <Label className="text-xs font-semibold">Base URL (Optional Override)</Label>
+              <Input
+                type="text"
+                value={baseUrlInput}
+                onChange={(e) => setBaseUrlInput(e.target.value)}
+                placeholder={selectedProviderConfig.baseUrl || "Default Provider URL"}
+                className="text-xs font-mono"
+              />
             </div>
 
-            {/* Status Message */}
             {testStatus.message && (
               <div
                 className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
-                  testStatus.success ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                  testStatus.success
+                    ? "bg-muted border border-border text-foreground"
+                    : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                 }`}
               >
                 {testStatus.success ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <XCircle className="h-4 w-4 shrink-0" />}
@@ -548,8 +632,7 @@ export const SettingsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-2 border-t border-border/30">
+            <div className="flex items-center justify-between pt-3 border-t border-border/40">
               <Button
                 size="sm"
                 variant="outline"
@@ -557,19 +640,12 @@ export const SettingsPage: React.FC = () => {
                 disabled={testStatus.testing}
                 className="gap-2 text-xs"
               >
-                {testStatus.testing ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Testing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5" /> Test
-                  </>
-                )}
+                {testStatus.testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                Test Connection
               </Button>
 
               <div className="flex items-center gap-2">
-                {saveSuccess && <span className="text-xs text-emerald-400 font-medium">Settings Saved!</span>}
+                {saveSuccess && <span className="text-xs text-foreground font-semibold">Saved!</span>}
                 {isEditingKey && selectedProviderConfig.apiKey && (
                   <Button size="sm" variant="ghost" onClick={() => setIsEditingKey(false)} className="text-xs">
                     Cancel
@@ -584,12 +660,16 @@ export const SettingsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Connected Job Platforms */}
-      <div className="space-y-4 border-t border-border/50 pt-6">
-        <div>
-          <h3 className="font-semibold text-lg">Target Job Portals</h3>
-          <p className="text-sm text-muted-foreground">
-            Centralized browser session connectors. Click connect to log in via Chromium and save session cookies automatically.
+      {/* ── SECTION 2: Target Job Portals ─────────────────────────────────── */}
+      <div className="space-y-4 pt-4 border-t border-border/40">
+        <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+          <Globe className="h-4 w-4" /> Target Job Portals
+        </h2>
+
+        <div className="p-3.5 rounded-lg bg-card/40 border border-border/60 flex items-start gap-3 text-xs text-muted-foreground">
+          <Info className="h-4 w-4 shrink-0 mt-0.5" />
+          <p>
+            Click <span className="font-semibold text-foreground">Connect</span> to launch an isolated Chromium browser window. Log in to your target job portal, and ApplyKit will securely save session cookies.
           </p>
         </div>
 
@@ -599,7 +679,7 @@ export const SettingsPage: React.FC = () => {
             const statusInfo = portalStatus[platform.id] || {};
             const meta = PLATFORM_META[platform.id] || {
               desc: "Automated Job Application Portal",
-              iconBg: "bg-primary/10 text-primary border-primary/20",
+              iconBg: "bg-muted text-foreground border-border",
               textCol: "text-foreground",
               label: platform.name || platform.id,
             };
@@ -607,7 +687,7 @@ export const SettingsPage: React.FC = () => {
             return (
               <div
                 key={platform.id}
-                className="p-4 bg-card border border-border/80 rounded-xl space-y-3 shadow-xs hover:border-border transition-colors flex flex-col justify-between"
+                className="p-4 rounded-xl border border-border/70 bg-card/50 hover:bg-card/80 transition-colors flex flex-col justify-between space-y-3"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
@@ -615,8 +695,11 @@ export const SettingsPage: React.FC = () => {
                       {meta.label.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <div>
+                      <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm text-foreground truncate">{meta.label}</span>
+                        {isConn && (
+                          <span className="h-2 w-2 rounded-full bg-foreground shrink-0" title="Connected" />
+                        )}
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{meta.desc}</p>
                     </div>
@@ -629,7 +712,7 @@ export const SettingsPage: React.FC = () => {
                         variant="ghost"
                         onClick={() => handleDisconnectPortal(platform.id)}
                         disabled={statusInfo.loading}
-                        className="text-xs text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                        className="text-xs text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 font-medium"
                       >
                         Disconnect
                       </Button>
@@ -640,7 +723,11 @@ export const SettingsPage: React.FC = () => {
                         disabled={statusInfo.loading}
                         className="gap-1.5 text-xs font-semibold"
                       >
-                        {statusInfo.loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Globe className="h-3.5 w-3.5" />}
+                        {statusInfo.loading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Globe className="h-3.5 w-3.5" />
+                        )}
                         Connect
                       </Button>
                     )}
@@ -648,7 +735,13 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 {statusInfo.message && (
-                  <div className={`p-2.5 rounded-lg text-xs ${statusInfo.success ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-muted/50 text-muted-foreground border border-border/40"}`}>
+                  <div
+                    className={`p-2.5 rounded-lg text-xs font-medium ${
+                      statusInfo.success
+                        ? "bg-muted border border-border text-foreground"
+                        : "bg-muted/50 text-muted-foreground border border-border/40"
+                    }`}
+                  >
                     {statusInfo.message}
                   </div>
                 )}
@@ -658,35 +751,32 @@ export const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* About & System Updates Section */}
-      <div className="space-y-4 border-t border-border/50 pt-6">
-        <div>
-          <h3 className="font-semibold text-lg">About & System Updates</h3>
-          <p className="text-sm text-muted-foreground">
-            App version details, repository links, and automated update status.
-          </p>
-        </div>
+      {/* ── SECTION 3: System & Release Updates ─────────────────────────── */}
+      <div className="space-y-4 pt-4 border-t border-border/40">
+        <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4" /> System & Updates
+        </h2>
 
-        <div className="p-5 bg-card border border-border/80 rounded-xl space-y-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-5 bg-card border border-border/80 rounded-xl space-y-5 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                <Info className="h-5 w-5" />
+              <div className="h-10 w-10 rounded-lg bg-muted border border-border flex items-center justify-center text-foreground shrink-0">
+                <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-foreground">ApplyKit Desktop</span>
-                  <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30 font-mono">
+                  <span className="font-bold text-sm text-foreground">ApplyKit Desktop</span>
+                  <Badge variant="outline" className="text-[10px] bg-muted text-foreground border-border font-mono">
                     v{appVersion}
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  AI-Powered Job Application Automation for LinkedIn & Naukri
+                  Automated Job Application Engine
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <a
                 href="https://github.com/neerajlovecyber/applykit"
                 target="_blank"
@@ -715,8 +805,37 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-1">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Terminal className="h-3 w-3" /> Stack
+              </span>
+              <p className="font-semibold text-foreground font-mono text-xs">Electron 34 • React 19</p>
+            </div>
+
+            <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-1">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Database className="h-3 w-3" /> Storage
+              </span>
+              <p className="font-semibold text-foreground font-mono text-xs">Local Encrypted SQLite</p>
+            </div>
+
+            <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-1">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <RefreshCw className="h-3 w-3" /> Updates
+              </span>
+              <p className="font-semibold text-foreground font-mono text-xs">GitHub Releases</p>
+            </div>
+          </div>
+
           {updateStatus.result && (
-            <div className={`p-3 rounded-lg text-xs flex items-center gap-2 ${updateStatus.isError ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`}>
+            <div
+              className={`p-3 rounded-lg text-xs flex items-center gap-2 font-medium ${
+                updateStatus.isError
+                  ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                  : "bg-muted border border-border text-foreground"
+              }`}
+            >
               {updateStatus.isError ? <XCircle className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
               <span>{updateStatus.result}</span>
             </div>

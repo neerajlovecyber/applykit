@@ -1083,15 +1083,26 @@ export function getTaskStats(): {
 // DOCUMENTS
 // ═══════════════════════════════════════════════════════════
 
-export function getDocuments(profileId: string, docType?: string): Document[] {
-  if (docType) {
-    return getDb()
+export function getDocuments(profileId?: string, docType?: string): Document[] {
+  const db = getDb();
+  if (profileId && docType) {
+    return db
       .prepare("SELECT * FROM documents WHERE profile_id = ? AND doc_type = ? ORDER BY created_at DESC")
       .all(profileId, docType) as Document[];
   }
-  return getDb()
-    .prepare("SELECT * FROM documents WHERE profile_id = ? ORDER BY created_at DESC")
-    .all(profileId) as Document[];
+  if (profileId) {
+    return db
+      .prepare("SELECT * FROM documents WHERE profile_id = ? ORDER BY created_at DESC")
+      .all(profileId) as Document[];
+  }
+  if (docType) {
+    return db
+      .prepare("SELECT * FROM documents WHERE doc_type = ? ORDER BY created_at DESC")
+      .all(docType) as Document[];
+  }
+  return db
+    .prepare("SELECT * FROM documents ORDER BY created_at DESC")
+    .all() as Document[];
 }
 
 export function getDocumentById(id: string): Document | undefined {

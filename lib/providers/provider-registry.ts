@@ -35,22 +35,38 @@ for (const [id, template] of Object.entries(PROVIDER_TEMPLATES)) {
  * Register or update a provider configuration.
  */
 export function configureProvider(config: LLMProviderConfig): void {
-  const existing = getProviderConfig(config.id);
-  let finalKey = config.apiKey;
+  const existingKey = getSetting(`llm_key_${config.id}`);
+  let realKey = existingKey;
 
-  if ((!finalKey || finalKey.startsWith("••••")) && existing?.apiKey && !existing.apiKey.startsWith("••••")) {
-    finalKey = existing.apiKey;
+  // If incoming key is a new valid unmasked key (doesn't start with dots)
+  if (config.apiKey && config.apiKey.trim() !== "" && !config.apiKey.startsWith("••••")) {
+    realKey = config.apiKey.trim();
+    setSetting(`llm_key_${config.id}`, realKey);
+  }
+
+  // Backward compatibility: if llm_key_${id} wasn't set yet, but config.apiKey in DB wasn't masked
+  if (!realKey) {
+    const savedJson = getSetting(`llm_config_${config.id}`);
+    if (savedJson) {
+      try {
+        const parsed = JSON.parse(savedJson);
+        if (parsed.apiKey && !parsed.apiKey.startsWith("••••")) {
+          realKey = parsed.apiKey;
+          setSetting(`llm_key_${config.id}`, realKey);
+        }
+      } catch {}
+    }
   }
 
   const finalConfig: LLMProviderConfig = {
     ...config,
-    apiKey: finalKey,
+    apiKey: realKey || "",
   };
 
   providerConfigs.set(config.id, finalConfig);
-  setSetting(`llm_config_${config.id}`, JSON.stringify(finalConfig));
+  setSetting(`llm_config_${config.id}`, JSON.stringify({ ...config, apiKey: realKey || "" }));
   setActiveProvider(config.id);
-  console.log(`[LLM] Configured provider: ${config.name} (${config.id})`);
+  console.log(`[LLM] Configured provider: ${config.name} (${config.id}), hasKey: ${!!realKey}`);
 }
 
 /**
@@ -65,6 +81,29 @@ export function setActiveProvider(id: string): void {
 }
 
 /**
+ * Get provider configuration by ID.
+ */
+export function getProviderConfig(id: string): LLMProviderConfig | undefined {
+  const template = providerConfigs.get(id);
+  const savedJson = getSetting(`llm_config_${id}`);
+  const realKey = getSetting(`llm_key_${id}`);
+
+  let config = { ...template };
+  if (savedJson) {
+    try {
+      config = { ...config, ...JSON.parse(savedJson) };
+    } catch {}
+  }
+
+  const keyToUse = realKey || (config.apiKey && !config.apiKey.startsWith("••••") ? config.apiKey : undefined);
+
+  return {
+    ...config,
+    apiKey: keyToUse,
+  } as LLMProviderConfig;
+}
+
+/**
  * Get active provider configuration.
  */
 export function getActiveProviderConfig(): LLMProviderConfig {
@@ -76,36 +115,12 @@ export function getActiveProviderConfig(): LLMProviderConfig {
   }
 
   if (activeProviderId) {
-    const savedJson = getSetting(`llm_config_${activeProviderId}`);
-    if (savedJson) {
-      try {
-        const parsed = JSON.parse(savedJson);
-        providerConfigs.set(activeProviderId, parsed);
-      } catch {
-        // use default
-      }
-    }
-    const cfg = providerConfigs.get(activeProviderId);
+    const cfg = getProviderConfig(activeProviderId);
     if (cfg) return cfg;
   }
 
-  const fallback = providerConfigs.get("openrouter") || providerConfigs.get("openai")!;
+  const fallback = getProviderConfig("openrouter") || getProviderConfig("openai") || providerConfigs.get("openrouter")!;
   return fallback;
-}
-
-/**
- * Get provider configuration by ID.
- */
-export function getProviderConfig(id: string): LLMProviderConfig | undefined {
-  const template = providerConfigs.get(id);
-  const savedJson = getSetting(`llm_config_${id}`);
-  if (savedJson) {
-    try {
-      const parsed = JSON.parse(savedJson);
-      return { ...template, ...parsed } as LLMProviderConfig;
-    } catch {}
-  }
-  return template;
 }
 
 /**
@@ -113,20 +128,15 @@ export function getProviderConfig(id: string): LLMProviderConfig | undefined {
  */
 export function listProviders(): LLMProviderConfig[] {
   const result: LLMProviderConfig[] = [];
-  for (const [id, template] of providerConfigs.entries()) {
+  for (const [id] of providerConfigs.entries()) {
     if (id === "ollama") continue; // Exclude Ollama per user request
-    const savedJson = getSetting(`llm_config_${id}`);
-    let config = { ...template };
-    if (savedJson) {
-      try {
-        config = { ...config, ...JSON.parse(savedJson) };
-      } catch {
-        // fallback to in-memory
-      }
-    }
+    const config = getProviderConfig(id);
+    if (!config) continue;
+
+    const realKey = config.apiKey;
     result.push({
       ...config,
-      apiKey: config.apiKey ? "••••••" + config.apiKey.slice(-4) : undefined,
+      apiKey: realKey && realKey.trim() !== "" ? "••••••" + realKey.slice(-4) : undefined,
     });
   }
   return result;
