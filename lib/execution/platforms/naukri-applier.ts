@@ -237,13 +237,15 @@ export class NaukriApplier implements PlatformApplier {
     await randomDelay(2000, 3500);
 
     // Step 3: Scrape job cards across paginated search results
-    const maxJobs = options.maxJobs ?? 10;
-    let jobsProcessed = 0;
+    // Step 3: Scrape job cards across paginated search results
+    const targetApplied = options.maxJobs ?? 10;
+    let totalScanned = 0;
+    const maxScanLimit = Math.max(targetApplied * 5, 50); // Safety limit to avoid infinite loops
     let page_num = 1;
-    const maxPages = Math.ceil(maxJobs / 20) + 1;
+    const maxPages = 10;
 
-    while (jobsProcessed < maxJobs && page_num <= maxPages) {
-      console.log(`[NaukriApplier] Scraping job cards on page ${page_num}...`);
+    while (applied < targetApplied && page_num <= maxPages && totalScanned < maxScanLimit) {
+      console.log(`[NaukriApplier] Scraping job cards on page ${page_num} (Applied: ${applied}/${targetApplied})...`);
 
       const containerSelector = [
         "div.srp-jobtuple-wrapper",
@@ -277,7 +279,7 @@ export class NaukriApplier implements PlatformApplier {
       console.log(`[NaukriApplier] Found ${rawJobCards.length} job cards on page ${page_num}.`);
 
       for (const card of rawJobCards) {
-        if (jobsProcessed >= maxJobs) break;
+        if (applied >= targetApplied || totalScanned >= maxScanLimit) break;
 
         let title = "Unknown";
         let company = "Unknown";
@@ -301,7 +303,7 @@ export class NaukriApplier implements PlatformApplier {
           }
 
           if (!naukriJobId) {
-            naukriJobId = (await card.getAttribute("data-job-id")) || `naukri_${Date.now()}_${jobsProcessed}`;
+            naukriJobId = (await card.getAttribute("data-job-id")) || `naukri_${Date.now()}_${totalScanned}`;
           }
 
           // Extract company
@@ -333,7 +335,7 @@ export class NaukriApplier implements PlatformApplier {
               errorMessage: "Already applied",
             });
             skipped++;
-            jobsProcessed++;
+            totalScanned++;
             continue;
           }
 
@@ -354,7 +356,7 @@ export class NaukriApplier implements PlatformApplier {
                 errorMessage: "External company site application required",
               });
               skipped++;
-              jobsProcessed++;
+              totalScanned++;
               continue;
             }
           }
@@ -406,7 +408,7 @@ export class NaukriApplier implements PlatformApplier {
           if (applyResult.success) applied++;
           else failed++;
 
-          jobsProcessed++;
+          totalScanned++;
           await randomDelay(2000, 4000);
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
@@ -422,12 +424,12 @@ export class NaukriApplier implements PlatformApplier {
             errorMessage: errorMsg,
           });
           failed++;
-          jobsProcessed++;
+          totalScanned++;
         }
       }
 
-      // Next page pagination
-      if (jobsProcessed < maxJobs) {
+      // Next page pagination if target not yet reached
+      if (applied < targetApplied && totalScanned < maxScanLimit) {
         const nextBtn = await page.$("a.styles_btn-secondary__25-fM:has-text('Next'), a.next-page, a:has-text('Next')");
         if (nextBtn) {
           await nextBtn.click();
@@ -439,8 +441,8 @@ export class NaukriApplier implements PlatformApplier {
       }
     }
 
-    console.log(`[NaukriApplier] Batch complete — Applied: ${applied}, Skipped: ${skipped}, Failed: ${failed}`);
-    return { processed: jobsProcessed, applied, skipped, failed, results };
+    console.log(`[NaukriApplier] Batch complete — Applied: ${applied}/${targetApplied}, Skipped: ${skipped}, Failed: ${failed}`);
+    return { processed: totalScanned, applied, skipped, failed, results };
   }
 
   // ── Questionnaire & Multi-Step Wizard Loop ─────────────────────────────

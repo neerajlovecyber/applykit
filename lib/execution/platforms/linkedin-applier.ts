@@ -325,13 +325,14 @@ export class LinkedInApplier implements PlatformApplier {
     await randomDelay(2000, 3500);
 
     // Step 3: Scrape job cards across paginated results
-    const maxJobs = options.maxJobs ?? 10;
-    let jobsProcessed = 0;
+    const targetApplied = options.maxJobs ?? 10;
+    let totalScanned = 0;
+    const maxScanLimit = Math.max(targetApplied * 5, 50); // Safety limit to avoid infinite loops
     let page_num = 1;
-    const maxPages = Math.ceil(maxJobs / 25) + 1;
+    const maxPages = 10;
 
-    while (jobsProcessed < maxJobs && page_num <= maxPages) {
-      console.log(`[LinkedInApplier] Scraping job cards on page ${page_num}...`);
+    while (applied < targetApplied && page_num <= maxPages && totalScanned < maxScanLimit) {
+      console.log(`[LinkedInApplier] Scraping job cards on page ${page_num} (Applied: ${applied}/${targetApplied})...`);
 
       const containerSelector = [
         "li.scaffold-layout__list-item",
@@ -391,7 +392,7 @@ export class LinkedInApplier implements PlatformApplier {
       console.log(`[LinkedInApplier] Found ${jobCards.length} job cards on page ${page_num}.`);
 
       for (const card of jobCards) {
-        if (jobsProcessed >= maxJobs) break;
+        if (applied >= targetApplied || totalScanned >= maxScanLimit) break;
 
         let title = "Unknown";
         let company = "Unknown";
@@ -449,7 +450,7 @@ export class LinkedInApplier implements PlatformApplier {
                 errorMessage: "Already applied",
               });
               skipped++;
-              jobsProcessed++;
+              totalScanned++;
               continue;
             }
           }
@@ -480,7 +481,7 @@ export class LinkedInApplier implements PlatformApplier {
               errorMessage: "No Easy Apply button",
             });
             skipped++;
-            jobsProcessed++;
+            totalScanned++;
             continue;
           }
 
@@ -523,7 +524,7 @@ export class LinkedInApplier implements PlatformApplier {
           if (wizardResult.success) applied++;
           else failed++;
 
-          jobsProcessed++;
+          totalScanned++;
           await randomDelay(2000, 4000);
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
@@ -539,12 +540,12 @@ export class LinkedInApplier implements PlatformApplier {
             errorMessage: errorMsg,
           });
           failed++;
-          jobsProcessed++;
+          totalScanned++;
         }
       }
 
-      // Try to go to next page
-      if (jobsProcessed < maxJobs) {
+      // Try to go to next page if target not yet reached
+      if (applied < targetApplied && totalScanned < maxScanLimit) {
         const nextPageBtn = await page.$('button[aria-label="Page ' + (page_num + 1) + '"]');
         if (nextPageBtn) {
           await nextPageBtn.click();
