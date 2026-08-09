@@ -39,27 +39,33 @@ const TitlebarControls = () => {
     <TooltipProvider delayDuration={300}>
       <div className="window-titlebar-controls flex items-center gap-1.5 px-3 py-1.5">
         {wcontext?.minimizable && (
-          <TitlebarIconButton label="Minimize" icon={<Minus className="size-3.5" />} action="minimize" />
+          <TitlebarIconButton label="Minimize" icon={<Minus className="size-3.5" />} action="minimize" variant="minimize" />
         )}
         {wcontext?.maximizable && (
-          <TitlebarIconButton label="Maximize" icon={<Square className="size-3" />} action="maximize" />
+          <TitlebarIconButton label="Maximize" icon={<Square className="size-3" />} action="maximize" variant="maximize" />
         )}
-        <TitlebarIconButton label="Close" icon={<X className="size-3.5" />} action="close" isClose />
+        <TitlebarIconButton label="Close" icon={<X className="size-3.5" />} action="close" variant="close" />
       </div>
     </TooltipProvider>
   );
+};
+
+const variantStyles: Record<string, string> = {
+  minimize: "bg-amber-400 text-amber-900 border-amber-400 hover:bg-amber-300 hover:border-amber-300",
+  maximize: "bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-400 hover:border-emerald-400",
+  close:    "bg-rose-500 text-white border-rose-500 hover:bg-rose-400 hover:border-rose-400",
 };
 
 const TitlebarIconButton = ({
   label,
   icon,
   action,
-  isClose = false,
+  variant = "minimize",
 }: {
   label: string;
   icon: React.ReactNode;
   action: "minimize" | "maximize" | "close";
-  isClose?: boolean;
+  variant?: "minimize" | "maximize" | "close";
 }) => {
   const { windowMinimize, windowMaximizeToggle, windowClose } = useConveyor("window");
 
@@ -78,11 +84,7 @@ const TitlebarIconButton = ({
         <Button
           variant="outline"
           size="icon"
-          className={`size-7 rounded-lg border border-border/50 transition-all duration-150 shadow-2xs ${
-            isClose
-              ? "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500 hover:text-white hover:border-rose-500"
-              : "bg-muted/30 text-muted-foreground hover:bg-emerald-500/15 hover:text-emerald-400 hover:border-emerald-500/30"
-          }`}
+          className={`size-7 rounded-lg border transition-all duration-150 shadow-sm ${variantStyles[variant]}`}
           onClick={handleAction}
         >
           {icon}

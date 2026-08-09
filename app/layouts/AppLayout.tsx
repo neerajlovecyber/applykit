@@ -40,6 +40,7 @@ import {
   SidebarSeparator,
 } from "@/app/components/ui/sidebar";
 import { RoleOnboardingWizard } from "@/app/components/RoleOnboardingWizard";
+import { ScrollArea } from "@/app/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 const mainNavItems = [
@@ -285,7 +286,9 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         </div>
 
         {/* Page Body */}
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <ScrollArea className="flex-1 h-0">
+          <main className="p-6">{children}</main>
+        </ScrollArea>
       </SidebarInset>
     </SidebarProvider>
   );
