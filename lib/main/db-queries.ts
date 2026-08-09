@@ -493,31 +493,14 @@ export function getApplicationsWithJobs(profileId?: string): (Application & {
   platform: string;
   application_url: string | null;
 })[] {
-  let sql = `
-    SELECT 
-      a.*,
-      COALESCE(j.title, 'Untitled Role') as title,
-      COALESCE(j.company, 'Unknown Company') as company,
-      j.location,
-      COALESCE(j.source, 'linkedin') as platform,
-      j.application_url
-    FROM applications a
-    LEFT JOIN job_postings j ON (a.job_id = j.id OR a.job_id = j.source_id)
-  `;
-  const params: string[] = [];
-  if (profileId) {
-    sql += " WHERE (a.profile_id = ? OR a.profile_id IS NULL OR a.profile_id = '')";
-    params.push(profileId);
-  }
-  sql += " ORDER BY a.created_at DESC";
-
-  let results = getDb().prepare(sql).all(...params) as any[];
-
-  // Fallback: If filtered list is empty, query all applications across all profiles
-  if (results.length === 0 && profileId) {
-    const fallbackSql = `
+  const sql = `
+    SELECT * FROM (
       SELECT 
-        a.*,
+        a.id,
+        a.job_id,
+        a.profile_id,
+        a.status,
+        a.created_at,
         COALESCE(j.title, 'Untitled Role') as title,
         COALESCE(j.company, 'Unknown Company') as company,
         j.location,
@@ -525,13 +508,38 @@ export function getApplicationsWithJobs(profileId?: string): (Application & {
         j.application_url
       FROM applications a
       LEFT JOIN job_postings j ON (a.job_id = j.id OR a.job_id = j.source_id)
-      ORDER BY a.created_at DESC
-    `;
-    results = getDb().prepare(fallbackSql).all() as any[];
-  }
 
-  console.log(`[DB] getApplicationsWithJobs returning ${results.length} application records.`);
-  return results;
+      UNION ALL
+
+      SELECT 
+        h.id,
+        h.job_id,
+        h.profile_id,
+        h.status,
+        h.applied_at as created_at,
+        COALESCE(h.title, 'Untitled Role') as title,
+        COALESCE(h.company, 'Unknown Company') as company,
+        '' as location,
+        COALESCE(h.platform, 'linkedin') as platform,
+        h.url as application_url
+      FROM history h
+    ) combined
+    ORDER BY created_at DESC
+  `;
+
+  const results = getDb().prepare(sql).all() as any[];
+
+  // Deduplicate by job_id/title+company to avoid duplicate rows
+  const seen = new Set<string>();
+  const uniqueResults = results.filter((item) => {
+    const key = `${item.title.toLowerCase()}_${item.company.toLowerCase()}_${item.status}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  console.log(`[DB] getApplicationsWithJobs returning ${uniqueResults.length} total combined records.`);
+  return uniqueResults;
 }
 
 export function clearApplicationHistory(profileId?: string): void {
@@ -744,12 +752,16 @@ export function recordAutoApplyResult(
 export function getQABankEntries(profileId: string): QABankEntry[] {
   const db = getDb();
 
-  // Delete generic chatbot greetings saved by mistake
+  // Delete generic chatbot greetings & third-person meta-explanations saved by mistake
   db.prepare(`
     DELETE FROM qa_bank
     WHERE question_pattern LIKE '%showing interest%'
        OR question_pattern LIKE '%recruiter%question%'
        OR question_pattern LIKE '%kindly answer%'
+       OR answer LIKE '%candidate%profile%'
+       OR answer LIKE '%there is no mention%'
+       OR answer LIKE '%not documented in%profile%'
+       OR answer LIKE '%based on%profile%'
   `).run();
 
   // Normalize legacy and non-AI sources to 'default'

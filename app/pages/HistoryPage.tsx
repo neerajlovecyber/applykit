@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useConveyor } from "@/app/hooks/use-conveyor";
 import { useProfileStore } from "@/app/stores/profile-store";
 import { Button } from "@/app/components/ui/button";
@@ -9,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 export const HistoryPage: React.FC = () => {
   const conveyor = useConveyor();
+  const location = useLocation();
   const { activeProfile } = useProfileStore();
 
   const [search, setSearch] = useState("");
@@ -20,17 +22,22 @@ export const HistoryPage: React.FC = () => {
 
   useEffect(() => {
     loadHistory();
-  }, [activeProfile]);
+    // Poll every 3 seconds to auto-refresh live history entries while view is visible
+    const timer = setInterval(() => {
+      loadHistory(false);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [activeProfile, location.pathname]);
 
-  const loadHistory = async () => {
-    setLoading(true);
+  const loadHistory = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const list = await conveyor.data.getApplicationsWithJobs(activeProfile?.id);
       setApplications(list || []);
     } catch (err) {
       console.error("Failed to load application history:", err);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 

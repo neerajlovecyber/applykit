@@ -433,13 +433,22 @@ export class LinkedInApplier implements PlatformApplier {
           );
           if (locationEl) location = (await locationEl.innerText()).trim();
 
+          console.log(`\n==================================================`);
+          console.log(`[LinkedInApplier] Scraped Job Card #${totalScanned + 1}:`);
+          console.log(`  📌 Title:    "${title}"`);
+          console.log(`  🏢 Company:  "${company}"`);
+          console.log(`  📍 Location: "${location}"`);
+          console.log(`  🆔 Job ID:   "${linkedInJobId}"`);
+          console.log(`  🔗 Job URL:  "${jobUrl}"`);
+          console.log(`==================================================\n`);
+
           // Skip if already applied
           const appliedBadge = await card.$(".job-card-container__footer-job-state");
           if (appliedBadge) {
             const badgeText = await appliedBadge.innerText();
             if (badgeText.toLowerCase().includes("applied")) {
               console.log(`[LinkedInApplier] Skipping already-applied job: ${title}`);
-              results.push({
+              const skippedResult: BatchJobResult = {
                 jobId: linkedInJobId,
                 linkedInJobId,
                 title,
@@ -448,7 +457,9 @@ export class LinkedInApplier implements PlatformApplier {
                 status: "skipped",
                 success: false,
                 errorMessage: "Already applied",
-              });
+              };
+              results.push(skippedResult);
+              options.onProgress?.(skippedResult);
               skipped++;
               totalScanned++;
               continue;
@@ -485,6 +496,8 @@ export class LinkedInApplier implements PlatformApplier {
               if (detailTitle) title = detailTitle;
               if (detailCompany) company = detailCompany;
               if (detailLocation) location = detailLocation;
+
+              console.log(`[LinkedInApplier] Updated via Detail Panel -> Title: "${title}" | Company: "${company}" | Location: "${location}"`);
             } catch { /* ignore fallback errors */ }
           }
 
@@ -494,7 +507,7 @@ export class LinkedInApplier implements PlatformApplier {
           );
           if (!easyApplyBtn) {
             console.log(`[LinkedInApplier] Skipping (no Easy Apply): ${title} @ ${company}`);
-            results.push({
+            const noEasyApplyResult: BatchJobResult = {
               jobId: linkedInJobId,
               linkedInJobId,
               title,
@@ -503,7 +516,9 @@ export class LinkedInApplier implements PlatformApplier {
               status: "skipped",
               success: false,
               errorMessage: "No Easy Apply button",
-            });
+            };
+            results.push(noEasyApplyResult);
+            options.onProgress?.(noEasyApplyResult);
             skipped++;
             totalScanned++;
             continue;

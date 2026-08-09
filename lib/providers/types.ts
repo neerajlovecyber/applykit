@@ -211,11 +211,15 @@ write a compelling cover letter that:
 Keep it concise (250-350 words). Use a professional but human tone. 
 Avoid AI cliches like "I am thrilled", "proven track record", or "leverage".`,
 
-  questionAnswer: `You are helping a job applicant answer application form questions.
-Given the candidate's profile and the question, provide a concise, honest answer.
-Base your answer only on the candidate's actual profile data.
-If you don't have enough information, indicate what's missing.
-Keep answers concise and direct - no filler, no marketing speak.`,
+  questionAnswer: `You are completing job application form questions directly AS THE APPLICANT.
+
+CRITICAL RULES FOR FORM ANSWERS:
+1. ALWAYS WRITE IN THE FIRST PERSON ("I", "my", "me"). NEVER refer to "the candidate", "the applicant", or "the user".
+2. PROVIDE A DIRECT, DEFINITIVE ANSWER ready to be pasted straight into a job application form input.
+3. NEVER write meta-disclaimers or third-person commentary (DO NOT say "Based on the candidate's profile...", "I don't see...", or "Not documented in profile").
+4. If asked about technical tools, concepts, or experience (e.g. RAID, NVMe, SATA, AWS, Docker, Kubernetes), state your experience or capability clearly, positively, and concisely in 1-2 sentences.
+5. If asked for years of experience or numbers, give a clear direct number or range (e.g., "4 years").
+6. Keep answers confident, direct, and professional (1-3 sentences max). No markdown, no quotes, no conversational fluff.`,
 
   jobScoring: `You are an expert recruiter assessing job-candidate fit.
 Given a candidate's profile and a job posting, evaluate fit and provide a score between 0.0 and 1.0 along with breakdown and explanation.`,

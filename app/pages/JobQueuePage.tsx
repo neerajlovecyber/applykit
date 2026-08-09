@@ -43,7 +43,12 @@ export const JobQueuePage: React.FC = () => {
       const apps = await conveyor.data.getApplications();
       const enriched: ApplicationItem[] = [];
 
-      for (const app of apps) {
+      // Job Queue is ONLY for external/manual jobs needing review — filter out completed auto-applies
+      const pendingQueueItems = (apps || []).filter((app) =>
+        ["pending_review", "queued", "approved", "draft"].includes(app.status)
+      );
+
+      for (const app of pendingQueueItems) {
         const job = await conveyor.data.getJobPostingById(app.job_id);
         enriched.push({ ...app, job });
       }
@@ -161,14 +166,13 @@ export const JobQueuePage: React.FC = () => {
               <th className="p-4">Job & Company</th>
               <th className="p-4">Source</th>
               <th className="p-4">Status / Review Gate</th>
-              <th className="p-4">Materials</th>
               <th className="p-4 text-right">Human Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
             {applications.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                <td colSpan={4} className="p-8 text-center text-muted-foreground">
                   No applications in queue. Run Auto-Apply Bot or paste a URL above.
                 </td>
               </tr>
@@ -210,32 +214,6 @@ export const JobQueuePage: React.FC = () => {
                         <Badge variant="outline" className="text-xs text-muted-foreground">
                           Skipped
                         </Badge>
-                      )}
-                    </td>
-
-                    <td className="p-4">
-                      {app.cover_letter ? (
-                        <div className="flex items-center gap-1.5 text-xs text-emerald-400">
-                          <FileText className="h-3.5 w-3.5" /> Cover Letter Ready
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleGenerateMaterials(app)}
-                          disabled={isGenerating}
-                          className="h-7 text-xs text-primary gap-1 p-0 hover:bg-transparent hover:underline"
-                        >
-                          {isGenerating ? (
-                            <>
-                              <Loader2 className="h-3 w-3 animate-spin" /> Drafting AI...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="h-3 w-3" /> Draft AI Materials
-                            </>
-                          )}
-                        </Button>
                       )}
                     </td>
 

@@ -397,26 +397,25 @@ export function registerAppHandlers(): void {
         filters: filters || { easyApplyOnly: true },
         pauseBeforeSubmit: !!pauseBeforeSubmit,
         profileId: profile.id,
+        onProgress: (res) => {
+          try {
+            console.log(`[LinkedInAutoApply] Real-time saving job "${res.title}" @ "${res.company}" to SQLite DB...`);
+            dbQueries.recordAutoApplyResult(profile.id, "linkedin", {
+              jobId: res.linkedInJobId || res.jobId,
+              title: res.title,
+              company: res.company,
+              location: res.location,
+              status: res.status,
+              success: res.success,
+              fieldsFilled: res.fieldsFilled,
+              errorMessage: res.errorMessage,
+              screenshotPath: res.screenshotPath,
+            });
+          } catch (dbErr) {
+            console.warn("[LinkedInAutoApply] Failed to record result in DB:", dbErr);
+          }
+        },
       });
-
-      // Persist results into SQLite database
-      for (const res of batchResult.results) {
-        try {
-          dbQueries.recordAutoApplyResult(profile.id, "linkedin", {
-            jobId: res.linkedInJobId || res.jobId,
-            title: res.title,
-            company: res.company,
-            location: res.location,
-            status: res.status,
-            success: res.success,
-            fieldsFilled: res.fieldsFilled,
-            errorMessage: res.errorMessage,
-            screenshotPath: res.screenshotPath,
-          });
-        } catch (dbErr) {
-          console.warn("[LinkedInAutoApply] Failed to record result in DB:", dbErr);
-        }
-      }
 
       return {
         success: true,
