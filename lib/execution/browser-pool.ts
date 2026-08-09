@@ -46,8 +46,20 @@ let sharedContext: BrowserContext | null = null;
  * All pages share cookies and login sessions through this context.
  */
 export async function getSharedContext(headless = false): Promise<BrowserContext> {
-  // Reuse if alive — null check is kept reliable by the 'close' listener below
-  if (sharedContext) return sharedContext;
+  // Check if existing sharedContext is still alive
+  if (sharedContext) {
+    try {
+      if (sharedContext.browser() && !sharedContext.browser()?.isConnected()) {
+        sharedContext = null;
+      } else {
+        // Ping pages to ensure context is active
+        sharedContext.pages();
+        return sharedContext;
+      }
+    } catch {
+      sharedContext = null;
+    }
+  }
 
   fs.mkdirSync(APPLYKIT_PROFILE_DIR, { recursive: true });
   console.log(`[BrowserPool] Launching shared context at: ${APPLYKIT_PROFILE_DIR}`);
@@ -71,6 +83,12 @@ export async function getSharedContext(headless = false): Promise<BrowserContext
     permissions: ["geolocation", "notifications"],
   });
 
+  // Automatically reset sharedContext reference on browser close
+  sharedContext.on("close", () => {
+    console.log("[BrowserPool] Browser context closed by user or system. Resetting pool state.");
+    sharedContext = null;
+  });
+
   // Stealth: hide automation fingerprints on every page
   await sharedContext.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
@@ -83,11 +101,18 @@ export async function getSharedContext(headless = false): Promise<BrowserContext
 
 /**
  * Open a new page in the shared browser context.
- * All pages share the same cookies / login sessions.
+ * Automatically recovers if the browser was previously closed.
  */
 export async function createStealthPage(options?: { headless?: boolean }): Promise<Page> {
-  const ctx = await getSharedContext(options?.headless ?? false);
-  return ctx.newPage();
+  try {
+    const ctx = await getSharedContext(options?.headless ?? false);
+    return await ctx.newPage();
+  } catch (err) {
+    console.warn("[BrowserPool] Context closed or invalid. Re-launching browser...", err);
+    sharedContext = null;
+    const ctx = await getSharedContext(options?.headless ?? false);
+    return await ctx.newPage();
+  }
 }
 
 /** @deprecated Use createStealthPage() — kept for backwards compatibility */

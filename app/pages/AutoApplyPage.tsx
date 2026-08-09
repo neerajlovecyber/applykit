@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useConveyor } from "@/app/hooks/use-conveyor";
 import { useProfileStore } from "@/app/stores/profile-store";
+import { useExecutionStore } from "@/app/stores/execution-store";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Badge } from "@/app/components/ui/badge";
@@ -83,12 +84,16 @@ export const AutoApplyPage: React.FC = () => {
   const [selectedJobType, setSelectedJobType] = useState<string[]>([]);
   const [selectedWorkMode, setSelectedWorkMode] = useState<string[]>([]);
 
-  // ── Run state ───────────────────────────────────────────────────────────
-  const [isRunning, setIsRunning] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
-  const [statusType, setStatusType] = useState<"info" | "success" | "error">("info");
-  const [logResults, setLogResults] = useState<RunResult[]>([]);
-  const [runStats, setRunStats] = useState<RunStats | null>(null);
+  const {
+    isRunning,
+    statusMsg,
+    statusType,
+    logResults,
+    runStats,
+    startExecution,
+    updateStatus,
+    finishExecution,
+  } = useExecutionStore();
 
   // ─────────────────────────────────────────────────────────────────────────
   // Init
@@ -183,15 +188,10 @@ export const AutoApplyPage: React.FC = () => {
 
   const handleRunLinkedIn = async () => {
     if (liConnectState !== "connected") {
-      setStatusType("error");
-      setStatusMsg("⚠️ Please connect your LinkedIn account first.");
+      updateStatus("⚠️ Please connect your LinkedIn account first.", "error");
       return;
     }
-    setIsRunning(true);
-    setLogResults([]);
-    setRunStats(null);
-    setStatusType("info");
-    setStatusMsg("🚀 Auto-apply started — navigating LinkedIn job search...");
+    startExecution("linkedin", "🚀 Auto-apply started — navigating LinkedIn job search...");
 
     try {
       const response = await conveyor.data.runLinkedInAutoApply({
@@ -210,38 +210,32 @@ export const AutoApplyPage: React.FC = () => {
       });
 
       if (response?.error) {
-        setStatusType("error");
-        setStatusMsg(`⚠️ ${response.error}`);
+        finishExecution(false, `⚠️ ${response.error}`);
       } else {
-        setStatusType("success");
-        setRunStats({
+        const stats = {
           processed: response.processed || 0,
           applied: response.applied || 0,
           skipped: response.skipped || 0,
           failed: response.failed || 0,
-        });
-        setStatusMsg(`✅ Done! Applied: ${response.applied || 0} | Skipped: ${response.skipped || 0} | Failed: ${response.failed || 0}`);
-        setLogResults(response.results || []);
+        };
+        finishExecution(
+          true,
+          `✅ Done! Applied: ${response.applied || 0} | Skipped: ${response.skipped || 0} | Failed: ${response.failed || 0}`,
+          stats,
+          response.results || []
+        );
       }
     } catch (err) {
-      setStatusType("error");
-      setStatusMsg(err instanceof Error ? err.message : "Auto-apply failed.");
-    } finally {
-      setIsRunning(false);
+      finishExecution(false, err instanceof Error ? err.message : "Auto-apply failed.");
     }
   };
 
   const handleRunNaukri = async () => {
     if (naukriConnectState !== "connected") {
-      setStatusType("error");
-      setStatusMsg("⚠️ Please connect your Naukri account first.");
+      updateStatus("⚠️ Please connect your Naukri account first.", "error");
       return;
     }
-    setIsRunning(true);
-    setLogResults([]);
-    setRunStats(null);
-    setStatusType("info");
-    setStatusMsg("🚀 Auto-apply started — navigating Naukri job search...");
+    startExecution("naukri", "🚀 Auto-apply started — navigating Naukri job search...");
 
     try {
       const response = await conveyor.data.runNaukriAutoApply({
@@ -258,24 +252,23 @@ export const AutoApplyPage: React.FC = () => {
       });
 
       if (response?.error) {
-        setStatusType("error");
-        setStatusMsg(`⚠️ ${response.error}`);
+        finishExecution(false, `⚠️ ${response.error}`);
       } else {
-        setStatusType("success");
-        setRunStats({
+        const stats = {
           processed: response.processed || 0,
           applied: response.applied || 0,
           skipped: response.skipped || 0,
           failed: response.failed || 0,
-        });
-        setStatusMsg(`✅ Done! Applied: ${response.applied || 0} | Skipped: ${response.skipped || 0} | Failed: ${response.failed || 0}`);
-        setLogResults(response.results || []);
+        };
+        finishExecution(
+          true,
+          `✅ Done! Applied: ${response.applied || 0} | Skipped: ${response.skipped || 0} | Failed: ${response.failed || 0}`,
+          stats,
+          response.results || []
+        );
       }
     } catch (err) {
-      setStatusType("error");
-      setStatusMsg(err instanceof Error ? err.message : "Naukri auto-apply failed.");
-    } finally {
-      setIsRunning(false);
+      finishExecution(false, err instanceof Error ? err.message : "Naukri auto-apply failed.");
     }
   };
 

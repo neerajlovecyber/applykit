@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQueueStore } from "@/app/stores/queue-store";
 import { useProfileStore } from "@/app/stores/profile-store";
+import { useExecutionStore } from "@/app/stores/execution-store";
 import { useConveyor } from "@/app/hooks/use-conveyor";
 import {
   LayoutDashboard,
@@ -18,6 +19,7 @@ import {
   ChevronDown,
   Sparkles,
   Rocket,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
@@ -57,6 +59,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const conveyor = useConveyor();
   const { isRunning, pendingCount, startQueue, pauseQueue } = useQueueStore();
   const { activeProfile, profiles, setProfiles, setActiveProfile } = useProfileStore();
+  const execution = useExecutionStore();
 
   const [showWizard, setShowWizard] = useState(false);
 
@@ -230,11 +233,22 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             </span>
           </div>
 
-          {/* Global Run / Pause Engine Status */}
+          {/* Global Run / Pause Engine Status & Active Execution Pill */}
           <div className="flex items-center gap-4">
+            {execution.isRunning && (
+              <Link
+                to="/auto-apply"
+                className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/25 transition-colors"
+              >
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Auto-Applying ({execution.platform.toUpperCase()})</span>
+                <span className="text-[11px] text-emerald-300 font-mono underline">View Log</span>
+              </Link>
+            )}
+
             <div className="text-xs text-muted-foreground flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${isRunning ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"}`} />
-              <span>{isRunning ? "Engine Running" : "Engine Idle"}</span>
+              <span className={`h-2 w-2 rounded-full ${isRunning || execution.isRunning ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"}`} />
+              <span>{isRunning || execution.isRunning ? "Engine Running" : "Engine Idle"}</span>
             </div>
 
             {isRunning ? (
