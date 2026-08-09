@@ -16,10 +16,12 @@ import {
   Settings,
   Play,
   Pause,
-  ChevronDown,
   Sparkles,
   Rocket,
   Loader2,
+  ChevronsUpDown,
+  Check,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
@@ -41,6 +43,7 @@ import {
 } from "@/app/components/ui/sidebar";
 import { RoleOnboardingWizard } from "@/app/components/RoleOnboardingWizard";
 import { ScrollArea } from "@/app/components/ui/scroll-area";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 const mainNavItems = [
@@ -197,41 +200,54 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             </SidebarMenuItem>
           </SidebarMenu>
 
-          <div className="pt-1 group-data-[collapsible=icon]:hidden space-y-1.5">
-            <div className="relative group/prof">
-              <div
-                className="flex items-center justify-between p-2 rounded-xl bg-muted/30 border border-border/40 hover:bg-muted/60 transition-all duration-150 cursor-pointer"
-                onClick={() => {
-                  if (profiles.length > 1) {
-                    const idx = profiles.findIndex((p) => p.id === activeProfile?.id);
-                    const next = profiles[(idx + 1) % profiles.length];
-                    if (next) {
-                      conveyor.data.setActiveProfile(next.id).then(() => {
-                        conveyor.data.getProfiles().then(setProfiles);
-                        setActiveProfile(next);
-                      });
-                    }
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="size-7 rounded-lg bg-emerald-500/20 text-emerald-400 font-semibold text-xs flex items-center justify-center shrink-0">
+          <div className="pt-1 group-data-[collapsible=icon]:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-muted/30 border border-border/40 hover:bg-muted/60 transition-all duration-150 cursor-pointer outline-none">
+                  <div className="size-8 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold text-sm flex items-center justify-center shrink-0">
                     {activeProfile?.name ? activeProfile.name.charAt(0).toUpperCase() : "P"}
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider leading-none">
-                      Active Profile ({profiles.length})
-                    </span>
-                    <span className="text-xs font-medium text-foreground truncate mt-0.5">
-                      {activeProfile?.name ?? "Select Role Profile"}
-                    </span>
+                  <div className="flex flex-col min-w-0 text-left flex-1">
+                    <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider leading-none">Active Profile</span>
+                    <span className="text-xs font-medium text-foreground truncate mt-0.5">{activeProfile?.name ?? "Select Profile"}</span>
                   </div>
-                </div>
-                <Link to="/profiles" title="Manage Profiles" onClick={(e) => e.stopPropagation()} className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
-                  <ChevronDown className="size-3.5 shrink-0" />
-                </Link>
-              </div>
-            </div>
+                  <ChevronsUpDown className="size-3.5 text-muted-foreground shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-56"
+                side="top"
+                align="start"
+                sideOffset={8}
+              >
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Profiles</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {profiles.map((p) => (
+                  <DropdownMenuItem
+                    key={p.id}
+                    className="flex items-center gap-2.5 cursor-pointer"
+                    onClick={() => {
+                      conveyor.data.setActiveProfile(p.id).then(() => {
+                        conveyor.data.getProfiles().then(setProfiles);
+                        setActiveProfile(p);
+                      });
+                    }}
+                  >
+                    <div className="size-6 rounded-md bg-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+                      {p.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-xs flex-1 truncate">{p.name}</span>
+                    {activeProfile?.id === p.id && <Check className="size-3.5 text-emerald-400 shrink-0" />}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link to="/profiles" className="flex items-center gap-2 text-xs">
+                    <Plus className="size-3.5" /> Add Profile
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </SidebarFooter>
       </Sidebar>
