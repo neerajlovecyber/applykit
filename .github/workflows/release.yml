@@ -2,6 +2,11 @@ name: Release
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
+  push:
     tags:
       - 'v*'
   workflow_dispatch:
@@ -10,7 +15,37 @@ permissions:
   contents: write
 
 jobs:
+  check-version:
+    name: Check Version Bump
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.version-check.outputs.changed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Check if version in package.json changed
+        id: version-check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            OLD_VER=$(git show HEAD~1:package.json | grep '"version"' | head -1 | awk -F '"' '{print $4}' || echo "")
+            NEW_VER=$(cat package.json | grep '"version"' | head -1 | awk -F '"' '{print $4}')
+            if [ -n "$OLD_VER" ] && [ "$OLD_VER" != "$NEW_VER" ]; then
+              echo "Version bumped from $OLD_VER to $NEW_VER"
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "Version in package.json ($NEW_VER) was not bumped. Skipping release."
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
   release:
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
     name: Build & Release (${{ matrix.os }})
     strategy:
       fail-fast: false
