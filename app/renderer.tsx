@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import icon from "@/resources/build/icon.png?asset";
+import icon from "@/app/assets/applykit-light.png";
 import { WindowContextProvider, menuItems } from "@/app/components/window";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import App from "./app";

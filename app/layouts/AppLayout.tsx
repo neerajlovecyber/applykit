@@ -4,6 +4,7 @@ import { useQueueStore } from "@/app/stores/queue-store";
 import { useProfileStore } from "@/app/stores/profile-store";
 import { useExecutionStore } from "@/app/stores/execution-store";
 import { useConveyor } from "@/app/hooks/use-conveyor";
+import applykitLogo from "@/app/assets/applykit-light.png";
 import {
   LayoutDashboard,
   ListTodo,
@@ -15,7 +16,6 @@ import {
   Settings,
   Play,
   Pause,
-  Briefcase,
   ChevronDown,
   Sparkles,
   Rocket,
@@ -95,19 +95,30 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         <SidebarHeader className="p-3">
           <SidebarMenu>
             <SidebarMenuItem className="flex items-center justify-between gap-2">
+              {/* Expanded: logo + text */}
               <SidebarMenuButton
                 asChild
                 size="lg"
-                className="h-11 px-2 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:hidden hover:bg-muted/50 rounded-xl"
+                className="h-11 px-2 group-data-[collapsible=icon]:hidden hover:bg-muted/50 rounded-xl"
               >
                 <div className="flex items-center gap-3">
-                  <div className="size-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
-                    <Briefcase className="size-4 text-emerald-400" />
-                  </div>
+                  <img
+                    src={applykitLogo}
+                    alt="ApplyKit"
+                    className="size-10 rounded-xl shrink-0 object-contain"
+                  />
                   <span className="text-lg font-medium text-foreground">ApplyKit</span>
                 </div>
               </SidebarMenuButton>
-              <SidebarTrigger className="shrink-0" />
+              {/* Collapsed: logo icon only */}
+              <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center w-full">
+                <img
+                  src={applykitLogo}
+                  alt="ApplyKit"
+                    className="size-10 rounded-xl object-contain"
+                />
+              </div>
+              <SidebarTrigger className="shrink-0 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
