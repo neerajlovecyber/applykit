@@ -97,48 +97,16 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto py-2">
-      {/* Hero Control Banner */}
-      <Card className="p-6 border-primary/20 bg-gradient-to-r from-primary/10 via-card to-card relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs font-medium border-primary/30 text-primary flex items-center gap-1">
-                <Sparkles className="h-3 w-3" /> ENGINE ACTIVE
-              </Badge>
-              <span className="text-xs text-muted-foreground">• Active Profile: {activeProfile?.name ?? "Default"}</span>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">ApplyKit Automation Engine</h1>
-            <p className="text-xs text-muted-foreground">
-              Local-first job discovery, fit scoring (Vercel AI SDK), cover letter drafting, and review-gated submission.
-            </p>
-          </div>
-
-          <div>
-            {isRunning ? (
-              <Button size="lg" variant="destructive" onClick={pauseQueue} className="gap-2.5 px-6 shadow-sm">
-                <Pause className="h-4 w-4" />
-                Pause Queue
-              </Button>
-            ) : (
-              <Button size="lg" onClick={startQueue} className="gap-2.5 px-6 shadow-sm">
-                <Play className="h-4 w-4 fill-current" />
-                Start Queue ({stats.approved} Approved)
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
-
       {/* Primary KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-5 border-border bg-card">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Discovered Jobs</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Jobs Processed</span>
             <Search className="h-4 w-4 text-primary" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-bold tracking-tight">{stats.totalDiscovered}</span>
-            <span className="text-xs text-muted-foreground">indexed</span>
+            <span className="text-xs text-muted-foreground">scanned & indexed</span>
           </div>
         </Card>
 
@@ -149,7 +117,7 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-bold tracking-tight text-amber-400">{stats.pending}</span>
-            <span className="text-xs text-muted-foreground">needs review</span>
+            <span className="text-xs text-muted-foreground">awaiting review</span>
           </div>
         </Card>
 
@@ -160,7 +128,7 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-bold tracking-tight text-emerald-400">{stats.submitted}</span>
-            <span className="text-xs text-muted-foreground">submitted</span>
+            <span className="text-xs text-muted-foreground">successfully submitted</span>
           </div>
         </Card>
 
@@ -171,7 +139,7 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-bold tracking-tight">{successRate}%</span>
-            <span className="text-xs text-muted-foreground">completion</span>
+            <span className="text-xs text-muted-foreground">submission rate</span>
           </div>
         </Card>
       </div>
@@ -191,7 +159,7 @@ export const DashboardPage: React.FC = () => {
         <div className="divide-y divide-border/60">
           {recentItems.length === 0 ? (
             <div className="py-6 text-center text-xs text-muted-foreground">
-              No recent applications yet. Go to <Link to="/finder" className="text-primary hover:underline">Job Finder</Link> to discover jobs!
+              No recent applications yet. Go to <Link to="/auto-apply" className="text-primary hover:underline">Auto-Apply Bot</Link> to start applying!
             </div>
           ) : (
             recentItems.map((item) => (

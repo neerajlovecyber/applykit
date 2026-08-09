@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/app/layouts/AppLayout";
 import { DashboardPage } from "@/app/pages/DashboardPage";
 import { JobQueuePage } from "@/app/pages/JobQueuePage";
-import { JobFinderPage } from "@/app/pages/JobFinderPage";
 import { RoleProfilesPage } from "@/app/pages/RoleProfilesPage";
 import { DocumentsPage } from "@/app/pages/DocumentsPage";
 import { QABankPage } from "@/app/pages/QABankPage";
@@ -23,7 +22,7 @@ export default function App() {
           {/* Keep /naukri for backward compatibility — redirects to unified hub */}
           <Route path="/naukri" element={<Navigate to="/auto-apply" replace />} />
           <Route path="/queue" element={<JobQueuePage />} />
-          <Route path="/finder" element={<JobFinderPage />} />
+          <Route path="/finder" element={<Navigate to="/auto-apply" replace />} />
           <Route path="/profiles" element={<RoleProfilesPage />} />
           <Route path="/documents" element={<DocumentsPage />} />
           <Route path="/qabank" element={<QABankPage />} />

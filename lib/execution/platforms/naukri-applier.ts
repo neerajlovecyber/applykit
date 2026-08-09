@@ -302,15 +302,22 @@ export class NaukriApplier implements PlatformApplier {
             }
           }
 
-          if (!naukriJobId) {
-            naukriJobId = (await card.getAttribute("data-job-id")) || `naukri_${Date.now()}_${totalScanned}`;
-          }
-
           // Extract company
           const companyEl = await card.$(
             "a.comp-name, a.company-name, div.comp-name, .comp-name"
           );
           if (companyEl) company = ((await companyEl.innerText()) || "").trim();
+
+          if (!naukriJobId) {
+            const attrId = await card.getAttribute("data-job-id");
+            if (attrId) {
+              naukriJobId = attrId;
+            } else {
+              const slugTitle = title.toLowerCase().replace(/[^a-z0-9]/g, "_");
+              const slugCompany = company.toLowerCase().replace(/[^a-z0-9]/g, "_");
+              naukriJobId = `naukri_${slugTitle}_${slugCompany}`;
+            }
+          }
 
           // Extract location
           const locationEl = await card.$(

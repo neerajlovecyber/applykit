@@ -42,6 +42,8 @@ export function registerAppHandlers(): void {
   ipcMain.handle("applications:update-outcome", (_, { id, outcome, note }) => dbQueries.updateApplicationOutcome(id, outcome, note));
   ipcMain.handle("applications:update-materials", (_, { id, data }) => dbQueries.updateApplicationMaterials(id, data));
   ipcMain.handle("applications:update-fill-details", (_, { id, data }) => dbQueries.updateApplicationFillDetails(id, data));
+  ipcMain.handle("applications:get-with-jobs", (_, profileId) => dbQueries.getApplicationsWithJobs(profileId));
+  ipcMain.handle("applications:clear-history", (_, profileId) => dbQueries.clearApplicationHistory(profileId));
   ipcMain.handle("applications:get-stats", () => dbQueries.getApplicationStats());
 
   // ===========================================================
@@ -52,6 +54,7 @@ export function registerAppHandlers(): void {
   ipcMain.handle("qa-bank:find", (_, { profileId, pattern }) => dbQueries.findQAAnswer(profileId, pattern));
   ipcMain.handle("qa-bank:upsert", (_, data) => dbQueries.upsertQABankEntry(data));
   ipcMain.handle("qa-bank:delete", (_, id) => dbQueries.deleteQABankEntry(id));
+  ipcMain.handle("qa-bank:seed", (_, profileId) => dbQueries.seedDefaultQABank(profileId));
 
   // ===========================================================
   // SEARCH QUERIES
@@ -255,6 +258,25 @@ export function registerAppHandlers(): void {
         profileId: profile.id,
       });
 
+      // Persist results into SQLite database
+      for (const res of batchResult.results) {
+        try {
+          dbQueries.recordAutoApplyResult(profile.id, "naukri", {
+            jobId: res.naukriJobId || res.jobId,
+            title: res.title,
+            company: res.company,
+            location: res.location,
+            status: res.status,
+            success: res.success,
+            fieldsFilled: res.fieldsFilled,
+            errorMessage: res.errorMessage,
+            screenshotPath: res.screenshotPath,
+          });
+        } catch (dbErr) {
+          console.warn("[NaukriAutoApply] Failed to record result in DB:", dbErr);
+        }
+      }
+
       return {
         success: true,
         processed: batchResult.processed,
@@ -375,6 +397,25 @@ export function registerAppHandlers(): void {
         pauseBeforeSubmit: !!pauseBeforeSubmit,
         profileId: profile.id,
       });
+
+      // Persist results into SQLite database
+      for (const res of batchResult.results) {
+        try {
+          dbQueries.recordAutoApplyResult(profile.id, "linkedin", {
+            jobId: res.linkedInJobId || res.jobId,
+            title: res.title,
+            company: res.company,
+            location: res.location,
+            status: res.status,
+            success: res.success,
+            fieldsFilled: res.fieldsFilled,
+            errorMessage: res.errorMessage,
+            screenshotPath: res.screenshotPath,
+          });
+        } catch (dbErr) {
+          console.warn("[LinkedInAutoApply] Failed to record result in DB:", dbErr);
+        }
+      }
 
       return {
         success: true,

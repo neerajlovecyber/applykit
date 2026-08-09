@@ -169,7 +169,7 @@ export const JobQueuePage: React.FC = () => {
             {applications.length === 0 ? (
               <tr>
                 <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                  No applications in queue. Discover jobs in Job Finder or paste a URL above.
+                  No applications in queue. Run Auto-Apply Bot or paste a URL above.
                 </td>
               </tr>
             ) : (

@@ -44,7 +44,6 @@ const mainNavItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { path: "/auto-apply", label: "Auto-Apply Hub", icon: Rocket },
   { path: "/queue", label: "Job Queue", icon: ListTodo },
-  { path: "/finder", label: "Job Finder", icon: Compass },
   { path: "/profiles", label: "Role Profiles", icon: UserCheck },
   { path: "/documents", label: "Documents", icon: FileCheck },
   { path: "/qabank", label: "QA Memory", icon: BrainCircuit },

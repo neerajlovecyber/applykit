@@ -485,7 +485,7 @@ ${eduFormatted}
       if (active) setActiveProfile(active);
 
       onClose();
-      navigate("/finder");
+      navigate("/auto-apply");
     } catch (err) {
       console.error("[RoleWizard] Failed to save onboarding:", err);
     } finally {
@@ -902,7 +902,7 @@ ${eduFormatted}
                   <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <Compass className="h-4 w-4 text-primary" /> Auto-Create Job Search Queries
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Automatically configure Job Finder to scan matching DevSecOps & Security roles</p>
+                  <p className="text-[11px] text-muted-foreground">Automatically configure Auto-Apply Bot to target matching roles</p>
                 </div>
                 <input
                   type="checkbox"

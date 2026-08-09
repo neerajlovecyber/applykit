@@ -274,6 +274,8 @@ export function createProfile(data: Partial<Profile>): Profile {
     data.is_active ?? 0,
   );
 
+  seedDefaultQABank(id);
+
   return getProfileById(id)!;
 }
 
@@ -373,7 +375,13 @@ export function upsertJobPosting(data: {
   raw_data?: string;
   content_hash?: string;
 }): JobPosting {
-  const existing = getJobPostingBySourceId(data.source, data.source_id);
+  let existing = getJobPostingBySourceId(data.source, data.source_id);
+
+  if (!existing && data.title && data.company) {
+    existing = getDb()
+      .prepare("SELECT * FROM job_postings WHERE source = ? AND LOWER(title) = LOWER(?) AND LOWER(company) = LOWER(?)")
+      .get(data.source, data.title, data.company) as JobPosting | undefined;
+  }
 
   if (existing) {
     // Update last_seen and any changed fields
@@ -476,6 +484,43 @@ export function getApplications(filters?: {
   }
 
   return getDb().prepare(query).all(...params) as Application[];
+}
+
+export function getApplicationsWithJobs(profileId?: string): (Application & {
+  title: string;
+  company: string;
+  location: string | null;
+  platform: string;
+  application_url: string | null;
+})[] {
+  let sql = `
+    SELECT 
+      a.*,
+      j.title,
+      j.company,
+      j.location,
+      j.source as platform,
+      j.application_url
+    FROM applications a
+    JOIN job_postings j ON a.job_id = j.id
+  `;
+  const params: string[] = [];
+  if (profileId) {
+    sql += " WHERE a.profile_id = ?";
+    params.push(profileId);
+  }
+  sql += " GROUP BY LOWER(j.title), LOWER(j.company), j.source ORDER BY a.created_at DESC";
+
+  return getDb().prepare(sql).all(...params) as any[];
+}
+
+export function clearApplicationHistory(profileId?: string): void {
+  const db = getDb();
+  if (profileId) {
+    db.prepare("DELETE FROM applications WHERE profile_id = ?").run(profileId);
+  } else {
+    db.prepare("DELETE FROM applications").run();
+  }
 }
 
 export function getApplicationById(id: string): Application | undefined {
@@ -585,6 +630,67 @@ export function getApplicationStats(): {
   return { total, pending, approved, submitted, failed, todayCount, weekCount };
 }
 
+export function recordAutoApplyResult(
+  profileId: string,
+  platform: string,
+  result: {
+    jobId: string;
+    title: string;
+    company: string;
+    location?: string;
+    status: string;
+    success: boolean;
+    fieldsFilled?: number;
+    errorMessage?: string;
+    screenshotPath?: string;
+    jobUrl?: string;
+  }
+): { job: JobPosting; application: Application } {
+  const jobState = result.status === "submitted" ? "applied" : result.status === "skipped" ? "skipped" : "scored";
+  const job = upsertJobPosting({
+    source: platform,
+    source_id: result.jobId,
+    title: result.title,
+    company: result.company,
+    location: result.location,
+    application_url: result.jobUrl,
+  });
+  updateJobPostingState(job.id, jobState);
+
+  const existingApp = getApplicationByJobId(job.id);
+  let appRecord: Application;
+
+  if (existingApp) {
+    updateApplicationStatus(existingApp.id, result.status, `Auto-apply ${platform}`);
+    if (result.fieldsFilled !== undefined || result.screenshotPath !== undefined) {
+      updateApplicationFillDetails(existingApp.id, {
+        fields_filled: result.fieldsFilled ?? 0,
+        fields_total: result.fieldsFilled ?? 0,
+        screenshot_path: result.screenshotPath,
+        fill_details: result.errorMessage,
+      });
+    }
+    appRecord = getApplicationById(existingApp.id)!;
+  } else {
+    appRecord = createApplication({
+      job_id: job.id,
+      profile_id: profileId,
+      status: result.status,
+    });
+    if (result.fieldsFilled !== undefined || result.screenshotPath !== undefined) {
+      updateApplicationFillDetails(appRecord.id, {
+        fields_filled: result.fieldsFilled ?? 0,
+        fields_total: result.fieldsFilled ?? 0,
+        screenshot_path: result.screenshotPath,
+        fill_details: result.errorMessage,
+      });
+    }
+    appRecord = getApplicationById(appRecord.id)!;
+  }
+
+  return { job, application: appRecord };
+}
+
 // ═══════════════════════════════════════════════════════════
 // QA BANK
 // ═══════════════════════════════════════════════════════════
@@ -644,6 +750,94 @@ export function incrementQAUsage(id: string): void {
 
 export function deleteQABankEntry(id: string): void {
   getDb().prepare("DELETE FROM qa_bank WHERE id = ?").run(id);
+}
+
+export function seedDefaultQABank(profileId: string): void {
+  const profile = getProfileById(profileId);
+
+  const defaultEntries = [
+    {
+      question_pattern: "Are you comfortable for alternate 6 days working?",
+      answer: "Yes, I am comfortable with this working arrangement.",
+      question_type: "radio",
+    },
+    {
+      question_pattern: "Are you currently residing in or willing to relocate to office location?",
+      answer: "Yes, I am comfortable with this working arrangement and willing to relocate.",
+      question_type: "radio",
+    },
+    {
+      question_pattern: "Why are you interested in joining our company?",
+      answer: "I am excited about this role because my background and skills closely align with your requirements, and I want to contribute to the company's growth.",
+      question_type: "textarea",
+    },
+    {
+      question_pattern: "Are you legally authorized to work in this country?",
+      answer: "Yes",
+      question_type: "radio",
+    },
+    {
+      question_pattern: "Will you now or in the future require visa sponsorship?",
+      answer: "No",
+      question_type: "radio",
+    },
+    {
+      question_pattern: "What is your notice period in days?",
+      answer: profile?.notice_period || "30 days",
+      question_type: "text",
+    },
+    {
+      question_pattern: "Are you an immediate joiner or currently serving notice?",
+      answer: "Yes, available to join at the earliest.",
+      question_type: "radio",
+    },
+    {
+      question_pattern: "How many years of relevant work experience do you have?",
+      answer: profile?.experience_years ? `${profile.experience_years} years` : "4+ years",
+      question_type: "text",
+    },
+    {
+      question_pattern: "What is your expected CTC / desired salary?",
+      answer: "As per company standards and role responsibilities (Negotiable)",
+      question_type: "text",
+    },
+    {
+      question_pattern: "On a scale of 1-10, how would you rate your overall expertise?",
+      answer: "8",
+      question_type: "text",
+    },
+    {
+      question_pattern: "Are you 18 years of age or older?",
+      answer: "Yes",
+      question_type: "radio",
+    },
+    {
+      question_pattern: "Do you agree to a background check and drug screen?",
+      answer: "Yes",
+      question_type: "radio",
+    },
+    {
+      question_pattern: "What is your highest level of education?",
+      answer: "Bachelor's Degree in Computer Science / Engineering",
+      question_type: "select",
+    },
+    {
+      question_pattern: "Name of your most recent employer",
+      answer: "Current Organization",
+      question_type: "text",
+    },
+  ];
+
+  for (const entry of defaultEntries) {
+    upsertQABankEntry({
+      profile_id: profileId,
+      question_pattern: entry.question_pattern,
+      answer: entry.answer,
+      question_type: entry.question_type,
+      confidence: "high",
+      source: "reference_repo",
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════

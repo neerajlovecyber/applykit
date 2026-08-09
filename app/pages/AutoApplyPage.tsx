@@ -12,8 +12,6 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  Search,
-  MapPin,
   Linkedin,
   ChevronDown,
   ChevronUp,
@@ -23,13 +21,11 @@ import {
   Clock,
   Briefcase,
   Building2,
-  LogIn,
-  LogOut,
   Unplug,
-  Wifi,
-  WifiOff,
   Sparkles,
+  ArrowRight,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,7 +54,7 @@ interface RunStats {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AutoApplyPage
+// AutoApplyPage - Ultra-Sleek Command Center
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const AutoApplyPage: React.FC = () => {
@@ -138,18 +134,18 @@ export const AutoApplyPage: React.FC = () => {
   const handleConnectLinkedIn = async () => {
     setLiConnectState("connecting");
     setStatusType("info");
-    setStatusMsg("🌐 Opening Chromium browser... Log in to LinkedIn in the window that appears. We'll detect your login automatically.");
+    setStatusMsg("🌐 Opening Chromium browser... Log in to LinkedIn in the window that appears.");
 
     try {
       const res = await conveyor.data.connectLinkedIn();
       if (res?.success) {
         setLiConnectState("connected");
         setStatusType("success");
-        setStatusMsg("✅ LinkedIn connected! Your session is saved — auto-apply is ready to go.");
+        setStatusMsg("✅ LinkedIn connected! Session saved.");
       } else {
         setLiConnectState("disconnected");
         setStatusType("error");
-        setStatusMsg(`⚠️ ${res?.error || "Login not detected. Please try again."}`);
+        setStatusMsg(`⚠️ ${res?.error || "Login not detected."}`);
       }
     } catch (err) {
       setLiConnectState("disconnected");
@@ -158,41 +154,27 @@ export const AutoApplyPage: React.FC = () => {
     }
   };
 
-  const handleDisconnectLinkedIn = async () => {
-    await conveyor.data.disconnectLinkedIn();
-    setLiConnectState("disconnected");
-    setStatusMsg("LinkedIn disconnected. Your session cookies are kept — reconnecting will be instant.");
-    setStatusType("info");
-  };
-
   const handleConnectNaukri = async () => {
     setNaukriConnectState("connecting");
     setStatusType("info");
-    setStatusMsg("🌐 Opening Chromium browser... Log in to Naukri in the window that appears. We'll detect your login automatically.");
+    setStatusMsg("🌐 Opening Chromium browser... Log in to Naukri in the window that appears.");
 
     try {
       const res = await conveyor.data.connectNaukri();
       if (res?.success) {
         setNaukriConnectState("connected");
         setStatusType("success");
-        setStatusMsg("✅ Naukri connected! Your session is saved — auto-apply is ready to go.");
+        setStatusMsg("✅ Naukri connected! Session saved.");
       } else {
         setNaukriConnectState("disconnected");
         setStatusType("error");
-        setStatusMsg(`⚠️ ${res?.error || "Login not detected. Please try again."}`);
+        setStatusMsg(`⚠️ ${res?.error || "Login not detected."}`);
       }
     } catch (err) {
       setNaukriConnectState("disconnected");
       setStatusType("error");
       setStatusMsg(err instanceof Error ? err.message : "Connection failed.");
     }
-  };
-
-  const handleDisconnectNaukri = async () => {
-    await conveyor.data.disconnectNaukri();
-    setNaukriConnectState("disconnected");
-    setStatusMsg("Naukri disconnected. Your session cookies are kept — reconnecting will be instant.");
-    setStatusType("info");
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -209,7 +191,7 @@ export const AutoApplyPage: React.FC = () => {
     setLogResults([]);
     setRunStats(null);
     setStatusType("info");
-    setStatusMsg("🚀 Auto-apply started — navigating LinkedIn job search, applying with Easy Apply...");
+    setStatusMsg("🚀 Auto-apply started — navigating LinkedIn job search...");
 
     try {
       const response = await conveyor.data.runLinkedInAutoApply({
@@ -259,7 +241,7 @@ export const AutoApplyPage: React.FC = () => {
     setLogResults([]);
     setRunStats(null);
     setStatusType("info");
-    setStatusMsg("🚀 Auto-apply started — navigating Naukri job search, applying to postings...");
+    setStatusMsg("🚀 Auto-apply started — navigating Naukri job search...");
 
     try {
       const response = await conveyor.data.runNaukriAutoApply({
@@ -306,202 +288,156 @@ export const AutoApplyPage: React.FC = () => {
   const naukriIsConnected = naukriConnectState === "connected";
   const naukriIsConnecting = naukriConnectState === "connecting";
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────────────────────────────────
-
   return (
-    <div className="space-y-5 max-w-5xl mx-auto py-2">
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {/* ── Header & Platform Toggle Bar ──────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <Zap className="h-6 w-6 text-primary" /> Auto-Apply Bot
+        </h1>
 
-      {/* ── Platform Tabs ──────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2">
-        {(["linkedin", "naukri"] as Platform[]).map((p) => {
-          const isActive = activePlatform === p;
-          const isConn = p === "linkedin" ? liIsConnected : naukriIsConnected;
-          return (
-            <button
-              key={p}
-              onClick={() => { setActivePlatform(p); setLogResults([]); setStatusMsg(null); setRunStats(null); }}
-              className={cn(
-                "flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-150",
-                isActive
-                  ? p === "linkedin"
-                    ? "bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-sm"
-                    : "bg-emerald-600/15 text-emerald-400 border-emerald-500/40 shadow-sm"
-                  : "bg-card text-muted-foreground border-border hover:bg-muted/40 hover:text-foreground"
-              )}
-            >
-              {p === "linkedin" ? <Linkedin className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
-              <span>{p === "linkedin" ? "LinkedIn Easy Apply" : "Naukri Auto-Apply"}</span>
-              {isConn && <span className={cn("h-1.5 w-1.5 rounded-full shrink-0 animate-pulse", p === "linkedin" ? "bg-blue-400" : "bg-emerald-400")} />}
-            </button>
-          );
-        })}
+        {/* Sleek Segmented Platform Switcher */}
+        <div className="flex items-center gap-1.5 bg-muted/40 p-1.5 rounded-2xl border border-border/80">
+          <button
+            onClick={() => setActivePlatform("linkedin")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all",
+              isLinkedin
+                ? "bg-blue-600/15 text-blue-400 border border-blue-500/40 shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
+          >
+            <Linkedin className="h-3.5 w-3.5 text-blue-400" />
+            <span>LinkedIn</span>
+            {liIsConnected ? (
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" title="Connected" />
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); handleConnectLinkedIn(); }}
+                disabled={liIsConnecting}
+                className="h-5 text-[10px] px-1.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+              >
+                {liIsConnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Connect"}
+              </Button>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActivePlatform("naukri")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all",
+              !isLinkedin
+                ? "bg-emerald-600/15 text-emerald-400 border border-emerald-500/40 shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
+          >
+            <Zap className="h-3.5 w-3.5 text-emerald-400 fill-current" />
+            <span>Naukri</span>
+            {naukriIsConnected ? (
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" title="Connected" />
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); handleConnectNaukri(); }}
+                disabled={naukriIsConnecting}
+                className="h-5 text-[10px] px-1.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+              >
+                {naukriIsConnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Connect"}
+              </Button>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* ── Main Card ───────────────────────────────────────────────────────── */}
-      <div className="p-6 bg-card border border-border rounded-2xl space-y-5">
-
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/40 pb-4">
-          <div className="flex items-center gap-3">
-            <div className={cn("p-2 rounded-xl shrink-0", isLinkedin ? "bg-blue-500/20 text-blue-400" : "bg-emerald-500/20 text-emerald-400")}>
-              {isLinkedin ? <Rocket className="h-6 w-6" /> : <Zap className="h-6 w-6" />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-lg font-bold text-foreground">
-                  {isLinkedin ? "LinkedIn Easy Apply Engine" : "Naukri Auto-Apply Engine"}
-                </h2>
-                <Badge
-                  variant={(isLinkedin ? liIsConnected : naukriIsConnected) ? "secondary" : "outline"}
-                  className={cn(
-                    "text-xs font-semibold px-2.5 py-0.5 gap-1.5 transition-all",
-                    (isLinkedin ? liIsConnected : naukriIsConnected)
-                      ? isLinkedin ? "bg-blue-500/10 text-blue-400 border-blue-500/30" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                      : (isLinkedin ? liIsConnecting : naukriIsConnecting)
-                      ? "bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", (isLinkedin ? liIsConnected : naukriIsConnected) ? (isLinkedin ? "bg-blue-400" : "bg-emerald-400") : (isLinkedin ? liIsConnecting : naukriIsConnecting) ? "bg-amber-400 animate-ping" : "bg-muted-foreground")} />
-                  {(isLinkedin ? liIsConnected : naukriIsConnected) ? "Connected ✓" : (isLinkedin ? liIsConnecting : naukriIsConnecting) ? "Waiting for login…" : "Disconnected"}
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {isLinkedin
-                  ? "Automated batch search & application using your saved LinkedIn session."
-                  : "Automated batch search & application across Naukri jobs seamlessly."}
-              </p>
-            </div>
+      {/* ── Main Form Control Card ────────────────────────────────────────── */}
+      <div className="bg-card border border-border/80 rounded-2xl p-5 space-y-4 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Job Title / Keywords</Label>
+            <Input
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+              placeholder="e.g. DevOps Engineer, Full Stack"
+            />
           </div>
 
-          {!(isLinkedin ? liIsConnected : naukriIsConnected) && (
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-              <Button
-                size="sm"
-                onClick={isLinkedin ? handleConnectLinkedIn : handleConnectNaukri}
-                disabled={isLinkedin ? liIsConnecting : naukriIsConnecting}
-                className={cn("text-xs h-8 gap-1.5 text-white", isLinkedin ? "bg-blue-600 hover:bg-blue-500" : "bg-emerald-600 hover:bg-emerald-500")}
-              >
-                {(isLinkedin ? liIsConnecting : naukriIsConnecting)
-                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Logging in…</>
-                  : <><LogIn className="h-3.5 w-3.5" /> Connect {isLinkedin ? "LinkedIn" : "Naukri"}</>
-                }
-              </Button>
-            </div>
-          )}
-        </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Target Location</Label>
+            <Input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g. Bangalore, Remote, India"
+            />
+          </div>
 
-        {/* ── Search Config ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-border/40">
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Keywords / Role</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="e.g. Software Engineer, DevOps" className="pl-9 text-xs" />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Location</Label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={isLinkedin ? "e.g. Bangalore, Remote" : "e.g. Bangalore"} className="pl-9 text-xs" />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Max Applications per Run</Label>
-            <select
+            <Label className="text-xs font-semibold">Target Applications Goal</Label>
+            <Input
+              type="number"
+              min={1}
+              max={50}
               value={maxJobs}
-              onChange={(e) => setMaxJobs(Number(e.target.value))}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium"
-            >
-              {[5, 10, 20, 30, 50].map((n) => <option key={n} value={n}>{n} Jobs</option>)}
-            </select>
+              onChange={(e) => setMaxJobs(Math.max(1, parseInt(e.target.value) || 10))}
+            />
           </div>
         </div>
 
-        {/* ── Advanced Filters ───────────────────────────────────────────── */}
-        <div className="border border-border/40 rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between pt-2 border-t border-border/40">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/30 hover:bg-muted/50 transition-colors text-xs font-semibold text-muted-foreground"
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 font-medium"
           >
-            <span className="flex items-center gap-2">
-              <Filter className="h-3.5 w-3.5" />
-              Advanced Filters
-              {(selectedExperience.length + selectedJobType.length + selectedWorkMode.length) > 0 && (
-                <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0", isLinkedin ? "bg-blue-500/20 text-blue-400 border-blue-500/30" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30")}>
-                  {selectedExperience.length + selectedJobType.length + selectedWorkMode.length} active
-                </Badge>
-              )}
-            </span>
+            <Filter className="h-3.5 w-3.5" /> Advanced Search Filters
             {showFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </button>
 
-          {showFilters && (
-            <div className="p-4 space-y-4">
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2">
-                  <Switch checked={easyApplyOnly} onCheckedChange={setEasyApplyOnly} id="easy-apply-only" />
-                  <Label htmlFor="easy-apply-only" className="text-xs cursor-pointer">{isLinkedin ? "Easy Apply only" : "Single-click / Direct Apply only"}</Label>
-                </div>
-                {isLinkedin && (
-                  <div className="flex items-center gap-2">
-                    <Switch checked={under10Applicants} onCheckedChange={setUnder10Applicants} id="under-10" />
-                    <Label htmlFor="under-10" className="text-xs cursor-pointer">Under 10 applicants</Label>
-                  </div>
-                )}
-              </div>
-
-              {/* Date posted */}
-              <FilterGroup label="Date Posted" items={[
-                { v: "anyTime", l: "Any time" }, { v: "pastMonth", l: "Past month" },
-                { v: "pastWeek", l: "Past week" }, { v: "past24Hours", l: "Past 24h" },
-              ]} selected={[datePosted]} onToggle={(v) => setDatePosted(v)} single activePlatform={activePlatform} />
-
-              {/* Experience */}
-              <FilterGroup label="Experience Level" items={
-                isLinkedin ? [
-                  { v: "internship", l: "Internship" }, { v: "entryLevel", l: "Entry level" },
-                  { v: "associate", l: "Associate" }, { v: "midSeniorLevel", l: "Mid-Senior" },
-                  { v: "director", l: "Director" }, { v: "executive", l: "Executive" },
-                ] : [
-                  { v: "freshers", l: "Freshers (0 yrs)" }, { v: "1to3Years", l: "1-3 Years" },
-                  { v: "3to5Years", l: "3-5 Years" }, { v: "5to10Years", l: "5-10 Years" },
-                  { v: "10plusYears", l: "10+ Years" },
-                ]
-              } selected={selectedExperience} onToggle={(v) => toggleFilter(selectedExperience, setSelectedExperience, v)} activePlatform={activePlatform} />
-
-              {/* Job type (LinkedIn) */}
-              {isLinkedin && (
-                <FilterGroup label="Job Type" items={[
-                  { v: "fullTime", l: "Full-time" }, { v: "partTime", l: "Part-time" },
-                  { v: "contract", l: "Contract" }, { v: "temporary", l: "Temporary" },
-                ]} selected={selectedJobType} onToggle={(v) => toggleFilter(selectedJobType, setSelectedJobType, v)} activePlatform={activePlatform} />
-              )}
-
-              {/* Work mode */}
-              <FilterGroup label="Work Mode" items={[
-                { v: "onSite", l: "On-site" }, { v: "remote", l: "Remote" }, { v: "hybrid", l: "Hybrid" },
-              ]} selected={selectedWorkMode} onToggle={(v) => toggleFilter(selectedWorkMode, setSelectedWorkMode, v)} activePlatform={activePlatform} />
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <Switch id="pause-mode" checked={pauseBeforeSubmit} onCheckedChange={setPauseBeforeSubmit} />
+            <Label htmlFor="pause-mode" className="text-xs cursor-pointer">Pause & review before submit</Label>
+          </div>
         </div>
 
-        {/* ── Run Controls ────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between pt-2 border-t border-border/40">
-          <div className="flex items-center gap-2">
-            <Switch checked={pauseBeforeSubmit} onCheckedChange={setPauseBeforeSubmit} id="pause-toggle" />
-            <Label htmlFor="pause-toggle" className="text-xs font-medium cursor-pointer">Pause for human review before submit</Label>
-          </div>
+        {/* Expanded Filters */}
+        {showFilters && (
+          <div className="pt-3 space-y-4 border-t border-border/40">
+            <FilterGroup
+              label="Work Mode"
+              items={[
+                { v: "remote", l: "Remote" },
+                { v: "hybrid", l: "Hybrid" },
+                { v: "onSite", l: "On-site" },
+              ]}
+              selected={selectedWorkMode}
+              onToggle={(v) => toggleFilter(selectedWorkMode, setSelectedWorkMode, v)}
+              activePlatform={activePlatform}
+            />
 
+            <FilterGroup
+              label="Experience Level"
+              items={[
+                { v: "entry", l: "Entry Level" },
+                { v: "associate", l: "Associate" },
+                { v: "midSenior", l: "Mid-Senior" },
+                { v: "director", l: "Director" },
+              ]}
+              selected={selectedExperience}
+              onToggle={(v) => toggleFilter(selectedExperience, setSelectedExperience, v)}
+              activePlatform={activePlatform}
+            />
+          </div>
+        )}
+
+        {/* Launch Button */}
+        <div className="pt-3 flex justify-end">
           <Button
             onClick={isLinkedin ? handleRunLinkedIn : handleRunNaukri}
             disabled={isRunning || (isLinkedin ? !liIsConnected || liIsConnecting : !naukriIsConnected || naukriIsConnecting)}
             size="lg"
             className={cn(
-              "gap-2 text-xs font-semibold shadow-md text-white",
+              "gap-2 text-xs font-semibold shadow-md text-white px-6 transition-all",
               isLinkedin
                 ? liIsConnected
                   ? "bg-blue-600 hover:bg-blue-500"
@@ -511,40 +447,37 @@ export const AutoApplyPage: React.FC = () => {
                   : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
           >
-            {isRunning
-              ? <><Loader2 className="h-4 w-4 animate-spin" /> Running…</>
-              : isLinkedin
-                ? liIsConnected
-                  ? <><Rocket className="h-4 w-4" /> Start LinkedIn Auto-Apply</>
-                  : <><Unplug className="h-4 w-4" /> Connect Account First</>
-                : naukriIsConnected
-                  ? <><Zap className="h-4 w-4 fill-current" /> Start Naukri Auto-Apply</>
-                  : <><Unplug className="h-4 w-4" /> Connect Account First</>
-            }
+            {isRunning ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Running Batch Apply…</>
+            ) : isLinkedin ? (
+              liIsConnected ? <><Rocket className="h-4 w-4" /> Start LinkedIn Auto-Apply</> : <><Unplug className="h-4 w-4" /> Connect LinkedIn First</>
+            ) : (
+              naukriIsConnected ? <><Zap className="h-4 w-4 fill-current" /> Start Naukri Auto-Apply</> : <><Unplug className="h-4 w-4" /> Connect Naukri First</>
+            )}
           </Button>
         </div>
 
-        {/* ── Status ──────────────────────────────────────────────────────── */}
+        {/* Status Message */}
         {statusMsg && (
           <div className={cn(
-            "p-3 rounded-xl text-xs flex items-start gap-2 border",
+            "p-3 rounded-xl text-xs flex items-start gap-2 border mt-3",
             statusType === "error" ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
               : statusType === "success" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                 : "bg-primary/10 text-primary border-primary/20"
           )}>
             <Sparkles className="h-4 w-4 shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{statusMsg}</span>
+            <span className="leading-relaxed font-medium">{statusMsg}</span>
           </div>
         )}
 
-        {/* ── Stats ───────────────────────────────────────────────────────── */}
+        {/* Run Stats */}
         {runStats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
             {[
-              { label: "Processed", value: runStats.processed, color: "text-foreground" },
-              { label: "Applied", value: runStats.applied ?? runStats.processed, color: "text-emerald-400" },
-              { label: "Skipped", value: runStats.skipped ?? 0, color: "text-amber-400" },
-              { label: "Failed", value: runStats.failed ?? 0, color: "text-rose-400" },
+              { label: "Scanned / Processed", value: runStats.processed, color: "text-foreground" },
+              { label: "Successfully Applied", value: runStats.applied ?? runStats.processed, color: "text-emerald-400" },
+              { label: "Skipped / Existing", value: runStats.skipped ?? 0, color: "text-amber-400" },
+              { label: "Failed / Needs Review", value: runStats.failed ?? 0, color: "text-rose-400" },
             ].map((s) => (
               <div key={s.label} className="bg-muted/30 border border-border/40 rounded-xl p-3 text-center">
                 <div className={cn("text-2xl font-bold", s.color)}>{s.value}</div>
@@ -555,20 +488,26 @@ export const AutoApplyPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── Results Log ─────────────────────────────────────────────────────── */}
+      {/* Live Stream Table */}
       {logResults.length > 0 && (
         <div className="space-y-3">
-          <h3 className="font-semibold text-base flex items-center gap-2">
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
-            Application Results
-          </h3>
-          <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border/40 text-xs">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-base flex items-center gap-2">
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+              Live Run Stream ({logResults.length})
+            </h3>
+            <Link to="/dashboard" className="text-xs text-primary hover:underline flex items-center gap-1 font-medium">
+              View in Dashboard <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border/40 text-xs shadow-sm">
             <div className="grid grid-cols-12 p-3 bg-muted/40 font-semibold text-muted-foreground">
               <div className="col-span-5">Job & Company</div>
               <div className="col-span-2">Location</div>
               <div className="col-span-2">Status</div>
               <div className="col-span-1 text-center">Fields</div>
-              <div className="col-span-2 text-right">Note</div>
+              <div className="col-span-2 text-right">Details</div>
             </div>
             {logResults.map((item, idx) => (
               <div key={idx} className="grid grid-cols-12 p-3 items-center hover:bg-muted/20 transition-colors">

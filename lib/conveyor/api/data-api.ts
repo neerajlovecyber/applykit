@@ -100,6 +100,18 @@ export class DataApi {
   }): Promise<Application[]> => {
     return this.api.ipcRenderer.invoke("applications:get", filters);
   };
+  getApplicationsWithJobs = async (profileId?: string): Promise<(Application & {
+    title: string;
+    company: string;
+    location: string | null;
+    platform: string;
+    application_url: string | null;
+  })[]> => {
+    return this.api.ipcRenderer.invoke("applications:get-with-jobs", profileId);
+  };
+  clearApplicationHistory = async (profileId?: string): Promise<void> => {
+    return this.api.ipcRenderer.invoke("applications:clear-history", profileId);
+  };
   getApplicationById = async (id: string): Promise<Application | undefined> => {
     return this.api.ipcRenderer.invoke("applications:get-by-id", id);
   };
@@ -173,6 +185,9 @@ export class DataApi {
   };
   deleteQABankEntry = async (id: string): Promise<void> => {
     return this.api.ipcRenderer.invoke("qa-bank:delete", id);
+  };
+  seedDefaultQABank = async (profileId: string): Promise<void> => {
+    return this.api.ipcRenderer.invoke("qa-bank:seed", profileId);
   };
 
   // ═══════════════════════════════════════════════════════════
