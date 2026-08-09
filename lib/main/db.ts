@@ -342,6 +342,9 @@ function initTables(db: Database.Database): void {
     platformInsert.run(id, name);
   }
 
+  // ── Cleanup legacy emojis from profile names in SQLite ──
+  db.exec(`UPDATE profiles SET name = REPLACE(REPLACE(name, '🚀 ', ''), '🔐 ', '') WHERE name LIKE '%🚀%' OR name LIKE '%🔐%';`);
+
   // ── Seed Neeraj's profiles (INSERT OR IGNORE — safe to re-run, never overwrites edits) ──
   const seedProfile = db.prepare(`
     INSERT OR IGNORE INTO profiles (
@@ -410,7 +413,7 @@ function initTables(db: Database.Database): void {
   // DevOps profile (active by default)
   seedProfile.run(
     "neeraj-devops-001",
-    "🚀 DevOps Engineer",
+    "DevOps Engineer",
     "Neeraj Singh",
     "neerajlovecyber@gmail.com",
     "+91 7988815263",
@@ -433,7 +436,7 @@ function initTables(db: Database.Database): void {
   // Cybersecurity profile (inactive — switch to it from Role Profiles)
   seedProfile.run(
     "neeraj-cyber-001",
-    "🔐 Cybersecurity Engineer",
+    "Cybersecurity Engineer",
     "Neeraj Singh",
     "neerajlovecyber@gmail.com",
     "+91 7988815263",

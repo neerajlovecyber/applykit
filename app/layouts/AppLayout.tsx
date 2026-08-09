@@ -43,7 +43,7 @@ import {
 } from "@/app/components/ui/sidebar";
 import { RoleOnboardingWizard } from "@/app/components/RoleOnboardingWizard";
 import { ScrollArea } from "@/app/components/ui/scroll-area";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 const mainNavItems = [
@@ -57,6 +57,12 @@ const mainNavItems = [
 ];
 
 const allNavItems = [...mainNavItems, { path: "/settings", label: "Settings", icon: Settings }];
+
+const getInitial = (name?: string) => {
+  if (!name) return "P";
+  const cleanName = name.replace(/^[\p{Emoji}\s]+/u, "").trim();
+  return [...(cleanName || name)][0]?.toUpperCase() || "P";
+};
 
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -202,44 +208,43 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
           <div className="pt-1 group-data-[collapsible=icon]:hidden">
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-muted/30 border border-border/40 hover:bg-muted/60 transition-all duration-150 cursor-pointer outline-none">
-                  <div className="size-8 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold text-sm flex items-center justify-center shrink-0">
-                    {activeProfile?.name ? activeProfile.name.charAt(0).toUpperCase() : "P"}
-                  </div>
-                  <div className="flex flex-col min-w-0 text-left flex-1">
-                    <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider leading-none">Active Profile</span>
-                    <span className="text-xs font-medium text-foreground truncate mt-0.5">{activeProfile?.name ?? "Select Profile"}</span>
-                  </div>
-                  <ChevronsUpDown className="size-3.5 text-muted-foreground shrink-0" />
-                </button>
+              <DropdownMenuTrigger className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-muted/30 border border-border/40 hover:bg-muted/60 transition-all duration-150 cursor-pointer outline-none">
+                <div className="size-8 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold text-sm flex items-center justify-center shrink-0">
+                  {getInitial(activeProfile?.name)}
+                </div>
+                <div className="flex flex-col min-w-0 text-left flex-1">
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider leading-none">Active Profile</span>
+                  <span className="text-xs font-medium text-foreground truncate mt-0.5">{activeProfile?.name ?? "Select Profile"}</span>
+                </div>
+                <ChevronsUpDown className="size-3.5 text-muted-foreground shrink-0" />
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-56"
+                className="w-(--anchor-width)"
                 side="top"
                 align="start"
                 sideOffset={8}
               >
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Profiles</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {profiles.map((p) => (
-                  <DropdownMenuItem
-                    key={p.id}
-                    className="flex items-center gap-2.5 cursor-pointer"
-                    onClick={() => {
-                      conveyor.data.setActiveProfile(p.id).then(() => {
-                        conveyor.data.getProfiles().then(setProfiles);
-                        setActiveProfile(p);
-                      });
-                    }}
-                  >
-                    <div className="size-6 rounded-md bg-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0">
-                      {p.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-xs flex-1 truncate">{p.name}</span>
-                    {activeProfile?.id === p.id && <Check className="size-3.5 text-emerald-400 shrink-0" />}
-                  </DropdownMenuItem>
-                ))}
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">Profiles</DropdownMenuLabel>
+                  {profiles.map((p) => (
+                    <DropdownMenuItem
+                      key={p.id}
+                      className="flex items-center gap-2.5 cursor-pointer"
+                      onClick={() => {
+                        conveyor.data.setActiveProfile(p.id).then(() => {
+                          conveyor.data.getProfiles().then(setProfiles);
+                          setActiveProfile(p);
+                        });
+                      }}
+                    >
+                      <div className="size-6 rounded-md bg-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+                        {getInitial(p.name)}
+                      </div>
+                      <span className="text-xs flex-1 truncate">{p.name}</span>
+                      {activeProfile?.id === p.id && <Check className="size-3.5 text-emerald-400 shrink-0" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild className="cursor-pointer">
                   <Link to="/profiles" className="flex items-center gap-2 text-xs">
