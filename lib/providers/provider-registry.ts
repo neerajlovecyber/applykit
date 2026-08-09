@@ -35,8 +35,21 @@ for (const [id, template] of Object.entries(PROVIDER_TEMPLATES)) {
  * Register or update a provider configuration.
  */
 export function configureProvider(config: LLMProviderConfig): void {
-  providerConfigs.set(config.id, config);
-  setSetting(`llm_config_${config.id}`, JSON.stringify(config));
+  const existing = getProviderConfig(config.id);
+  let finalKey = config.apiKey;
+
+  if ((!finalKey || finalKey.startsWith("••••")) && existing?.apiKey && !existing.apiKey.startsWith("••••")) {
+    finalKey = existing.apiKey;
+  }
+
+  const finalConfig: LLMProviderConfig = {
+    ...config,
+    apiKey: finalKey,
+  };
+
+  providerConfigs.set(config.id, finalConfig);
+  setSetting(`llm_config_${config.id}`, JSON.stringify(finalConfig));
+  setActiveProvider(config.id);
   console.log(`[LLM] Configured provider: ${config.name} (${config.id})`);
 }
 
@@ -123,7 +136,15 @@ export function listProviders(): LLMProviderConfig[] {
  * Create a Vercel AI SDK LanguageModel instance based on current provider config.
  */
 export function getLanguageModel(overrideConfig?: LLMProviderConfig, modelName?: string): LanguageModel {
-  const config = overrideConfig || getActiveProviderConfig();
+  let config = overrideConfig || getActiveProviderConfig();
+
+  if (config.id && (!config.apiKey || config.apiKey.startsWith("••••"))) {
+    const realConfig = getProviderConfig(config.id);
+    if (realConfig && realConfig.apiKey && !realConfig.apiKey.startsWith("••••")) {
+      config = { ...config, apiKey: realConfig.apiKey };
+    }
+  }
+
   const targetModel = modelName || config.defaultModel;
 
   switch (config.type) {

@@ -186,6 +186,9 @@ export class DataApi {
   deleteQABankEntry = async (id: string): Promise<void> => {
     return this.api.ipcRenderer.invoke("qa-bank:delete", id);
   };
+  clearAIGeneratedQABankEntries = async (profileId: string): Promise<void> => {
+    return this.api.ipcRenderer.invoke("qa-bank:clear-ai", profileId);
+  };
   seedDefaultQABank = async (profileId: string): Promise<void> => {
     return this.api.ipcRenderer.invoke("qa-bank:seed", profileId);
   };

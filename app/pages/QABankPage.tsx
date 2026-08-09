@@ -10,6 +10,7 @@ import {
   Search,
   RefreshCw,
   BrainCircuit,
+  Sparkles,
 } from "lucide-react";
 import type { QABankEntry } from "@/lib/main/db-queries";
 
@@ -19,6 +20,7 @@ export const QABankPage: React.FC = () => {
 
   const [entries, setEntries] = useState<QABankEntry[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showConfirmClearAI, setShowConfirmClearAI] = useState(false);
 
   useEffect(() => {
     loadQABank();
@@ -44,11 +46,24 @@ export const QABankPage: React.FC = () => {
     loadQABank();
   };
 
+  const handleClearAIAnswers = async () => {
+    if (!activeProfile) return;
+    try {
+      await conveyor.data.clearAIGeneratedQABankEntries(activeProfile.id);
+      setShowConfirmClearAI(false);
+      loadQABank();
+    } catch (err) {
+      console.error("Failed to clear AI generated answers:", err);
+    }
+  };
+
   const filteredEntries = entries.filter(
     (e) =>
       e.question_pattern.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.answer.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const aiEntriesCount = entries.filter((e) => e.source === "ai_generated").length;
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-6">
@@ -65,7 +80,36 @@ export const QABankPage: React.FC = () => {
             Pre-loaded standard questions & learned answers for Naukri & LinkedIn forms.
           </p>
         </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowConfirmClearAI(true)}
+          disabled={aiEntriesCount === 0}
+          className="gap-2 text-xs font-semibold text-rose-400 hover:text-rose-300 border-rose-500/30 hover:bg-rose-500/10"
+        >
+          <Trash2 className="h-4 w-4" /> Clear AI Answers ({aiEntriesCount})
+        </Button>
       </div>
+
+      {/* Clear AI Answers Confirmation */}
+      {showConfirmClearAI && (
+        <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 flex items-center justify-between gap-4 text-xs">
+          <div className="flex items-center gap-2 text-rose-300 font-medium">
+            <Sparkles className="h-4 w-4 shrink-0 text-amber-400" />
+            <span>Are you sure you want to delete all ({aiEntriesCount}) AI-generated saved answers? Standard pre-loaded questions will remain intact.</span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" variant="ghost" onClick={() => setShowConfirmClearAI(false)} className="h-7 text-xs">
+              Cancel
+            </Button>
+            <Button size="sm" variant="destructive" onClick={handleClearAIAnswers} className="h-7 text-xs font-semibold">
+              Yes, Delete AI Answers
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Full-Width Q&A List */}
       <div className="space-y-4">
@@ -103,9 +147,9 @@ export const QABankPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground pl-6">
                       <Badge variant="outline" className="text-[10px] uppercase font-mono py-0">
-                        {entry.source}
+                        {entry.source === "ai_generated" ? "AI_GENERATED" : "DEFAULT"}
                       </Badge>
-                      <span>• Used {entry.usage_count} times</span>
+                      <span>• Used {(entry as any).use_count ?? (entry as any).usage_count ?? 0} times</span>
                     </div>
                   </div>
 

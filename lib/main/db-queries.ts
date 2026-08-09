@@ -696,8 +696,26 @@ export function recordAutoApplyResult(
 // ═══════════════════════════════════════════════════════════
 
 export function getQABankEntries(profileId: string): QABankEntry[] {
-  return getDb()
-    .prepare("SELECT * FROM qa_bank WHERE profile_id = ? ORDER BY use_count DESC")
+  const db = getDb();
+
+  // Delete generic chatbot greetings saved by mistake
+  db.prepare(`
+    DELETE FROM qa_bank
+    WHERE question_pattern LIKE '%showing interest%'
+       OR question_pattern LIKE '%recruiter%question%'
+       OR question_pattern LIKE '%kindly answer%'
+  `).run();
+
+  // Normalize legacy and non-AI sources to 'default'
+  db.prepare(`
+    UPDATE qa_bank
+    SET source = 'default'
+    WHERE source IS NULL
+       OR source != 'ai_generated'
+  `).run();
+
+  return db
+    .prepare("SELECT * FROM qa_bank WHERE profile_id = ? ORDER BY use_count DESC, created_at DESC")
     .all(profileId) as QABankEntry[];
 }
 
@@ -722,7 +740,15 @@ export function upsertQABankEntry(data: {
   question_type?: string;
   confidence?: string;
   source?: string;
-}): QABankEntry {
+}): QABankEntry | undefined {
+  const normQ = (data.question_pattern || "").toLowerCase();
+  // Skip saving generic chatbot greetings
+  if (normQ.includes("showing interest") || normQ.includes("kindly answer") || normQ.includes("recruiter's questions")) {
+    return undefined;
+  }
+
+  const cleanSource = data.source === "ai_generated" ? "ai_generated" : "default";
+
   const existing = getDb()
     .prepare("SELECT * FROM qa_bank WHERE profile_id = ? AND question_pattern = ?")
     .get(data.profile_id, data.question_pattern) as QABankEntry | undefined;
@@ -731,7 +757,7 @@ export function upsertQABankEntry(data: {
     getDb().prepare(`
       UPDATE qa_bank SET answer = ?, question_type = ?, confidence = ?, source = ?
       WHERE id = ?
-    `).run(data.answer, data.question_type ?? existing.question_type, data.confidence ?? existing.confidence, data.source ?? existing.source, existing.id);
+    `).run(data.answer, data.question_type ?? existing.question_type, data.confidence ?? existing.confidence, cleanSource, existing.id);
     return getDb().prepare("SELECT * FROM qa_bank WHERE id = ?").get(existing.id) as QABankEntry;
   }
 
@@ -739,7 +765,7 @@ export function upsertQABankEntry(data: {
   getDb().prepare(`
     INSERT INTO qa_bank (id, profile_id, question_pattern, question_type, answer, confidence, source)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(id, data.profile_id, data.question_pattern, data.question_type ?? null, data.answer, data.confidence ?? "high", data.source ?? "manual");
+  `).run(id, data.profile_id, data.question_pattern, data.question_type ?? null, data.answer, data.confidence ?? "high", cleanSource);
 
   return getDb().prepare("SELECT * FROM qa_bank WHERE id = ?").get(id) as QABankEntry;
 }
@@ -750,6 +776,10 @@ export function incrementQAUsage(id: string): void {
 
 export function deleteQABankEntry(id: string): void {
   getDb().prepare("DELETE FROM qa_bank WHERE id = ?").run(id);
+}
+
+export function clearAIGeneratedQABankEntries(profileId: string): void {
+  getDb().prepare("DELETE FROM qa_bank WHERE profile_id = ? AND source = 'ai_generated'").run(profileId);
 }
 
 export function seedDefaultQABank(profileId: string): void {
@@ -835,9 +865,11 @@ export function seedDefaultQABank(profileId: string): void {
       answer: entry.answer,
       question_type: entry.question_type,
       confidence: "high",
-      source: "reference_repo",
+      source: "default",
     });
   }
+
+  getDb().prepare("UPDATE qa_bank SET source = 'default' WHERE source IN ('reference_repo', 'default_seed')").run();
 }
 
 // ═══════════════════════════════════════════════════════════

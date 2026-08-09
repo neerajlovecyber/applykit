@@ -54,6 +54,7 @@ export function registerAppHandlers(): void {
   ipcMain.handle("qa-bank:find", (_, { profileId, pattern }) => dbQueries.findQAAnswer(profileId, pattern));
   ipcMain.handle("qa-bank:upsert", (_, data) => dbQueries.upsertQABankEntry(data));
   ipcMain.handle("qa-bank:delete", (_, id) => dbQueries.deleteQABankEntry(id));
+  ipcMain.handle("qa-bank:clear-ai", (_, profileId) => dbQueries.clearAIGeneratedQABankEntries(profileId));
   ipcMain.handle("qa-bank:seed", (_, profileId) => dbQueries.seedDefaultQABank(profileId));
 
   // ===========================================================
