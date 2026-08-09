@@ -425,7 +425,22 @@ export class FormFiller {
       } catch { /* ignore */ }
     }
 
-    // Common Application Radio / Yes-No Heuristics
+    // 1. Tier 1: Check Central QA Bank SQLite lookup for user-defined / high-confidence answer
+    const bankEntry = findQAAnswer(this.profile.id, questionText);
+    if (bankEntry) {
+      return { value: bankEntry.answer, source: "qa_bank" };
+    }
+
+    // 2. Tier 2: Match Profile Heuristics
+    if (/comfortable|willing|alternate|6 days|saturday|office|full-time|full time|onsite|on-site|relocate|shift|travel|hybrid/i.test(normQ)) {
+      return { value: "Yes, I am comfortable with this working arrangement.", source: "profile" };
+    }
+    if (/why|interested|join|reason|company|motivation|looking to/i.test(normQ)) {
+      return {
+        value: "I am excited about this role because my background and skills closely align with your requirements, and I want to contribute to the company's growth.",
+        source: "profile",
+      };
+    }
     if (/commute|commuting|relocate|relocation|hybrid|onsite|work location|in-person/i.test(normQ)) {
       return { value: "Yes", source: "profile" };
     }
@@ -441,13 +456,9 @@ export class FormFiller {
     if (/rate|rating|scale|understanding|knowledge|self-eval|how would you rate|score|confidence|flaws|whiteboard/i.test(normQ)) {
       return { value: "8", source: "profile" };
     }
-    if (/security automation|shift.*left|effective concept|critical role|automation/i.test(normQ)) {
-      return { value: "Yes", source: "profile" };
-    }
 
-    // 1. Check profile & education defaults
     if (/notice|notice period|serving.*notice|remaining.*days|immediate.*joiner/i.test(normQ)) {
-      return { value: "30", source: "profile" };
+      return { value: this.profile.notice_period || "30 days", source: "profile" };
     }
     if (/country code|phone.*code|dialing code/i.test(normQ)) {
       const loc = (this.profile.location || "").toLowerCase();
@@ -499,12 +510,6 @@ export class FormFiller {
     }
     if (/location|city/i.test(normQ)) {
       return { value: this.profile.location || "Delhi NCR, India", source: "profile" };
-    }
-
-    // 2. Check QA Bank SQLite lookup
-    const bankEntry = findQAAnswer(this.profile.id, questionText);
-    if (bankEntry) {
-      return { value: bankEntry.answer, source: "qa_bank" };
     }
 
     // 3. Fallback to Vercel AI SDK completion with rich full resume context
