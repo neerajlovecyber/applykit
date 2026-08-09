@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { useConveyor } from "@/app/hooks/use-conveyor";
 import { useProfileStore } from "@/app/stores/profile-store";
 import { Button } from "@/app/components/ui/button";
@@ -223,16 +224,17 @@ export const NaukriPage: React.FC = () => {
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Max Applications per Run</Label>
-            <select
-              value={maxJobs}
-              onChange={(e) => setMaxJobs(Number(e.target.value))}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium"
-            >
-              <option value={5}>5 Jobs</option>
-              <option value={10}>10 Jobs</option>
-              <option value={20}>20 Jobs</option>
-              <option value={30}>30 Jobs</option>
-            </select>
+            <Select value={String(maxJobs)} onValueChange={(v) => setMaxJobs(Number(v))}>
+              <SelectTrigger className="text-xs w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5 Jobs</SelectItem>
+                <SelectItem value="10">10 Jobs</SelectItem>
+                <SelectItem value="20">20 Jobs</SelectItem>
+                <SelectItem value="30">30 Jobs</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

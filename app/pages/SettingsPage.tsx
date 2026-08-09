@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { useConveyor } from "@/app/hooks/use-conveyor";
 import { Button } from "@/app/components/ui/button";
@@ -418,15 +419,16 @@ export const SettingsPage: React.FC = () => {
               {/* Provider Dropdown */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Provider</Label>
-                <select
-                  value={activeProviderId}
-                  onChange={(e) => handleSelectProvider(e.target.value)}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-semibold text-foreground"
-                >
-                  <option value="openrouter">OpenRouter</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="gemini">Google Gemini</option>
-                </select>
+                <Select value={activeProviderId} onValueChange={handleSelectProvider}>
+                  <SelectTrigger className="text-xs w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openrouter">OpenRouter</SelectItem>
+                    <SelectItem value="openai">OpenAI</SelectItem>
+                    <SelectItem value="gemini">Google Gemini</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Model Searchable Combobox */}

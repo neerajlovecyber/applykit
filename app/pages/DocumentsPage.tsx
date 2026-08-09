@@ -158,15 +158,16 @@ export const DocumentsPage: React.FC = () => {
 
             <div className="space-y-2">
               <Label className="text-xs">Document Type</Label>
-              <select
-                value={docType}
-                onChange={(e) => setDocType(e.target.value as any)}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm"
-              >
-                <option value="resume">Source Resume</option>
-                <option value="cover_letter">Cover Letter Template</option>
-                <option value="portfolio">Portfolio / Bio</option>
-              </select>
+              <Select value={docType} onValueChange={(v) => setDocType(v as any)}>
+                <SelectTrigger className="text-xs w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="resume">Source Resume</SelectItem>
+                  <SelectItem value="cover_letter">Cover Letter Template</SelectItem>
+                  <SelectItem value="portfolio">Portfolio / Bio</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

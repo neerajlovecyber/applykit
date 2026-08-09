@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { useLocation } from "react-router-dom";
 import { useConveyor } from "@/app/hooks/use-conveyor";
 import { useProfileStore } from "@/app/stores/profile-store";
@@ -149,30 +150,32 @@ export const HistoryPage: React.FC = () => {
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
             <span>Platform:</span>
-            <select
-              value={platformFilter}
-              onChange={(e) => setPlatformFilter(e.target.value)}
-              className="bg-muted/40 border border-border text-xs rounded-lg px-2.5 py-1 text-foreground focus:outline-none"
-            >
-              <option value="all">All</option>
-              <option value="linkedin">LinkedIn</option>
-              <option value="naukri">Naukri</option>
-            </select>
+            <Select value={platformFilter} onValueChange={setPlatformFilter}>
+              <SelectTrigger size="sm" className="text-xs h-7 min-w-[90px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                <SelectItem value="naukri">Naukri</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
             <span>Status:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-muted/40 border border-border text-xs rounded-lg px-2.5 py-1 text-foreground focus:outline-none"
-            >
-              <option value="all">All</option>
-              <option value="submitted">Submitted</option>
-              <option value="pending_review">Pending Review</option>
-              <option value="skipped">Skipped</option>
-              <option value="failed">Failed</option>
-            </select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger size="sm" className="text-xs h-7 min-w-[110px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="submitted">Submitted</SelectItem>
+                <SelectItem value="pending_review">Pending Review</SelectItem>
+                <SelectItem value="skipped">Skipped</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

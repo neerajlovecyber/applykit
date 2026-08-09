@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useConveyor } from "@/app/hooks/use-conveyor";
 import { useProfileStore } from "@/app/stores/profile-store";
@@ -789,16 +789,17 @@ ${eduFormatted}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold">Seniority Level</Label>
-                  <select
-                    value={seniority}
-                    onChange={(e) => setSeniority(e.target.value)}
-                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs"
-                  >
-                    <option value="junior">Junior (0-2 yrs)</option>
-                    <option value="mid">Mid-Level (3-5 yrs)</option>
-                    <option value="senior">Senior (5-8 yrs)</option>
-                    <option value="lead">Lead / Principal (8+ yrs)</option>
-                  </select>
+                  <Select value={seniority} onValueChange={setSeniority}>
+                    <SelectTrigger className="text-xs w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="junior">Junior (0-2 yrs)</SelectItem>
+                      <SelectItem value="mid">Mid-Level (3-5 yrs)</SelectItem>
+                      <SelectItem value="senior">Senior (5-8 yrs)</SelectItem>
+                      <SelectItem value="lead">Lead / Principal (8+ yrs)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
