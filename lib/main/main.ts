@@ -5,9 +5,11 @@ import { registerExecutionTaskHandlers } from "@/lib/execution/executor";
 import { startTaskQueue, stopTaskQueue } from "@/lib/engine/task-queue";
 
 // Initialization when Electron is ready
+app.setName("ApplyKit");
+
 app.whenReady().then(() => {
   // Set app user model id for windows
-  electronApp.setAppUserModelId("com.electron");
+  electronApp.setAppUserModelId("io.github.neerajlovecyber.applykit");
 
   // Register execution task handlers & start task queue engine
   registerExecutionTaskHandlers();
