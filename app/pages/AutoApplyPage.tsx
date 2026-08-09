@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { ContinuousTabs } from "@/app/components/ui/continuous-tabs";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -289,60 +290,45 @@ export const AutoApplyPage: React.FC = () => {
           <Zap className="h-6 w-6 text-primary" /> Auto-Apply Bot
         </h1>
 
-        {/* Sleek Segmented Platform Switcher */}
-        <div className="flex items-center gap-1.5 bg-muted/40 p-1.5 rounded-2xl border border-border/80">
-          <button
-            onClick={() => setActivePlatform("linkedin")}
-            className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all",
-              isLinkedin
-                ? "bg-blue-600/15 text-blue-400 border border-blue-500/40 shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-          >
-            <Linkedin className="h-3.5 w-3.5 text-blue-400" />
-            <span>LinkedIn</span>
-            {liIsConnected ? (
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" title="Connected" />
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => { e.stopPropagation(); handleConnectLinkedIn(); }}
-                disabled={liIsConnecting}
-                className="h-5 text-[10px] px-1.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
-              >
-                {liIsConnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Connect"}
-              </Button>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActivePlatform("naukri")}
-            className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all",
-              !isLinkedin
-                ? "bg-emerald-600/15 text-emerald-400 border border-emerald-500/40 shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-          >
-            <Zap className="h-3.5 w-3.5 text-emerald-400 fill-current" />
-            <span>Naukri</span>
-            {naukriIsConnected ? (
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" title="Connected" />
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => { e.stopPropagation(); handleConnectNaukri(); }}
-                disabled={naukriIsConnecting}
-                className="h-5 text-[10px] px-1.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-              >
-                {naukriIsConnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Connect"}
-              </Button>
-            )}
-          </button>
-        </div>
+        {/* Watermelon Continuous Tabs Platform Switcher */}
+        <ContinuousTabs
+          value={activePlatform}
+          onValueChange={(id) => setActivePlatform(id as Platform)}
+          tabs={[
+            {
+              id: "linkedin",
+              label: (
+                <div className="flex items-center gap-1.5">
+                  <Linkedin className="h-3.5 w-3.5 text-blue-400" />
+                  <span>LinkedIn</span>
+                  <span
+                    className={cn(
+                      "h-2 w-2 rounded-full shrink-0",
+                      liIsConnected ? "bg-blue-400" : "bg-muted-foreground/40"
+                    )}
+                    title={liIsConnected ? "Connected" : "Disconnected"}
+                  />
+                </div>
+              ),
+            },
+            {
+              id: "naukri",
+              label: (
+                <div className="flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-sky-400 fill-current" />
+                  <span>Naukri</span>
+                  <span
+                    className={cn(
+                      "h-2 w-2 rounded-full shrink-0",
+                      naukriIsConnected ? "bg-sky-400" : "bg-muted-foreground/40"
+                    )}
+                    title={naukriIsConnected ? "Connected" : "Disconnected"}
+                  />
+                </div>
+              ),
+            },
+          ]}
+        />
       </div>
 
       {/* ── Main Form Control Card ────────────────────────────────────────── */}

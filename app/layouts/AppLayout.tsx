@@ -44,6 +44,7 @@ import {
 import { RoleOnboardingWizard } from "@/app/components/RoleOnboardingWizard";
 import { ScrollArea } from "@/app/components/ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu";
+import { RunActionButton } from "@/app/components/ui/run-action-button";
 import { cn } from "@/lib/utils";
 
 const mainNavItems = [
@@ -267,42 +268,17 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           </div>
 
           {/* Global Run / Stop Dynamic Engine Control */}
-          <div className="flex items-center gap-4">
-            <div className="text-xs text-muted-foreground flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${isRunning || execution.isRunning ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"}`} />
-              <span>
-                {execution.isRunning
-                  ? `Auto-Applying (${execution.platform.toUpperCase()})`
-                  : isRunning
-                  ? "Engine Running"
-                  : "Engine Idle"}
-              </span>
-            </div>
-
-            {isRunning || execution.isRunning ? (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  if (isRunning) pauseQueue();
-                  if (execution.isRunning) execution.finishExecution(false, "Execution stopped by user");
-                }}
-                className="gap-2 h-7 text-xs px-3 shadow-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white"
-              >
-                <Pause className="h-3.5 w-3.5 fill-current" />
-                Stop {execution.isRunning ? execution.platform.toUpperCase() : "Queue"}
-              </Button>
-            ) : (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={startQueue}
-                className="gap-2 h-7 text-xs px-3 shadow-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
-              >
-                <Play className="h-3.5 w-3.5 fill-current" />
-                Run Queue ({pendingCount})
-              </Button>
-            )}
+          <div className="flex items-center gap-3">
+            <RunActionButton
+              isRunning={isRunning || execution.isRunning}
+              onRun={startQueue}
+              onStop={() => {
+                if (isRunning) pauseQueue();
+                if (execution.isRunning) execution.finishExecution(false, "Execution stopped by user");
+              }}
+              runLabel={`Run Queue (${pendingCount})`}
+              runningLabel={execution.isRunning ? `Applying (${execution.platform.toUpperCase()})` : "Engine Running"}
+            />
           </div>
         </div>
 
