@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="app/assets/applykit-dark.png" alt="ApplyKit Logo" width="96" />
+  <img src="app/assets/applykit-light-rounded.png" alt="ApplyKit Logo" width="96" />
 </p>
 
 <h1 align="center">ApplyKit</h1>
