@@ -129,14 +129,16 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-2 shadow-sm text-xs h-9 px-4">
-              <Link to="/auto-apply">
-                <Rocket className="h-4 w-4" /> Start Auto-Apply
+            <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-2 shadow-sm text-xs h-9 px-4 whitespace-nowrap">
+              <Link to="/auto-apply" className="inline-flex items-center justify-center flex-row gap-2 whitespace-nowrap">
+                <Rocket className="h-4 w-4 shrink-0" />
+                <span className="whitespace-nowrap">Start Auto-Apply</span>
               </Link>
             </Button>
-            <Button asChild variant="outline" size="sm" className="gap-2 text-xs h-9 px-4">
-              <Link to="/queue">
-                <ListTodo className="h-4 w-4" /> Job Queue
+            <Button asChild variant="outline" size="sm" className="gap-2 text-xs h-9 px-4 whitespace-nowrap">
+              <Link to="/queue" className="inline-flex items-center justify-center flex-row gap-2 whitespace-nowrap">
+                <ListTodo className="h-4 w-4 shrink-0" />
+                <span className="whitespace-nowrap">Job Queue</span>
               </Link>
             </Button>
           </div>
@@ -207,8 +209,8 @@ export const DashboardPage: React.FC = () => {
       {/* ── 3. Main Split View: Activity Feed & Quick Actions ─────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ── Left: Activity Feed (2 Cols) ───────────────────────────────── */}
-        <Card className="lg:col-span-2 p-6 border-border/80 bg-card space-y-4 shadow-sm">
-          <div className="flex items-center justify-between pb-2 border-b border-border/60">
+        <Card className="lg:col-span-2 p-5 border-border/80 bg-card shadow-sm">
+          <div className="flex items-center justify-between pb-3 mb-1 border-b border-border/60">
             <div>
               <h3 className="font-bold tracking-tight text-base flex items-center gap-2">
                 <Activity className="h-4 w-4 text-emerald-400" /> Recent Application Activity
@@ -228,7 +230,7 @@ export const DashboardPage: React.FC = () => {
 
           <div className="divide-y divide-border/40">
             {recentItems.length === 0 ? (
-              <div className="py-12 text-center text-xs text-muted-foreground space-y-2">
+              <div className="py-8 text-center text-xs text-muted-foreground space-y-2">
                 <p>No application history recorded yet.</p>
                 <Button asChild variant="outline" size="sm" className="text-xs h-8">
                   <Link to="/auto-apply">Launch Auto-Apply Hub</Link>
@@ -242,7 +244,7 @@ export const DashboardPage: React.FC = () => {
                 return (
                   <div
                     key={item.id}
-                    className="py-3 flex items-center justify-between gap-4 text-xs hover:bg-muted/30 px-2 rounded-xl transition-colors"
+                    className="py-2.5 px-2 flex items-center justify-between gap-4 text-xs hover:bg-muted/30 rounded-lg transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       {/* Avatar initial */}
@@ -344,10 +346,11 @@ export const DashboardPage: React.FC = () => {
                 <Button
                   asChild
                   size="sm"
-                  className="w-full text-xs font-semibold h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white"
+                  className="w-full text-xs font-semibold h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white whitespace-nowrap"
                 >
-                  <Link to="/auto-apply">
-                    <Play className="h-3.5 w-3.5 fill-current" /> Launch Auto-Apply
+                  <Link to="/auto-apply" className="inline-flex items-center justify-center flex-row gap-1.5 w-full whitespace-nowrap">
+                    <Play className="h-3.5 w-3.5 fill-current shrink-0" />
+                    <span className="whitespace-nowrap">Launch Auto-Apply</span>
                   </Link>
                 </Button>
               )}
