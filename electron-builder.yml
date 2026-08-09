@@ -43,5 +43,5 @@ publish:
   provider: github
   owner: neerajlovecyber
   repo: applykit
-  releaseType: release
+  releaseType: draft
 

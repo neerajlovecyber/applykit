@@ -94,6 +94,19 @@ jobs:
       - name: Build App Assets
         run: bun run vite:build:app
 
+      - name: Create Git Tag if Missing
+        shell: bash
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          TAG_NAME="v${PACKAGE_VERSION}"
+          if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Creating git tag $TAG_NAME"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG_NAME" || true
+            git push origin "$TAG_NAME" || true
+          fi
+
       - name: Publish Release
         run: npx electron-builder --win --publish always
         env:
