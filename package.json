@@ -1,15 +1,15 @@
 {
-  "name": "era",
-  "version": "12.1.0",
-  "description": "A modern Electron application starter kit with React, Vite, TypeScript, Shadcn UI and TailwindCSS",
+  "name": "applykit",
+  "version": "1.0.0",
+  "description": "AI-powered job application automation for LinkedIn & Naukri",
   "license": "MIT",
   "author": {
-    "name": "Guasam",
-    "url": "https://github.com/guasam"
+    "name": "neerajlovecyber",
+    "url": "https://github.com/neerajlovecyber"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/guasam/electron-react-app"
+    "url": "https://github.com/neerajlovecyber/applykit"
   },
   "main": "./out/main/main.js",
   "scripts": {
