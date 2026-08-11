@@ -60,6 +60,7 @@ function initTables(db: Database.Database): void {
       cover_letter_template TEXT,
       -- Default Answers
       default_answers   TEXT DEFAULT '{}',
+      notice_period     TEXT DEFAULT '30 days',
       -- Meta
       is_active         INTEGER DEFAULT 0,
       created_at        TEXT DEFAULT (datetime('now')),
@@ -344,6 +345,7 @@ function initTables(db: Database.Database): void {
   }
 
   // ── Cleanup legacy emojis from profile names & set default notice_period ──
+  try { db.exec("ALTER TABLE profiles ADD COLUMN notice_period TEXT DEFAULT '30 days'"); } catch {}
   db.exec(`
     UPDATE profiles SET name = REPLACE(REPLACE(name, '🚀 ', ''), '🔐 ', '') WHERE name LIKE '%🚀%' OR name LIKE '%🔐%';
     UPDATE profiles SET notice_period = '30 days' WHERE notice_period IS NULL OR notice_period = '';

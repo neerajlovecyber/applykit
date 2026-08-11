@@ -37,6 +37,15 @@ import {
   Upload,
 } from "lucide-react";
 import { parseMasterCV } from "@/lib/providers/cv-parser";
+import { FileDropzone } from "@/app/components/ui/file-upload";
+import {
+  Attachment,
+  AttachmentMedia,
+  AttachmentContent,
+  AttachmentTitle,
+  AttachmentDescription,
+  AttachmentActions,
+} from "@/app/components/ui/attachment";
 
 interface RoleCategory {
   id: string;
@@ -582,70 +591,89 @@ ${eduFormatted}
           {step === 1 && (
             <div className="space-y-5 animate-in fade-in duration-150">
               <div>
-                <h4 className="font-bold text-lg">Step 1: Paste Resume for AI Auto-Fill</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">Copy and paste your resume text below. AI will automatically parse work experience, education, certifications, and skills.</p>
+                <h4 className="font-bold text-lg">Step 1: Upload Resume or Paste Text</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Upload your PDF resume or paste text directly. AI will automatically extract work experience, education, certifications, and skills into editable cards.
+                </p>
               </div>
 
-              <div className="space-y-3 p-4 rounded-xl border border-primary/30 bg-primary/5">
+              {/* Standard File Upload Dropzone */}
+              <FileDropzone
+                onBrowseClick={handleUploadPdf}
+                isProcessing={isParsing}
+                fileName={resumeFilePath ? resumeFilePath.split(/[\\/]/).pop() : null}
+                statusText="PDF text extracted"
+                onRemove={() => {
+                  setResumeFilePath(null);
+                  setRawResumeInput("");
+                }}
+              />
+
+              {/* Attached Resume Item (Shadcn Attachment style) */}
+              {resumeFilePath && (
+                <Attachment variant="emerald" state="done">
+                  <AttachmentMedia>
+                    <FileText className="h-5 w-5 text-emerald-400" />
+                  </AttachmentMedia>
+                  <AttachmentContent>
+                    <AttachmentTitle className="text-emerald-300">
+                      {resumeFilePath.split(/[\\/]/).pop()}
+                    </AttachmentTitle>
+                    <AttachmentDescription className="text-emerald-400/80 font-mono">
+                      Base Resume File • {rawResumeInput.length.toLocaleString()} characters extracted
+                    </AttachmentDescription>
+                  </AttachmentContent>
+                  <AttachmentActions>
+                    <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 font-mono text-[10px]">
+                      Attached
+                    </Badge>
+                  </AttachmentActions>
+                </Attachment>
+              )}
+
+              {/* Textarea for inspecting/editing raw text */}
+              <div className="space-y-2 p-4 rounded-xl border border-border bg-card">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                     <Wand2 className="h-4 w-4 text-primary" />
-                    <span>Resume Text (Upload PDF or Paste Text)</span>
+                    <span>Extracted / Pasted Resume Text</span>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleUploadPdf}
-                    disabled={isParsing}
-                    className="gap-1.5 text-xs border-primary/40 hover:bg-primary/10"
-                  >
-                    <Upload className="h-3.5 w-3.5" />
-                    📎 Upload Resume PDF
-                  </Button>
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    {rawResumeInput.length.toLocaleString()} chars
+                  </span>
                 </div>
-
-                {resumeFilePath && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
-                    <FileText className="h-4 w-4 shrink-0" />
-                    <span className="truncate font-mono">{resumeFilePath.split(/[\\/]/).pop()}</span>
-                    <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400 ml-auto shrink-0">Base Resume</Badge>
-                  </div>
-                )}
 
                 <textarea
                   value={rawResumeInput}
                   onChange={(e) => setRawResumeInput(e.target.value)}
-                  placeholder="Paste your resume text here or click 'Upload Resume PDF' above…"
-                  rows={9}
-                  className="w-full rounded-lg border border-input bg-card p-3 text-xs font-mono outline-none shadow-inner focus:ring-1 focus:ring-primary leading-relaxed"
+                  placeholder="Extracted PDF text or raw resume text will appear here…"
+                  rows={7}
+                  className="w-full rounded-lg border border-input bg-background p-3 text-xs font-mono outline-none shadow-inner focus:ring-1 focus:ring-primary leading-relaxed"
                 />
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-[11px] text-muted-foreground">Extracts work experience, education, certs, and skills automatically</span>
-                </div>
               </div>
 
-              {/* CLI-Style Parse Log Panel */}
+              {/* CLI-Style Extraction Log Panel */}
               {parseLog.length > 0 && (
-                <div className="rounded-xl border border-border bg-zinc-950 overflow-hidden">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border-b border-zinc-800">
-                    <div className="flex gap-1">
-                      <span className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
+                <div className="rounded-xl border border-border bg-zinc-950 overflow-hidden shadow-inner">
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900 border-b border-zinc-800">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <span className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
+                      </div>
+                      <span className="text-[10px] text-zinc-400 font-mono">applykit — extraction log</span>
                     </div>
-                    <span className="text-[10px] text-zinc-500 font-mono">applykit — resume extraction</span>
+                    {isParsing && (
+                      <span className="text-[10px] text-primary font-mono animate-pulse">Running AI Parse…</span>
+                    )}
                   </div>
-                  <div className="p-3 max-h-36 overflow-y-auto space-y-0.5">
+                  <div className="p-3 max-h-36 overflow-y-auto space-y-1">
                     {parseLog.map((line, i) => (
                       <div key={i} className="text-[11px] font-mono text-zinc-300 leading-relaxed">
                         <span className="text-zinc-600 select-none">$ </span>{line}
                       </div>
                     ))}
-                    {isParsing && (
-                      <div className="text-[11px] font-mono text-primary animate-pulse leading-relaxed">
-                        <span className="text-zinc-600 select-none">$ </span>Processing…
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
