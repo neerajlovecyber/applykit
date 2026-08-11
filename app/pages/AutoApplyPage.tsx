@@ -453,7 +453,7 @@ export const AutoApplyPage: React.FC = () => {
         {runStats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
             {[
-              { label: "Scanned / Processed", value: runStats.processed, color: "text-foreground" },
+              { label: "Jobs Processed", value: runStats.processed, color: "text-foreground" },
               { label: "Successfully Applied", value: runStats.applied ?? runStats.processed, color: "text-emerald-400" },
               { label: "Skipped / Existing", value: runStats.skipped ?? 0, color: "text-amber-400" },
               { label: "Failed / Needs Review", value: runStats.failed ?? 0, color: "text-rose-400" },

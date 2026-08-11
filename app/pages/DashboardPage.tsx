@@ -147,10 +147,10 @@ export const DashboardPage: React.FC = () => {
 
       {/* ── 2. Primary KPI Grid ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Scanned Card */}
+        {/* Discovered Card */}
         <Card className="p-5 border-border/80 bg-card hover:border-emerald-500/30 transition-all duration-200 shadow-xs group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jobs Scanned</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jobs Discovered</span>
             <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Search className="h-4 w-4" />
             </div>
