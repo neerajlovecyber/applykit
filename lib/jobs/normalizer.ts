@@ -49,7 +49,7 @@ export function normalizeRawJob(raw: RawJobPosting): {
 
 function cleanText(text: string): string {
   return text
-    .replace(/<[^>]*>/g, " ")       // Remove HTML tags
+    .replace(/<[^>]*>/g, "")        // Remove HTML tags
     .replace(/\s+/g, " ")           // Collapse multiple spaces/newlines
     .trim();
 }

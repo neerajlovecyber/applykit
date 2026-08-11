@@ -17,23 +17,25 @@ export type JobState =
   | "pending_review" // Materials ready, awaiting user review
   | "approved"     // User approved for application
   | "applying"     // Browser automation in progress
+  | "needs_human_action" // Paused for CAPTCHA/2FA or user manual solve
   | "applied"      // Successfully submitted
   | "skipped"      // User skipped or below threshold
   | "failed"       // Application failed
   | "expired";     // Job posting no longer available
 
 const JOB_TRANSITIONS: Record<JobState, JobState[]> = {
-  new:              ["scored", "skipped", "expired"],
-  scored:           ["queued", "skipped"],
-  queued:           ["generating", "skipped"],
-  generating:       ["pending_review", "failed"],
-  pending_review:   ["approved", "skipped"],
-  approved:         ["applying", "skipped"],
-  applying:         ["applied", "failed"],
-  applied:          [],
-  skipped:          ["queued"],  // Allow re-queue of skipped jobs
-  failed:           ["queued"],  // Allow retry
-  expired:          [],
+  new:                ["scored", "skipped", "expired"],
+  scored:             ["queued", "skipped"],
+  queued:             ["generating", "skipped"],
+  generating:         ["pending_review", "failed"],
+  pending_review:     ["approved", "skipped"],
+  approved:           ["applying", "skipped"],
+  applying:           ["applied", "failed", "needs_human_action"],
+  needs_human_action: ["applying", "failed", "skipped", "applied"],
+  applied:            [],
+  skipped:            ["queued"],  // Allow re-queue of skipped jobs
+  failed:             ["queued"],  // Allow retry
+  expired:            [],
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -41,20 +43,22 @@ const JOB_TRANSITIONS: Record<JobState, JobState[]> = {
 // ═══════════════════════════════════════════════════════════
 
 export type ApplicationStatus =
-  | "pending_review"  // Awaiting user review
-  | "approved"        // User approved for submission
-  | "applying"        // Browser automation in progress
-  | "submitted"       // Successfully submitted
-  | "failed"          // Application failed
-  | "skipped";        // User rejected
+  | "pending_review"     // Awaiting user review
+  | "approved"           // User approved for submission
+  | "applying"           // Browser automation in progress
+  | "needs_human_action" // Paused for CAPTCHA/2FA
+  | "submitted"          // Successfully submitted
+  | "failed"             // Application failed
+  | "skipped";           // User rejected
 
 const APPLICATION_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
-  pending_review: ["approved", "skipped"],
-  approved:       ["applying", "skipped"],
-  applying:       ["submitted", "failed"],
-  submitted:      [],
-  failed:         ["pending_review"],  // Allow retry
-  skipped:        ["pending_review"],  // Allow reconsideration
+  pending_review:     ["approved", "skipped"],
+  approved:           ["applying", "skipped"],
+  applying:           ["submitted", "failed", "needs_human_action"],
+  needs_human_action: ["applying", "submitted", "failed", "skipped"],
+  submitted:          [],
+  failed:             ["pending_review"],  // Allow retry
+  skipped:            ["pending_review"],  // Allow reconsideration
 };
 
 // ═══════════════════════════════════════════════════════════

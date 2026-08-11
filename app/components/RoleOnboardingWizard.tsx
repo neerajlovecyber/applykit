@@ -418,7 +418,7 @@ ${eduFormatted}
           company: exp.company,
           location: exp.location,
           years: exp.period,
-          description: exp.bulletsStr.split("\n").map((b) => b.replace(/^[•\-\*]\s*/, "").trim()).filter(Boolean),
+          description: exp.bulletsStr.split("\n").map((b) => b.replace(/^[•\-*]\s*/, "").trim()).filter(Boolean),
         })),
         education: educations.map((e) => ({
           degree: e.degree,

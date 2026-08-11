@@ -77,9 +77,7 @@ async function processNextTask(): Promise<boolean> {
     if (outcome.error) {
       // Check retry eligibility
       if (task.attempts + 1 < task.max_attempts) {
-        // Re-queue for retry with backoff
-        const backoffMs = Math.min(1000 * Math.pow(2, task.attempts), 30000);
-        const nextAttempt = new Date(Date.now() + backoffMs).toISOString();
+        // Re-queue for retry with exponential backoff
         dbQueries.updateTaskStatus(task.id, "queued", undefined, outcome.error);
         // The task will be picked up again after the backoff period
       } else {

@@ -524,10 +524,13 @@ export function getApplicationsWithJobs(profileId?: string): (Application & {
         h.url as application_url
       FROM history h
     ) combined
+    ${profileId ? "WHERE profile_id = ?" : ""}
     ORDER BY created_at DESC
   `;
 
-  const results = getDb().prepare(sql).all() as any[];
+  const results = (profileId
+    ? getDb().prepare(sql).all(profileId)
+    : getDb().prepare(sql).all()) as any[];
 
   // Deduplicate by job_id/title+company to avoid duplicate rows
   const seen = new Set<string>();

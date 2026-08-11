@@ -15,6 +15,7 @@ export function getDb(): Database.Database {
   db.pragma("foreign_keys = ON");
 
   initTables(db);
+  runMigrations(db);
   return db;
 }
 
@@ -463,3 +464,62 @@ export function closeDb(): void {
     db = null;
   }
 }
+
+// ════════════════════════════════════════════════════════════
+// DATABASE MIGRATIONS ENGINE
+// ════════════════════════════════════════════════════════════
+
+interface Migration {
+  version: number;
+  name: string;
+  up: (db: Database.Database) => void;
+}
+
+const MIGRATIONS: Migration[] = [
+  {
+    version: 1,
+    name: "initial_schema_baseline",
+    up: (_db) => {
+      // Baseline migration - table structure created by initTables
+    },
+  },
+  {
+    version: 2,
+    name: "add_human_action_state_support",
+    up: (db) => {
+      // Future column or index additions for task queue or application states
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_job ON tasks(job_id);`);
+    },
+  },
+];
+
+export function runMigrations(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      applied_at TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
+  const appliedVersions = new Set<number>(
+    (db.prepare("SELECT version FROM schema_migrations").all() as { version: number }[]).map(
+      (row) => row.version,
+    ),
+  );
+
+  const insertMigration = db.prepare(
+    "INSERT INTO schema_migrations (version, name) VALUES (?, ?)",
+  );
+
+  for (const migration of MIGRATIONS) {
+    if (!appliedVersions.has(migration.version)) {
+      const applyTx = db.transaction(() => {
+        migration.up(db);
+        insertMigration.run(migration.version, migration.name);
+      });
+      applyTx();
+    }
+  }
+}
+

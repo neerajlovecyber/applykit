@@ -6,7 +6,7 @@
  * Vercel AI SDK, and persists new job postings.
  */
 
-import type { SearchOptions, SearchResultPayload, RawJobPosting } from "../types";
+import type { SearchOptions, SearchResultPayload } from "../types";
 import { searchLinkedInJobs } from "./linkedin-search";
 import { searchNaukriJobs } from "./naukri-search";
 import { searchIndeedJobs } from "./indeed-search";
