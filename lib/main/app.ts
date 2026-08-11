@@ -12,10 +12,10 @@ export function createAppWindow(): void {
 
   // Create the main window.
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 1024,
-    minHeight: 700,
+    width: 1320,
+    height: 850,
+    minWidth: 1180,
+    minHeight: 740,
     show: false,
     backgroundColor: "#1c1c1c",
     icon: appIcon,

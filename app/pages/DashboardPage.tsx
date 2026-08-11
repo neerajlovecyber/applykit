@@ -146,7 +146,7 @@ export const DashboardPage: React.FC = () => {
       </Card>
 
       {/* ── 2. Primary KPI Grid ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
         {/* Discovered Card */}
         <Card className="p-5 border-border/80 bg-card hover:border-emerald-500/30 transition-all duration-200 shadow-xs group">
           <div className="flex items-center justify-between">
