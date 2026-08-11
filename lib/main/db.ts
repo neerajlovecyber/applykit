@@ -343,8 +343,11 @@ function initTables(db: Database.Database): void {
     platformInsert.run(id, name);
   }
 
-  // ── Cleanup legacy emojis from profile names in SQLite ──
-  db.exec(`UPDATE profiles SET name = REPLACE(REPLACE(name, '🚀 ', ''), '🔐 ', '') WHERE name LIKE '%🚀%' OR name LIKE '%🔐%';`);
+  // ── Cleanup legacy emojis from profile names & set default notice_period ──
+  db.exec(`
+    UPDATE profiles SET name = REPLACE(REPLACE(name, '🚀 ', ''), '🔐 ', '') WHERE name LIKE '%🚀%' OR name LIKE '%🔐%';
+    UPDATE profiles SET notice_period = '30 days' WHERE notice_period IS NULL OR notice_period = '';
+  `);
 
   // ── Seed Neeraj's profiles (INSERT OR IGNORE — safe to re-run, never overwrites edits) ──
   const seedProfile = db.prepare(`
@@ -352,9 +355,9 @@ function initTables(db: Database.Database): void {
       id, name, full_name, email, phone, location, linkedin_url,
       summary, skills, experience_years, seniority,
       target_titles, target_locations, work_mode,
-      salary_min, salary_max, salary_currency,
+      salary_min, salary_max, salary_currency, notice_period,
       resume_data, resume_parsed, default_answers, is_active
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const devopsSkills = JSON.stringify([
@@ -419,7 +422,7 @@ function initTables(db: Database.Database): void {
     "candidate@example.com",
     "+1 (555) 019-2834",
     "Delhi NCR, India",
-    "linkedin.com/in/candidate",
+    "https://linkedin.com/in/candidate",
     "DevOps Engineer with 2+ years of experience building cloud, automation, and release workflows across AWS, Linux, CI/CD, and containerized environments.",
     devopsSkills,
     2,
@@ -428,46 +431,22 @@ function initTables(db: Database.Database): void {
     JSON.stringify(["Delhi NCR", "Remote", "Bengaluru", "Hyderabad"]),
     "remote",
     600000, 1800000, "INR",
-    "INR",
+    "30 days",
+    "",
     devopsResumeParsed,
-    1,
-    0, // visa_required = 0
-    "Immediate",
+    "{}",
     1
   );
 
-  // Cyber Security profile
+  // Cybersecurity profile
   seedProfile.run(
-    "neeraj-cyber-002",
+    "neeraj-cyber-001",
     "Cybersecurity Engineer",
     "Candidate Profile",
     "candidate@example.com",
     "+1 (555) 019-2834",
     "Delhi NCR, India",
-    "linkedin.com/in/candidate",
-    "DevOps Engineer with 2+ years of experience building cloud, automation, and release workflows across AWS, Linux, CI/CD, and containerized environments.",
-    devopsSkills,
-    2,
-    "mid",
-    JSON.stringify(["DevOps Engineer", "DevSecOps Engineer", "SRE", "Cloud Engineer", "Platform Engineer"]),
-    JSON.stringify(["Delhi NCR", "Remote", "Bengaluru", "Hyderabad"]),
-    "remote",
-    600000, 1800000, "INR",
-    null,
-    devopsResumeParsed,
-    JSON.stringify({ "years of experience": "2", "notice period": "immediate", "current ctc": "fresher", "expected ctc": "negotiable" }),
-    1, // is_active
-  );
-
-  // Cybersecurity profile (inactive — switch to it from Role Profiles)
-  seedProfile.run(
-    "neeraj-cyber-001",
-    "Cybersecurity Engineer",
-    "Neeraj Singh",
-    "neerajlovecyber@gmail.com",
-    "+91 7988815263",
-    "Delhi NCR, India",
-    "linkedin.com/in/neerajlovecyber",
+    "https://linkedin.com/in/candidate",
     "Cybersecurity Engineer with 2+ years of experience in threat detection, SOC triage, vulnerability assessment, incident response, and cloud security monitoring.",
     cyberSkills,
     2,
@@ -476,10 +455,11 @@ function initTables(db: Database.Database): void {
     JSON.stringify(["Delhi NCR", "Remote", "Bengaluru", "Hyderabad"]),
     "remote",
     600000, 1800000, "INR",
-    null,
+    "30 days",
+    "",
     cyberResumeParsed,
-    JSON.stringify({ "years of experience": "2", "notice period": "immediate", "current ctc": "fresher", "expected ctc": "negotiable" }),
-    0, // is_active
+    "{}",
+    0
   );
 }
 
