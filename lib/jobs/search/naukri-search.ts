@@ -27,7 +27,11 @@ export async function searchNaukriJobs(options: SearchOptions): Promise<SearchRe
   try {
     for (const kw of keywordsList) {
       for (let p = 1; p <= maxPages; p++) {
-        const apiData = await searchNaukriJobsAPI(kw, location, p, authToken);
+        const apiData = await searchNaukriJobsAPI(kw, location, p, authToken, {
+          experienceYears: options.experienceYears,
+          jobAgeDays: options.jobAgeDays,
+          workMode: options.workMode,
+        });
         if (apiData?.jobDetails && Array.isArray(apiData.jobDetails)) {
           for (const item of apiData.jobDetails) {
             const sourceId = String(item.jobId || "");
@@ -91,7 +95,23 @@ export async function searchNaukriJobs(options: SearchOptions): Promise<SearchRe
         for (let p = 1; p <= maxPages; p++) {
           const encKw = encodeURIComponent(kw);
           const encL = location ? encodeURIComponent(location) : "";
-          const searchUrl = `https://www.naukri.com/job-search?k=${encKw}${encL ? `&l=${encL}` : ""}&pageNo=${p}`;
+
+          const extraQuery: string[] = [];
+          if (options.experienceYears !== undefined && options.experienceYears >= 0) {
+            extraQuery.push(`experience=${options.experienceYears}`);
+          }
+          if (options.jobAgeDays) {
+            extraQuery.push(`jobAge=${options.jobAgeDays}`);
+            extraQuery.push(`freshness=${options.jobAgeDays}`);
+          }
+          if (options.workMode) {
+            if (options.workMode === "remote") extraQuery.push("wfhType=2");
+            else if (options.workMode === "hybrid") extraQuery.push("wfhType=3");
+            else if (options.workMode === "onSite") extraQuery.push("wfhType=1");
+          }
+
+          const qStr = extraQuery.length > 0 ? `&${extraQuery.join("&")}` : "";
+          const searchUrl = `https://www.naukri.com/job-search?k=${encKw}${encL ? `&l=${encL}` : ""}&pageNo=${p}${qStr}`;
 
           console.log(`[NaukriSearch Tab: "${kw}"] Navigating to page ${p}: ${searchUrl}`);
           await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 25000 });

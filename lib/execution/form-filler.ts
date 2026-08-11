@@ -144,7 +144,39 @@ export class FormFiller {
         return id.includes("numeric") || mode.includes("numeric") || mode.includes("decimal") || type === "number";
       });
 
-      if (isNumericField) {
+      // Check if input is a Date field (<input type="date">, placeholder with YYYY/MM/DD, or Date label)
+      const isDateField = await input.evaluate((el) => {
+        const type = el.getAttribute("type") || "";
+        const placeholder = el.getAttribute("placeholder") || "";
+        const id = el.id || "";
+        const name = el.getAttribute("name") || "";
+        return (
+          type === "date" ||
+          /yyyy|mm\/dd|dd\/mm|date/i.test(placeholder) ||
+          /date/i.test(id) ||
+          /date/i.test(name)
+        );
+      });
+
+      if (isDateField || /start.*date|desired.*start|available.*start|when.*can.*you.*start/i.test(labelText)) {
+        const isStrictDateInput = await input.evaluate((el) =>
+          el.getAttribute("type") === "date" || /yyyy|mm\/dd|dd\/mm/i.test(el.getAttribute("placeholder") || "")
+        );
+
+        if (isStrictDateInput) {
+          // Format date 30 days from today in ISO format (YYYY-MM-DD)
+          const futureDate = new Date();
+          futureDate.setDate(futureDate.getDate() + 30);
+          const yyyy = futureDate.getFullYear();
+          const mm = String(futureDate.getMonth() + 1).padStart(2, "0");
+          const dd = String(futureDate.getDate()).padStart(2, "0");
+          valueToType = `${yyyy}-${mm}-${dd}`;
+        } else if (!valueToType || valueToType === "Immediate") {
+          valueToType = "Immediate";
+        }
+      }
+
+      if (isNumericField && !isDateField) {
         const digitMatch = valueToType.match(/\d+(\.\d+)?/);
         if (digitMatch) {
           valueToType = digitMatch[0];
@@ -451,8 +483,14 @@ export class FormFiller {
     if (/commute|commuting|relocate|relocation|hybrid|onsite|work location|in-person/i.test(normQ)) {
       return { value: "Yes", source: "profile" };
     }
-    if (/authorized|legally authorized|eligible to work|lawfully authorized/i.test(normQ)) {
+    if (/authorized|legally.*authorized|permitted.*work|legally.*permitted|eligible.*work|lawfully.*authorized/i.test(normQ)) {
       return { value: "Yes", source: "profile" };
+    }
+    if (/visa|sponsorship|require.*visa|sponsorship.*employment|require.*sponsorship/i.test(normQ)) {
+      return { value: "No", source: "profile" };
+    }
+    if (/previously.*worked|ever.*worked|worked.*with|former.*employee|previously.*employed|applied.*before/i.test(normQ)) {
+      return { value: "No", source: "profile" };
     }
     if (/background check|drug test|drug screen|agree to terms/i.test(normQ)) {
       return { value: "Yes", source: "profile" };
@@ -464,6 +502,9 @@ export class FormFiller {
       return { value: "8", source: "profile" };
     }
 
+    if (/start.*date|desired.*start|available.*start|when.*can.*you.*start/i.test(normQ)) {
+      return { value: "Immediate", source: "profile" };
+    }
     if (/notice|notice period|serving.*notice|remaining.*days|immediate.*joiner/i.test(normQ)) {
       return { value: this.profile.notice_period || "30 days", source: "profile" };
     }
@@ -476,52 +517,52 @@ export class FormFiller {
 
     // Education & University heuristics
     if (/degree|qualification|major|field of study/i.test(normQ)) {
-      const degree = parsed?.education?.[0]?.degree || "Bachelor of Technology in Computer Science and Engineering";
-      return { value: degree, source: "profile" };
+      const degree = parsed?.education?.[0]?.degree || "";
+      if (degree) return { value: degree, source: "profile" };
     }
     if (/university|college|institution|school/i.test(normQ)) {
-      const uni = parsed?.education?.[0]?.institution || "Lovely Professional University";
-      return { value: uni, source: "profile" };
+      const uni = parsed?.education?.[0]?.institution || "";
+      if (uni) return { value: uni, source: "profile" };
     }
     if (/gpa|cgpa|grade|score|marks/i.test(normQ)) {
-      const gpa = parsed?.education?.[0]?.description?.match(/\d+(\.\d+)?/)?.[0] || "8.29";
-      return { value: gpa, source: "profile" };
+      const gpa = parsed?.education?.[0]?.description?.match(/\d+(\.\d+)?/)?.[0] || "";
+      if (gpa) return { value: gpa, source: "profile" };
     }
     if (/graduation year|grad year|end year|completion year/i.test(normQ)) {
-      const gradYear = parsed?.education?.[0]?.years?.match(/\b20\d\d\b/g)?.pop() || "2024";
-      return { value: gradYear, source: "profile" };
+      const gradYear = parsed?.education?.[0]?.years?.match(/\b20\d\d\b/g)?.pop() || "";
+      if (gradYear) return { value: gradYear, source: "profile" };
     }
     if (/company|employer|current.*organisation|present.*company/i.test(normQ)) {
-      const comp = parsed?.workExperience?.[0]?.company || "xIoTz Private Limited";
-      return { value: comp, source: "profile" };
+      const comp = parsed?.workExperience?.[0]?.company || "";
+      if (comp) return { value: comp, source: "profile" };
     }
     if (/current.*title|job.*title|designation|current.*role/i.test(normQ)) {
-      const title = parsed?.workExperience?.[0]?.title || "DevOps Engineer";
-      return { value: title, source: "profile" };
+      const title = parsed?.workExperience?.[0]?.title || this.profile.title || "";
+      if (title) return { value: title, source: "profile" };
     }
 
     if (/years of experience|how many years/i.test(normQ)) {
-      return { value: String(this.profile.experience_years || 2), source: "profile" };
+      return { value: String(this.profile.experience_years ?? ""), source: "profile" };
     }
-    if (/visa|sponsorship|require.*visa/i.test(normQ)) {
-      return { value: this.profile.visa_required ? "Yes" : "No", source: "profile" };
+    if (/postal.*code|zip.*code|pincode|postal/i.test(normQ)) {
+      return { value: "", source: "profile" };
     }
     if (/phone|mobile/i.test(normQ)) {
-      return { value: this.profile.phone || "+91 7988815263", source: "profile" };
+      return { value: this.profile.phone || "", source: "profile" };
     }
     if (/email/i.test(normQ)) {
-      return { value: this.profile.email || "applicant@example.com", source: "profile" };
+      return { value: this.profile.email || "", source: "profile" };
     }
     if (/salary|ctc|compensation/i.test(normQ)) {
-      return { value: String(this.profile.salary_min || 1200000), source: "profile" };
+      return { value: String(this.profile.salary_min || ""), source: "profile" };
     }
     if (/location|city/i.test(normQ)) {
-      return { value: this.profile.location || "Delhi NCR, India", source: "profile" };
+      return { value: this.profile.location || "", source: "profile" };
     }
 
     // 3. Fallback to Vercel AI SDK completion with rich full resume context
     try {
-      const eduInfo = parsed?.education?.map((e: any) => `${e.degree || ""} at ${e.institution || ""} (${e.years || ""}) ${e.description || ""}`).join("; ") || "B.Tech Computer Science, Lovely Professional University";
+      const eduInfo = parsed?.education?.map((e: any) => `${e.degree || ""} at ${e.institution || ""} (${e.years || ""}) ${e.description || ""}`).join("; ") || "";
       const expInfo = parsed?.workExperience?.map((w: any) => `${w.title || ""} at ${w.company || ""} (${w.years || ""}): ${Array.isArray(w.description) ? w.description.join(". ") : (w.description || "")}`).join("\n") || "";
 
       const profileSummary = `

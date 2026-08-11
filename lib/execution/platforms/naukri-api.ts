@@ -174,12 +174,31 @@ export async function searchNaukriJobsAPI(
   keywords: string,
   location: string = "",
   pageNo: number = 1,
-  authToken?: string
+  authToken?: string,
+  filterOptions?: {
+    experienceYears?: number;
+    jobAgeDays?: number;
+    workMode?: string;
+  }
 ): Promise<NaukriSearchApiResult | null> {
   const encKeywords = encodeURIComponent(keywords);
   const encLoc = location ? encodeURIComponent(location) : "";
   const locParam = encLoc ? `&location=${encLoc}&l=${encLoc}&urlType=search_by_key_loc` : `&urlType=search_by_keyword`;
-  const url = `https://www.naukri.com/jobapi/v3/search?noOfResults=20&searchType=adv&keyword=${encKeywords}&sort=p&pageNo=${pageNo}&k=${encKeywords}&src=jobsearchDesk${locParam}`;
+
+  let extraParams = "";
+  if (filterOptions?.experienceYears !== undefined && filterOptions.experienceYears >= 0) {
+    extraParams += `&experience=${filterOptions.experienceYears}`;
+  }
+  if (filterOptions?.jobAgeDays) {
+    extraParams += `&jobAge=${filterOptions.jobAgeDays}&freshness=${filterOptions.jobAgeDays}`;
+  }
+  if (filterOptions?.workMode) {
+    if (filterOptions.workMode === "remote") extraParams += `&wfhType=2`;
+    else if (filterOptions.workMode === "hybrid") extraParams += `&wfhType=3`;
+    else if (filterOptions.workMode === "onSite") extraParams += `&wfhType=1`;
+  }
+
+  const url = `https://www.naukri.com/jobapi/v3/search?noOfResults=20&searchType=adv&keyword=${encKeywords}&sort=p&pageNo=${pageNo}&k=${encKeywords}&src=jobsearchDesk${locParam}${extraParams}`;
 
   try {
     const res = await fetch(url, {

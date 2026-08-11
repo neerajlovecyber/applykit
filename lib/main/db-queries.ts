@@ -891,6 +891,26 @@ export function seedDefaultQABank(profileId: string): void {
       question_type: "radio",
     },
     {
+      question_pattern: "Will you now or in the future require sponsorship for employment?",
+      answer: "No",
+      question_type: "radio",
+    },
+    {
+      question_pattern: "Have you previously worked with this company?",
+      answer: "No",
+      question_type: "radio",
+    },
+    {
+      question_pattern: "What is your desired start date?",
+      answer: "Immediate",
+      question_type: "text",
+    },
+    {
+      question_pattern: "Postal Code",
+      answer: "110001",
+      question_type: "text",
+    },
+    {
       question_pattern: "What is your notice period in days?",
       answer: profile?.notice_period || "30 days",
       question_type: "text",

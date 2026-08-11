@@ -25,6 +25,9 @@ export interface SearchOptions {
   location?: string;
   maxPages?: number;
   easyApplyOnly?: boolean;
+  experienceYears?: number;
+  jobAgeDays?: 1 | 3 | 7 | 15 | 30 | number;
+  workMode?: "remote" | "hybrid" | "onSite" | "any" | string;
   filters?: Record<string, unknown>;
 }
 

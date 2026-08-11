@@ -548,9 +548,6 @@ ${eduFormatted}
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-[11px] text-muted-foreground">Extracts every work experience role, project, cert, and degree into editable item cards</span>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setStep(2)} className="text-xs">
-                      Skip to Manual Fill →
-                    </Button>
                     <Button
                       size="sm"
                       onClick={handleParseResumeText}
@@ -595,15 +592,15 @@ ${eduFormatted}
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Email Address</Label>
-                    <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="neerajlovecyber@gmail.com" className="text-xs" />
+                    <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="text-xs" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Phone Number</Label>
-                    <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 7988815263" className="text-xs" />
+                    <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 019-2834" className="text-xs" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Current Location</Label>
-                    <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Delhi NCR, India / Remote" className="text-xs" />
+                    <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City, State / Country" className="text-xs" />
                   </div>
                 </div>
               </div>
@@ -646,11 +643,11 @@ ${eduFormatted}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className="text-[11px]">Role Title</Label>
-                          <Input value={exp.role} onChange={(e) => updateWorkExp(exp.id, "role", e.target.value)} placeholder="DevOps Engineer" className="text-xs" />
+                          <Input value={exp.role} onChange={(e) => updateWorkExp(exp.id, "role", e.target.value)} placeholder="Software Engineer" className="text-xs" />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[11px]">Company / Employer</Label>
-                          <Input value={exp.company} onChange={(e) => updateWorkExp(exp.id, "company", e.target.value)} placeholder="xIoTz Private Limited" className="text-xs" />
+                          <Input value={exp.company} onChange={(e) => updateWorkExp(exp.id, "company", e.target.value)} placeholder="Acme Corp" className="text-xs" />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[11px]">Location</Label>
@@ -765,7 +762,7 @@ ${eduFormatted}
                           </Button>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                          <Input value={e.institution} onChange={(e) => updateEdu(e.id, "institution", e.target.value)} placeholder="Lovely Professional University" className="text-xs" />
+                          <Input value={e.institution} onChange={(e) => updateEdu(e.id, "institution", e.target.value)} placeholder="State University" className="text-xs" />
                           <Input value={e.year} onChange={(e) => updateEdu(e.id, "year", e.target.value)} placeholder="2020 – 2024" className="text-xs" />
                         </div>
                       </div>

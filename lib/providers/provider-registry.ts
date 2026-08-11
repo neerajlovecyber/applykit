@@ -529,8 +529,8 @@ export function parseResumeSectionsStructured(text: string): ResumeParseResult {
   const eduIdx = lines.findIndex((l) => l.toLowerCase().includes("education"));
   if (eduIdx !== -1) {
     education.push({
-      degree: lines[eduIdx + 1] || "Bachelor of Technology in Computer Science and Engineering",
-      institution: lines[eduIdx + 2] || "Lovely Professional University | Punjab",
+      degree: lines[eduIdx + 1] || "Bachelor of Science in Computer Science",
+      institution: lines[eduIdx + 2] || "State University",
       year: "2020 – 2024",
     });
   }

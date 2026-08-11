@@ -33,10 +33,10 @@ export const ResumeParsedView: React.FC<ResumeParsedViewProps> = ({
 }) => {
   const masterCV = parseMasterCV(summaryText);
 
-  const name = fullName || masterCV.header.fullName || "Neeraj Singh";
-  const emailAddr = email || masterCV.header.email || "neerajlovecyber@gmail.com";
-  const phoneNum = phone || masterCV.header.phone || "+91 7988815263";
-  const locStr = location || masterCV.header.location || "Delhi NCR, India";
+  const name = fullName || masterCV.header.fullName || "Candidate Name";
+  const emailAddr = email || masterCV.header.email || "candidate@example.com";
+  const phoneNum = phone || masterCV.header.phone || "+1 (555) 019-9831";
+  const locStr = location || masterCV.header.location || "City, Country";
 
   const initials = name
     .split(" ")

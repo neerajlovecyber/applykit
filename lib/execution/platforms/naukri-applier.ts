@@ -20,6 +20,8 @@ import { mkdirSync } from "fs";
 
 export interface NaukriSearchFilters {
   datePosted?: "past24Hours" | "pastWeek" | "pastMonth" | "anyTime";
+  jobAgeDays?: 1 | 3 | 7 | 15 | 30 | number;
+  experienceYears?: number;
   experienceLevel?: Array<"freshers" | "1to3Years" | "3to5Years" | "5to10Years" | "10plusYears">;
   workMode?: Array<"onSite" | "remote" | "hybrid">;
   easyApplyOnly?: boolean;
@@ -66,6 +68,7 @@ export interface BatchApplyResult {
 
 /**
  * Build a Naukri jobs search URL with filter params.
+ * e.g., https://www.naukri.com/devops-jobs-in-gurugram?k=devops&l=gurugram%2C%20delhi%2Fncr%2C%20d&experience=2&jobAge=30&freshness=30
  */
 function buildNaukriSearchUrl(
   keywords: string,
@@ -80,9 +83,23 @@ function buildNaukriSearchUrl(
   params.set("k", keywords);
   if (location) params.set("l", location);
 
-  if (filters.datePosted === "past24Hours") params.set("freshness", "1");
-  else if (filters.datePosted === "pastWeek") params.set("freshness", "7");
-  else if (filters.datePosted === "pastMonth") params.set("freshness", "30");
+  // Experience filter (e.g. experience=2)
+  if (filters.experienceYears !== undefined && filters.experienceYears >= 0) {
+    params.set("experience", String(filters.experienceYears));
+  }
+
+  // Job Age / Freshness filter (1, 3, 7, 15, 30 days)
+  let jobAgeVal = filters.jobAgeDays;
+  if (!jobAgeVal) {
+    if (filters.datePosted === "past24Hours") jobAgeVal = 1;
+    else if (filters.datePosted === "pastWeek") jobAgeVal = 7;
+    else if (filters.datePosted === "pastMonth") jobAgeVal = 30;
+  }
+
+  if (jobAgeVal) {
+    params.set("jobAge", String(jobAgeVal));
+    params.set("freshness", String(jobAgeVal));
+  }
 
   if (filters.workMode?.includes("remote")) params.set("wfhType", "2");
   else if (filters.workMode?.includes("hybrid")) params.set("wfhType", "3");

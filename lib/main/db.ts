@@ -366,18 +366,18 @@ function initTables(db: Database.Database): void {
     "Postman", "Jira", "Wazuh"
   ]);
   const devopsResumeParsed = JSON.stringify({
-    personalInfo: { name: "Neeraj Singh", title: "DevOps Engineer", email: "neerajlovecyber@gmail.com", phone: "+91 7988815263", location: "Delhi NCR, India", linkedin: "linkedin.com/in/neerajlovecyber" },
+    personalInfo: { name: "Candidate Profile", title: "DevOps Engineer", email: "candidate@example.com", phone: "+1 (555) 019-2834", location: "Delhi NCR, India", linkedin: "linkedin.com/in/candidate" },
     summary: "DevOps Engineer with 2+ years of combined professional and internship experience building reliable cloud, automation, and release workflows across AWS, Linux, CI/CD, and containerized environments. Strong in GitHub Actions, Docker, Kubernetes, Terraform, Ansible, scripting, centralized logging, monitoring, and deployment validation. Experienced in adding security-aware checks and operational visibility to delivery pipelines.",
     workExperience: [
-      { id: 1, title: "DevOps Engineer", company: "xIoTz Private Limited", location: "Remote, Delhi NCR", years: "Nov 2024 - Present", description: ["Co-designed and operated a cyber assurance platform on AWS EC2, improving operational visibility for 10 cloud workloads through provisioning, logging, monitoring, and deployment controls.", "Built reproducible Windows/Linux deployment workflows, reducing setup drift through scripted health checks, configuration baselines, and repeatable environment controls.", "Automated operational response workflows with Wazuh Active Response, reducing manual remediation steps and improving consistency across distributed workloads.", "Built workflows for asset discovery, baseline checks, evidence collection, and remediation tracking; documented findings and partnered with engineers."] },
-      { id: 2, title: "DevOps & CI/CD Intern", company: "Frugal Testing", location: "Hyderabad, India", years: "2023 - 2024", description: ["Implemented GitHub Actions pipelines with repeatable checks and release validation, reducing manual deployment overhead by 30%.", "Containerized test environments with Docker and automated distributed execution on Kubernetes, enabling parallel test runs and improving validation consistency by 30%.", "Programmed web/API validation with Java, Selenium, and Postman; collaborated in Jira and shipped Slack alerts for faster failure visibility."] }
+      { id: 1, title: "DevOps Engineer", company: "Tech Solutions Inc.", location: "Remote, Delhi NCR", years: "Nov 2024 - Present", description: ["Co-designed and operated a cloud platform on AWS EC2, improving operational visibility for 10 cloud workloads through provisioning, logging, monitoring, and deployment controls.", "Built reproducible Windows/Linux deployment workflows, reducing setup drift through scripted health checks, configuration baselines, and repeatable environment controls.", "Automated operational response workflows, reducing manual remediation steps and improving consistency across distributed workloads.", "Built workflows for asset discovery, baseline checks, evidence collection, and remediation tracking; documented findings and partnered with engineers."] },
+      { id: 2, title: "DevOps & CI/CD Intern", company: "Cloud Quality Labs", location: "Hyderabad, India", years: "2023 - 2024", description: ["Implemented GitHub Actions pipelines with repeatable checks and release validation, reducing manual deployment overhead by 30%.", "Containerized test environments with Docker and automated distributed execution on Kubernetes, enabling parallel test runs and improving validation consistency by 30%.", "Programmed web/API validation with Java, Selenium, and Postman; collaborated in Jira and shipped Slack alerts for faster failure visibility."] }
     ],
     personalProjects: [
-      { id: 1, name: "Cyber Assurance Platform", role: "Cloud Operations & Observability Layer", years: "2024 - Present", description: ["Developed an AWS-based operations plane for centralized logging, workload telemetry, retention, event queues, and release visibility using Docker, Valkey/Redis, and ELK/OpenSearch."] },
+      { id: 1, name: "Cloud Assurance Platform", role: "Cloud Operations & Observability Layer", years: "2024 - Present", description: ["Developed an AWS-based operations plane for centralized logging, workload telemetry, retention, event queues, and release visibility using Docker, Valkey/Redis, and ELK/OpenSearch."] },
       { id: 2, name: "WatchTower Security Scanner", role: "Automated Domain Audit Tool", description: ["Built a scanner that collects DNS, TLS, HTTP headers, WAF, open-port, WHOIS, blocklist, vendor, and threat-signal data with exportable findings."] },
       { id: 3, name: "Security Audit360", role: "Baseline & Audit Console", description: ["Developed an audit application for 40+ digital asset signals including DNS, domains, public IPs, and SSL/TLS certificates; generated baseline reports for operations review."] }
     ],
-    education: [{ id: 1, institution: "Lovely Professional University", degree: "B.Tech Computer Science and Engineering", years: "Aug 2020 - Oct 2024", description: "CGPA 8.29" }],
+    education: [{ id: 1, institution: "State University", degree: "B.Tech Computer Science and Engineering", years: "Aug 2020 - Oct 2024", description: "CGPA 8.29" }],
     additional: {
       technicalSkills: ["AWS", "Linux", "Docker", "Kubernetes", "Terraform", "Ansible", "GitHub Actions", "ELK/OpenSearch", "Wazuh", "Python", "Shell Scripting", "Postman", "Jira"],
       certificationsTraining: ["Certified Ethical Hacker (CEH) - EC-Council", "Jr. Penetration Tester (eJPT) - eLearnSecurity", "AWS & DevOps Fundamentals - KodeKloud"]
@@ -393,18 +393,18 @@ function initTables(db: Database.Database): void {
     "Burp Suite", "Nmap", "Postman", "Incident Documentation"
   ]);
   const cyberResumeParsed = JSON.stringify({
-    personalInfo: { name: "Neeraj Singh", title: "Cybersecurity Engineer", email: "neerajlovecyber@gmail.com", phone: "+91 7988815263", location: "Delhi NCR, India", linkedin: "linkedin.com/in/neerajlovecyber" },
+    personalInfo: { name: "Candidate Profile", title: "Cybersecurity Engineer", email: "candidate@example.com", phone: "+1 (555) 019-2834", location: "Delhi NCR, India", linkedin: "linkedin.com/in/candidate" },
     summary: "Cybersecurity Engineer with 2+ years of combined professional and internship experience in threat detection, SOC triage, vulnerability assessment, incident response, and cloud security monitoring. Strong in Wazuh SIEM, log analysis, threat containment, DNS/TLS security, Linux hardening, web/API security validation, and remediation tracking.",
     workExperience: [
-      { id: 1, title: "Security Engineer", company: "xIoTz Private Limited", location: "Remote, Delhi NCR", years: "Nov 2024 - Present", description: ["Co-designed a cyber assurance platform, improving visibility for 10 cloud workloads through Wazuh monitoring, log centralization, and alerting.", "Built Windows/Linux security baselines with scripted health checks, configuration validation, and repeatable controls to reduce drift.", "Created custom Wazuh Active Response modules to automate containment, isolation, and remediation while reducing manual response steps.", "Built workflows for asset discovery, baseline checks, evidence collection, and remediation tracking."] },
-      { id: 2, title: "Security Testing & Automation Intern", company: "Frugal Testing", location: "Hyderabad, India", years: "2023 - 2024", description: ["Built repeatable web/API validation checks for authentication flows, API behavior, and regression risk, reducing manual verification by 30%.", "Used isolated environments to validate security-sensitive web/API changes, enabling parallel runs and improving consistency by 30%.", "Programmed web/API checks with Java, Selenium, and Postman; tracked security-relevant defects in Jira."] }
+      { id: 1, title: "Security Engineer", company: "Tech Solutions Inc.", location: "Remote, Delhi NCR", years: "Nov 2024 - Present", description: ["Co-designed a cyber assurance platform, improving visibility for 10 cloud workloads through Wazuh monitoring, log centralization, and alerting.", "Built Windows/Linux security baselines with scripted health checks, configuration validation, and repeatable controls to reduce drift.", "Created custom Active Response modules to automate containment, isolation, and remediation while reducing manual response steps.", "Built workflows for asset discovery, baseline checks, evidence collection, and remediation tracking."] },
+      { id: 2, title: "Security Testing & Automation Intern", company: "Cloud Quality Labs", location: "Hyderabad, India", years: "2023 - 2024", description: ["Built repeatable web/API validation checks for authentication flows, API behavior, and regression risk, reducing manual verification by 30%.", "Used isolated environments to validate security-sensitive web/API changes, enabling parallel runs and improving consistency by 30%.", "Programmed web/API checks with Java, Selenium, and Postman; tracked security-relevant defects in Jira."] }
     ],
     personalProjects: [
-      { id: 1, name: "Cyber Assurance Platform", role: "Unified SOC & Cloud Security Layer", years: "2024 - Present", description: ["Developed a security operations plane for detection, triage, centralized logging, cloud posture checks, workload telemetry, and retention using Wazuh and ELK/OpenSearch."] },
+      { id: 1, name: "Cloud Assurance Platform", role: "Unified SOC & Cloud Security Layer", years: "2024 - Present", description: ["Developed a security operations plane for detection, triage, centralized logging, cloud posture checks, workload telemetry, and retention using Wazuh and ELK/OpenSearch."] },
       { id: 2, name: "WatchTower Security Scanner", role: "Domain Risk Scorecard", description: ["Built a scanner for DNS, TLS, HTTP headers, WAF exposure, open ports, WHOIS, blocklists, and threat signals; generates grades, scores, and findings."] },
       { id: 3, name: "Security Audit360", role: "Baseline & Audit Console", description: ["Developed an audit app for 40+ digital asset signals including DNS, domains, IPs, and SSL/TLS certificates; generated baseline risk reports."] }
     ],
-    education: [{ id: 1, institution: "Lovely Professional University", degree: "B.Tech Computer Science and Engineering", years: "Aug 2020 - Oct 2024", description: "CGPA 8.29" }],
+    education: [{ id: 1, institution: "State University", degree: "B.Tech Computer Science and Engineering", years: "Aug 2020 - Oct 2024", description: "CGPA 8.29" }],
     additional: {
       technicalSkills: ["Wazuh", "ELK/OpenSearch", "YARA", "Burp Suite", "Nmap", "Python", "Shell Scripting", "Linux", "Postman", "Docker"],
       certificationsTraining: ["Certified Ethical Hacker (CEH) - EC-Council", "Jr. Penetration Tester (eJPT) - eLearnSecurity", "AWS Cloud Security Fundamentals - KodeKloud"]
@@ -415,11 +415,36 @@ function initTables(db: Database.Database): void {
   seedProfile.run(
     "neeraj-devops-001",
     "DevOps Engineer",
-    "Neeraj Singh",
-    "neerajlovecyber@gmail.com",
-    "+91 7988815263",
+    "Candidate Profile",
+    "candidate@example.com",
+    "+1 (555) 019-2834",
     "Delhi NCR, India",
-    "linkedin.com/in/neerajlovecyber",
+    "linkedin.com/in/candidate",
+    "DevOps Engineer with 2+ years of experience building cloud, automation, and release workflows across AWS, Linux, CI/CD, and containerized environments.",
+    devopsSkills,
+    2,
+    "mid",
+    JSON.stringify(["DevOps Engineer", "DevSecOps Engineer", "SRE", "Cloud Engineer", "Platform Engineer"]),
+    JSON.stringify(["Delhi NCR", "Remote", "Bengaluru", "Hyderabad"]),
+    "remote",
+    600000, 1800000, "INR",
+    "INR",
+    devopsResumeParsed,
+    1,
+    0, // visa_required = 0
+    "Immediate",
+    1
+  );
+
+  // Cyber Security profile
+  seedProfile.run(
+    "neeraj-cyber-002",
+    "Cybersecurity Engineer",
+    "Candidate Profile",
+    "candidate@example.com",
+    "+1 (555) 019-2834",
+    "Delhi NCR, India",
+    "linkedin.com/in/candidate",
     "DevOps Engineer with 2+ years of experience building cloud, automation, and release workflows across AWS, Linux, CI/CD, and containerized environments.",
     devopsSkills,
     2,

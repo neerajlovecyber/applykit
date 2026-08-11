@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { useConveyor } from "@/app/hooks/use-conveyor";
 import { useProfileStore } from "@/app/stores/profile-store";
 import { useExecutionStore } from "@/app/stores/execution-store";
@@ -77,10 +78,11 @@ export const AutoApplyPage: React.FC = () => {
   const [pauseBeforeSubmit, setPauseBeforeSubmit] = useState(false);
 
   // ── Advanced filters ───────────────────────────────────────────────────
-  const [showFilters, setShowFilters] = useState(false);
   const [easyApplyOnly, setEasyApplyOnly] = useState(true);
   const [under10Applicants, setUnder10Applicants] = useState(false);
   const [datePosted, setDatePosted] = useState<string>("anyTime");
+  const [jobAgeDays, setJobAgeDays] = useState<number>(30);
+  const [experienceYears, setExperienceYears] = useState<number>(2);
   const [selectedExperience, setSelectedExperience] = useState<string[]>([]);
   const [selectedJobType, setSelectedJobType] = useState<string[]>([]);
   const [selectedWorkMode, setSelectedWorkMode] = useState<string[]>([]);
@@ -246,6 +248,8 @@ export const AutoApplyPage: React.FC = () => {
         filters: {
           easyApplyOnly,
           datePosted: datePosted as any,
+          jobAgeDays: jobAgeDays > 0 ? jobAgeDays : undefined,
+          experienceYears: experienceYears >= 0 ? experienceYears : undefined,
           experienceLevel: selectedExperience.length ? selectedExperience : undefined,
           workMode: selectedWorkMode.length ? selectedWorkMode : undefined,
         },
@@ -348,8 +352,21 @@ export const AutoApplyPage: React.FC = () => {
             <Input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Bangalore, Remote, India"
+              placeholder="e.g. Gurugram, Delhi NCR, Remote"
             />
+            <div className="flex items-center flex-wrap gap-1 pt-1">
+              <span className="text-[10px] text-muted-foreground mr-0.5">Presets:</span>
+              {["Gurugram", "Delhi NCR", "Noida", "Bangalore", "Remote"].map((loc) => (
+                <Badge
+                  key={loc}
+                  variant={location.includes(loc) ? "default" : "outline"}
+                  className="text-[10px] px-1.5 py-0.5 cursor-pointer transition-all hover:bg-emerald-500/20"
+                  onClick={() => setLocation(loc)}
+                >
+                  {loc}
+                </Badge>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -364,24 +381,47 @@ export const AutoApplyPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-border/40">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 font-medium"
-          >
-            <Filter className="h-3.5 w-3.5" /> Advanced Search Filters
-            {showFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-          </button>
+        {/* Filters Section */}
+        <div className="pt-3 space-y-4 border-t border-border/40">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Job Freshness / Age</Label>
+              <Select value={String(jobAgeDays)} onValueChange={(v) => setJobAgeDays(Number(v))}>
+                <SelectTrigger className="text-xs w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">⚡ Past 24 Hours (1 Day)</SelectItem>
+                  <SelectItem value="3">🔥 Past 3 Days</SelectItem>
+                  <SelectItem value="7">📅 Past 7 Days (1 Week)</SelectItem>
+                  <SelectItem value="15">📆 Past 15 Days</SelectItem>
+                  <SelectItem value="30">🗓️ Past 30 Days (1 Month)</SelectItem>
+                  <SelectItem value="0">🌐 Any Time</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <Switch id="pause-mode" checked={pauseBeforeSubmit} onCheckedChange={setPauseBeforeSubmit} />
-            <Label htmlFor="pause-mode" className="text-xs cursor-pointer">Pause & review before submit</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Experience Level (Years)</Label>
+              <Select value={String(experienceYears)} onValueChange={(v) => setExperienceYears(Number(v))}>
+                <SelectTrigger className="text-xs w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="-1">Any Experience</SelectItem>
+                  <SelectItem value="0">0 Years (Freshers)</SelectItem>
+                  <SelectItem value="1">1 Year</SelectItem>
+                  <SelectItem value="2">2 Years</SelectItem>
+                  <SelectItem value="3">3 Years</SelectItem>
+                  <SelectItem value="5">5 Years</SelectItem>
+                  <SelectItem value="7">7 Years</SelectItem>
+                  <SelectItem value="10">10+ Years</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
 
-        {/* Expanded Filters */}
-        {showFilters && (
-          <div className="pt-3 space-y-4 border-t border-border/40">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
             <FilterGroup
               label="Work Mode"
               items={[
@@ -394,20 +434,12 @@ export const AutoApplyPage: React.FC = () => {
               activePlatform={activePlatform}
             />
 
-            <FilterGroup
-              label="Experience Level"
-              items={[
-                { v: "entry", l: "Entry Level" },
-                { v: "associate", l: "Associate" },
-                { v: "midSenior", l: "Mid-Senior" },
-                { v: "director", l: "Director" },
-              ]}
-              selected={selectedExperience}
-              onToggle={(v) => toggleFilter(selectedExperience, setSelectedExperience, v)}
-              activePlatform={activePlatform}
-            />
+            <div className="flex items-center gap-2 shrink-0">
+              <Switch id="pause-mode" checked={pauseBeforeSubmit} onCheckedChange={setPauseBeforeSubmit} />
+              <Label htmlFor="pause-mode" className="text-xs cursor-pointer font-medium">Pause & review before submit</Label>
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Launch Button */}
         <div className="pt-3 flex justify-end">

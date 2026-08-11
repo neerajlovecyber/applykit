@@ -29,7 +29,10 @@ export const NaukriPage: React.FC = () => {
   const { activeProfile } = useProfileStore();
 
   const [keywords, setKeywords] = useState("DevOps Engineer");
-  const [location, setLocation] = useState("Bangalore");
+  const [location, setLocation] = useState("Gurugram");
+  const [experienceYears, setExperienceYears] = useState<number>(2);
+  const [jobAgeDays, setJobAgeDays] = useState<number>(30);
+  const [workMode, setWorkMode] = useState<string>("any");
   const [maxJobs, setMaxJobs] = useState<number>(10);
   const [pauseBeforeSubmit, setPauseBeforeSubmit] = useState<boolean>(false);
   const [username, setUsername] = useState("");
@@ -79,7 +82,7 @@ export const NaukriPage: React.FC = () => {
 
   const handleRunNaukriAutomation = async () => {
     setIsRunning(true);
-    setStatusMsg("🚀 Opening Playwright browser, performing Naukri login, searching jobs, and auto-applying...");
+    setStatusMsg("🚀 Opening Playwright browser, performing Naukri login, searching jobs with active filters, and auto-applying...");
     setLogResults([]);
 
     try {
@@ -91,6 +94,11 @@ export const NaukriPage: React.FC = () => {
         keywords,
         location,
         maxJobs,
+        filters: {
+          experienceYears: experienceYears >= 0 ? experienceYears : undefined,
+          jobAgeDays: jobAgeDays > 0 ? jobAgeDays : undefined,
+          workMode: workMode !== "any" ? [workMode] : undefined,
+        },
         pauseBeforeSubmit,
         username,
         password,
@@ -194,7 +202,7 @@ export const NaukriPage: React.FC = () => {
           </Link>
         </div>
 
-        {/* Form Controls */}
+        {/* Form Controls Row 1 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Search Keywords / Role</Label>
@@ -216,9 +224,22 @@ export const NaukriPage: React.FC = () => {
               <Input
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Bangalore, Delhi NCR, Remote"
+                placeholder="e.g. Gurugram, Delhi NCR, Remote"
                 className="pl-9 text-xs"
               />
+            </div>
+            <div className="flex items-center flex-wrap gap-1 pt-1">
+              <span className="text-[10px] text-muted-foreground mr-0.5">Presets:</span>
+              {["Gurugram", "Delhi NCR", "Noida", "Bangalore", "Remote"].map((loc) => (
+                <Badge
+                  key={loc}
+                  variant={location.includes(loc) ? "default" : "outline"}
+                  className="text-[10px] px-1.5 py-0.5 cursor-pointer transition-all hover:bg-emerald-500/20"
+                  onClick={() => setLocation(loc)}
+                >
+                  {loc}
+                </Badge>
+              ))}
             </div>
           </div>
 
@@ -233,6 +254,60 @@ export const NaukriPage: React.FC = () => {
                 <SelectItem value="10">10 Jobs</SelectItem>
                 <SelectItem value="20">20 Jobs</SelectItem>
                 <SelectItem value="30">30 Jobs</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Form Controls Row 2 — Advanced Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-border/30">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Job Freshness / Age</Label>
+            <Select value={String(jobAgeDays)} onValueChange={(v) => setJobAgeDays(Number(v))}>
+              <SelectTrigger className="text-xs w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">⚡ Past 24 Hours (1 Day)</SelectItem>
+                <SelectItem value="3">🔥 Past 3 Days</SelectItem>
+                <SelectItem value="7">📅 Past 7 Days (1 Week)</SelectItem>
+                <SelectItem value="15">📆 Past 15 Days</SelectItem>
+                <SelectItem value="30">🗓️ Past 30 Days (1 Month)</SelectItem>
+                <SelectItem value="0">🌐 Any Time</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Experience Level</Label>
+            <Select value={String(experienceYears)} onValueChange={(v) => setExperienceYears(Number(v))}>
+              <SelectTrigger className="text-xs w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="-1">Any Experience</SelectItem>
+                <SelectItem value="0">0 Years (Freshers)</SelectItem>
+                <SelectItem value="1">1 Year</SelectItem>
+                <SelectItem value="2">2 Years</SelectItem>
+                <SelectItem value="3">3 Years</SelectItem>
+                <SelectItem value="5">5 Years</SelectItem>
+                <SelectItem value="7">7 Years</SelectItem>
+                <SelectItem value="10">10+ Years</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Work Mode</Label>
+            <Select value={workMode} onValueChange={(v) => setWorkMode(v)}>
+              <SelectTrigger className="text-xs w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any Work Mode</SelectItem>
+                <SelectItem value="remote">🏠 Remote Only</SelectItem>
+                <SelectItem value="hybrid">🏢 Hybrid</SelectItem>
+                <SelectItem value="onSite">🏬 On-site / Office</SelectItem>
               </SelectContent>
             </Select>
           </div>
