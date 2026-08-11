@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { getDb } from "./db";
+import { computeTokenSimilarity } from "@/lib/utils/similarity";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -781,17 +782,34 @@ export function getQABankEntries(profileId: string): QABankEntry[] {
 }
 
 export function findQAAnswer(profileId: string, questionPattern: string): QABankEntry | undefined {
-  // Try exact match first, then fuzzy
+  // 1. Try exact match first
   const exact = getDb()
     .prepare("SELECT * FROM qa_bank WHERE profile_id = ? AND question_pattern = ?")
     .get(profileId, questionPattern) as QABankEntry | undefined;
 
   if (exact) return exact;
 
-  // Try LIKE match for partial patterns
-  return getDb()
+  // 2. Try LIKE match for partial patterns
+  const likeMatch = getDb()
     .prepare("SELECT * FROM qa_bank WHERE profile_id = ? AND ? LIKE '%' || question_pattern || '%' ORDER BY confidence DESC LIMIT 1")
     .get(profileId, questionPattern) as QABankEntry | undefined;
+
+  if (likeMatch) return likeMatch;
+
+  // 3. Fallback: Token Similarity Matching (Jaccard Overlap >= 0.65)
+  const allEntries = getQABankEntries(profileId);
+  let bestMatch: QABankEntry | undefined = undefined;
+  let highestScore = 0;
+
+  for (const entry of allEntries) {
+    const score = computeTokenSimilarity(questionPattern, entry.question_pattern);
+    if (score >= 0.65 && score > highestScore) {
+      highestScore = score;
+      bestMatch = entry;
+    }
+  }
+
+  return bestMatch;
 }
 
 export function upsertQABankEntry(data: {
@@ -1026,7 +1044,7 @@ export function getTaskById(id: string): Task | undefined {
 
 export function getNextPendingTask(): Task | undefined {
   return getDb()
-    .prepare("SELECT * FROM tasks WHERE status = 'queued' AND scheduled_for <= datetime('now') ORDER BY scheduled_for ASC LIMIT 1")
+    .prepare("SELECT * FROM tasks WHERE status = 'queued' AND scheduled_for <= datetime('now') ORDER BY priority DESC, scheduled_for ASC LIMIT 1")
     .get() as Task | undefined;
 }
 
@@ -1038,18 +1056,28 @@ export function createTask(data: {
   parent_task_id?: string;
   scheduled_for?: string;
   max_attempts?: number;
+  priority?: number;
 }): Task {
   const id = randomUUID();
   getDb().prepare(`
-    INSERT INTO tasks (id, kind, payload, job_id, application_id, parent_task_id, scheduled_for, max_attempts)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO tasks (id, kind, payload, job_id, application_id, parent_task_id, scheduled_for, max_attempts, priority)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, data.kind, data.payload ?? null, data.job_id ?? null,
     data.application_id ?? null, data.parent_task_id ?? null,
     data.scheduled_for ?? new Date().toISOString(), data.max_attempts ?? 3,
+    data.priority ?? 0,
   );
 
   return getTaskById(id)!;
+}
+
+export function cleanupFinishedTasks(daysToKeep = 14): void {
+  getDb().prepare(`
+    DELETE FROM tasks
+    WHERE status IN ('succeeded', 'failed', 'cancelled')
+    AND finished_at <= datetime('now', '-' || ? || ' days')
+  `).run(daysToKeep);
 }
 
 export function updateTaskStatus(id: string, status: string, result?: string, error?: string): void {

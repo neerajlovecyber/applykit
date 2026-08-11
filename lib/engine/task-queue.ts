@@ -35,6 +35,7 @@ export function enqueueTask(data: {
   parentTaskId?: string;
   scheduledFor?: string;
   maxAttempts?: number;
+  priority?: number;
 }): Task {
   return dbQueries.createTask({
     kind: data.kind,
@@ -44,6 +45,7 @@ export function enqueueTask(data: {
     parent_task_id: data.parentTaskId,
     scheduled_for: data.scheduledFor,
     max_attempts: data.maxAttempts,
+    priority: data.priority,
   });
 }
 

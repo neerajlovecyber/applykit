@@ -491,6 +491,18 @@ const MIGRATIONS: Migration[] = [
       db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_job ON tasks(job_id);`);
     },
   },
+  {
+    version: 3,
+    name: "add_task_priority_and_indices",
+    up: (db) => {
+      try {
+        db.exec(`ALTER TABLE tasks ADD COLUMN priority INTEGER DEFAULT 0;`);
+      } catch {
+        // Column may already exist
+      }
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority DESC, scheduled_for ASC);`);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

@@ -206,6 +206,13 @@ export class FormFiller {
         }
       }
 
+      // Dispatch synthetic DOM events to trigger client-side React/Vue/Angular state bindings
+      await input.evaluate((el) => {
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        el.dispatchEvent(new Event("blur", { bubbles: true }));
+      });
+
       await fieldDelay();
 
       return {
