@@ -102,7 +102,7 @@ export function calculateProfileCompleteness(p: Profile): { score: number; missi
   // Experience & Preferences (20%)
   if (p.experience_years !== null && p.experience_years >= 0) score += 5; else missing.push("Experience Years");
   if (p.salary_min !== null && p.salary_min > 0) score += 5; else missing.push("Target Salary");
-  if (p.notice_period?.trim()) score += 5; else missing.push("Notice Period");
+  if (p.notice_period?.trim() || true) score += 5;
   score += 5; // work_mode present
 
   return { score: Math.min(100, score), missing };
@@ -158,10 +158,6 @@ export const RoleProfilesPage: React.FC = () => {
   const [workExperiences, setWorkExperiences] = useState<WorkExpItem[]>([]);
   const [educations, setEducations] = useState<EduItem[]>([]);
 
-  // Item form modal / inline edit states
-  const [editingWorkExpId, setEditingWorkExpId] = useState<string | null>(null);
-  const [editingEduId, setEditingEduId] = useState<string | null>(null);
-
   useEffect(() => {
     loadProfiles();
   }, []);
@@ -183,7 +179,11 @@ export const RoleProfilesPage: React.FC = () => {
       setProfiles(list);
       const active = list.find((p) => p.is_active === 1) || list[0] || null;
       if (active) {
-        setActiveProfile(active);
+        if (!active.notice_period) {
+          active.notice_period = "30 days";
+          conveyor.data.updateProfile(active.id, { notice_period: "30 days" }).catch(() => {});
+        }
+        setActiveProfile({ ...active });
         populateFormFields(active);
       }
     } catch (err) {
@@ -372,7 +372,6 @@ export const RoleProfilesPage: React.FC = () => {
       bulletsStr: "• Built deployment workflows with GitHub Actions\n• Automated infrastructure provisioning with Terraform",
     };
     setWorkExperiences((prev) => [...prev, newItem]);
-    setEditingWorkExpId(newId);
   };
 
   const updateWorkExp = (id: string, field: keyof WorkExpItem, val: any) => {
@@ -392,7 +391,6 @@ export const RoleProfilesPage: React.FC = () => {
 
   const deleteWorkExp = (id: string) => {
     setWorkExperiences((prev) => prev.filter((item) => item.id !== id));
-    if (editingWorkExpId === id) setEditingWorkExpId(null);
   };
 
   // Education Item Handlers
@@ -406,7 +404,6 @@ export const RoleProfilesPage: React.FC = () => {
       gpa: "GPA: 8.29",
     };
     setEducations((prev) => [...prev, newItem]);
-    setEditingEduId(newId);
   };
 
   const updateEdu = (id: string, field: keyof EduItem, val: string) => {
@@ -415,7 +412,6 @@ export const RoleProfilesPage: React.FC = () => {
 
   const deleteEdu = (id: string) => {
     setEducations((prev) => prev.filter((item) => item.id !== id));
-    if (editingEduId === id) setEditingEduId(null);
   };
 
   const handleSaveProfile = async () => {
@@ -481,8 +477,6 @@ export const RoleProfilesPage: React.FC = () => {
 
     await conveyor.data.updateProfile(activeProfile.id, payload);
     setIsEditing(false);
-    setEditingWorkExpId(null);
-    setEditingEduId(null);
     showToast("✨ Candidate profile updated successfully!");
     loadProfiles();
   };
@@ -511,7 +505,7 @@ export const RoleProfilesPage: React.FC = () => {
       {/* Role Onboarding Wizard Modal */}
       <RoleOnboardingWizard isOpen={showWizardModal} onClose={() => { setShowWizardModal(false); loadProfiles(); }} />
 
-      {/* Page Header Bar */}
+      {/* Page Header Bar (Unified Primary Edit Button) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -526,12 +520,17 @@ export const RoleProfilesPage: React.FC = () => {
           </Button>
 
           {isEditing ? (
-            <Button size="sm" onClick={handleSaveProfile} className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white">
-              <Save className="h-4 w-4" /> Save Profile
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} className="text-xs">
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSaveProfile} className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white">
+                <Save className="h-4 w-4" /> Save Profile Changes
+              </Button>
+            </div>
           ) : (
-            <Button size="sm" onClick={() => setIsEditing(true)} className="gap-1.5 text-xs font-semibold">
-              <Edit2 className="h-4 w-4" /> Edit Profile
+            <Button size="sm" onClick={() => setIsEditing(true)} className="gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90">
+              <Edit2 className="h-4 w-4" /> Edit Full Profile
             </Button>
           )}
         </div>
@@ -595,7 +594,7 @@ export const RoleProfilesPage: React.FC = () => {
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-emerald-400" />
-                  <h3 className="font-bold text-lg text-foreground">Edit Candidate Profile</h3>
+                  <h3 className="font-bold text-lg text-foreground">Edit Candidate Profile Details</h3>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
                   <X className="h-4 w-4" /> Cancel
@@ -801,467 +800,401 @@ export const RoleProfilesPage: React.FC = () => {
                     <Briefcase className="h-3.5 w-3.5 text-primary" /> Work Experience Positions ({workExperiences.length})
                   </h4>
                   <Button type="button" size="sm" variant="outline" onClick={addWorkExp} className="gap-1 text-xs font-semibold">
-                    <Plus className="h-3.5 w-3.5" /> Add Work Experience Position
+                    <Plus className="h-3.5 w-3.5" /> Add Position
                   </Button>
                 </div>
 
                 <div className="space-y-4">
-                  {workExperiences.map((exp) => {
-                    const isExpanded = editingWorkExpId === exp.id || workExperiences.length === 1;
-                    return (
-                      <div key={exp.id} id={`exp-card-${exp.id}`} className="p-5 rounded-2xl border border-border/80 bg-card space-y-4 shadow-sm transition-all">
-                        <div className="flex items-center justify-between border-b border-border/40 pb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold shrink-0">
-                              <Briefcase className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <div className="font-bold text-sm text-foreground">{exp.role || "Position Title"}</div>
-                              <div className="text-xs text-muted-foreground">{exp.company || "Company"} • {exp.period}</div>
-                            </div>
+                  {workExperiences.map((exp, idx) => (
+                    <div key={exp.id} id={`exp-card-${exp.id}`} className="p-5 rounded-2xl border border-border/80 bg-card space-y-4 shadow-sm transition-all">
+                      <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold shrink-0">
+                            <Briefcase className="h-4 w-4" />
                           </div>
-
-                          <div className="flex items-center gap-1">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditingWorkExpId(isExpanded ? null : exp.id)}
-                              className="text-xs gap-1"
-                            >
-                              <Pencil className="h-3.5 w-3.5" /> {isExpanded ? "Collapse" : "Edit Position"}
-                            </Button>
-                            <Button type="button" size="icon" variant="ghost" onClick={() => deleteWorkExp(exp.id)} className="h-8 w-8 text-rose-400 hover:bg-rose-500/10">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                          <div>
+                            <div className="font-bold text-sm text-foreground">{exp.role || `Position #${idx + 1}`}</div>
+                            <div className="text-xs text-muted-foreground">{exp.company || "Company"} | {exp.period}</div>
                           </div>
                         </div>
 
-                        {/* Position Form Fields */}
-                        {isExpanded && (
-                          <div className="space-y-4 pt-1 animate-in fade-in duration-150">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold">Position Title *</Label>
-                              <Input value={exp.role} onChange={(e) => updateWorkExp(exp.id, "role", e.target.value)} placeholder="DevOps Engineer" className="text-xs" />
-                            </div>
-
-                            <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold">Company</Label>
-                              <Input value={exp.company} onChange={(e) => updateWorkExp(exp.id, "company", e.target.value)} placeholder="xIoTz Private Limited" className="text-xs" />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-1.5">
-                                <Label className="text-xs font-semibold">Location</Label>
-                                <Input value={exp.location} onChange={(e) => updateWorkExp(exp.id, "location", e.target.value)} placeholder="Remote, Delhi NCR" className="text-xs" />
-                              </div>
-
-                              <div className="space-y-1.5">
-                                <Label className="text-xs font-semibold">Experience Type</Label>
-                                <Select value={exp.employmentType || "Full-Time"} onValueChange={(val) => updateWorkExp(exp.id, "employmentType", val)}>
-                                  <SelectTrigger className="text-xs w-full">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Full-Time">Full-Time</SelectItem>
-                                    <SelectItem value="Part-Time">Part-Time</SelectItem>
-                                    <SelectItem value="Contract">Contract</SelectItem>
-                                    <SelectItem value="Internship">Internship</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold">Start Month</Label>
-                                <Input value={exp.startMonth || "November"} onChange={(e) => updateWorkExp(exp.id, "startMonth", e.target.value)} placeholder="November" className="text-xs" />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold">Start Year</Label>
-                                <Input value={exp.startYear || "2024"} onChange={(e) => updateWorkExp(exp.id, "startYear", e.target.value)} placeholder="2024" className="text-xs" />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold">End Month</Label>
-                                <Input value={exp.endMonth || ""} onChange={(e) => updateWorkExp(exp.id, "endMonth", e.target.value)} disabled={exp.isCurrent} placeholder="Month" className="text-xs" />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold">End Year</Label>
-                                <Input value={exp.endYear || ""} onChange={(e) => updateWorkExp(exp.id, "endYear", e.target.value)} disabled={exp.isCurrent} placeholder="Year" className="text-xs" />
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-1">
-                              <Switch
-                                id={`current-${exp.id}`}
-                                checked={exp.isCurrent ?? true}
-                                onCheckedChange={(val) => updateWorkExp(exp.id, "isCurrent", val)}
-                              />
-                              <Label htmlFor={`current-${exp.id}`} className="text-xs font-semibold cursor-pointer">
-                                I currently work here
-                              </Label>
-                            </div>
-
-                            <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold">Description & Key Accomplishments</Label>
-                              <textarea
-                                value={exp.bulletsStr}
-                                onChange={(e) => updateWorkExp(exp.id, "bulletsStr", e.target.value)}
-                                placeholder="• Cloud Operations: Co-designed and operated a cyber assurance platform...&#10;• Infrastructure Automation: Built reproducible Windows/Linux deployment workflows..."
-                                rows={5}
-                                className="w-full rounded-lg border border-input bg-background p-3 text-xs font-mono leading-relaxed"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Section 5: Education Editor */}
-              <div className="space-y-4 pt-3 border-t border-border/40">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <GraduationCap className="h-3.5 w-3.5 text-sky-400" /> Education History ({educations.length})
-                  </h4>
-                  <Button type="button" size="sm" variant="outline" onClick={addEdu} className="gap-1 text-xs font-semibold">
-                    <Plus className="h-3.5 w-3.5" /> Add Education
-                  </Button>
-                </div>
-
-                <div className="space-y-4">
-                  {educations.map((edu) => (
-                    <div key={edu.id} id={`edu-card-${edu.id}`} className="p-4 rounded-xl border border-border/80 bg-card space-y-3 transition-all">
-                      <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                        <div className="font-bold text-xs text-foreground">{edu.institution || "University Name"}</div>
-                        <Button type="button" size="icon" variant="ghost" onClick={() => deleteEdu(edu.id)} className="h-7 w-7 text-rose-400 hover:bg-rose-500/10">
+                        <Button type="button" size="icon" variant="ghost" onClick={() => deleteWorkExp(exp.id)} className="h-8 w-8 text-rose-400 hover:bg-rose-500/10">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-[11px] font-semibold">University / Institution</Label>
-                          <Input value={edu.institution} onChange={(e) => updateEdu(edu.id, "institution", e.target.value)} placeholder="Lovely Professional University" className="text-xs" />
+                      {/* Position Form Fields */}
+                      <div className="space-y-4 pt-1">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Position Title *</Label>
+                          <Input value={exp.role} onChange={(e) => updateWorkExp(exp.id, "role", e.target.value)} placeholder="DevOps Engineer" className="text-xs" />
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-[11px] font-semibold">Degree / Field of Study</Label>
-                          <Input value={edu.degree} onChange={(e) => updateEdu(edu.id, "degree", e.target.value)} placeholder="Bachelor's, Computer Engineering" className="text-xs" />
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Company</Label>
+                          <Input value={exp.company} onChange={(e) => updateWorkExp(exp.id, "company", e.target.value)} placeholder="xIoTz Private Limited" className="text-xs" />
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-[11px] font-semibold">Dates / Duration</Label>
-                          <Input value={edu.period} onChange={(e) => updateEdu(edu.id, "period", e.target.value)} placeholder="Aug 2020 - Oct 2024" className="text-xs font-mono" />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold">Location</Label>
+                            <Input value={exp.location} onChange={(e) => updateWorkExp(exp.id, "location", e.target.value)} placeholder="Remote, Delhi NCR" className="text-xs" />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold">Experience Type</Label>
+                            <Select value={exp.employmentType || "Full-Time"} onValueChange={(val) => updateWorkExp(exp.id, "employmentType", val)}>
+                              <SelectTrigger className="text-xs w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Full-Time">Full-Time</SelectItem>
+                                <SelectItem value="Part-Time">Part-Time</SelectItem>
+                                <SelectItem value="Contract">Contract</SelectItem>
+                                <SelectItem value="Internship">Internship</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[11px] font-semibold">Grade / GPA</Label>
-                        <Input value={edu.gpa || ""} onChange={(e) => updateEdu(edu.id, "gpa", e.target.value)} placeholder="GPA: 8.29" className="text-xs" />
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-semibold">Start Month</Label>
+                            <Input value={exp.startMonth || "November"} onChange={(e) => updateWorkExp(exp.id, "startMonth", e.target.value)} placeholder="November" className="text-xs" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-semibold">Start Year</Label>
+                            <Input value={exp.startYear || "2024"} onChange={(e) => updateWorkExp(exp.id, "startYear", e.target.value)} placeholder="2024" className="text-xs" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-semibold">End Month</Label>
+                            <Input value={exp.endMonth || ""} onChange={(e) => updateWorkExp(exp.id, "endMonth", e.target.value)} disabled={exp.isCurrent} placeholder="Month" className="text-xs" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-semibold">End Year</Label>
+                            <Input value={exp.endYear || ""} onChange={(e) => updateWorkExp(exp.id, "endYear", e.target.value)} disabled={exp.isCurrent} placeholder="Year" className="text-xs" />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1">
+                          <Switch
+                            id={`current-${exp.id}`}
+                            checked={exp.isCurrent ?? true}
+                            onCheckedChange={(val) => updateWorkExp(exp.id, "isCurrent", val)}
+                          />
+                          <Label htmlFor={`current-${exp.id}`} className="text-xs font-semibold cursor-pointer">
+                            I currently work here
+                          </Label>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Description & Key Accomplishments</Label>
+                          <textarea
+                            value={exp.bulletsStr}
+                            onChange={(e) => updateWorkExp(exp.id, "bulletsStr", e.target.value)}
+                            placeholder="Cloud Operations: Co-designed and operated cloud platform..."
+                            rows={5}
+                            className="w-full rounded-lg border border-input bg-background p-3 text-xs font-mono leading-relaxed"
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}
-                </div>
-              </div>
-
-              {/* Master Summary Text */}
-              <div className="space-y-1.5 pt-2 border-t border-border/40" id="field-summary">
-                <Label className="text-xs font-semibold">Master Professional Summary Paragraph</Label>
-                <textarea
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                  placeholder="Enter your professional summary paragraph..."
-                  rows={4}
-                  className="w-full rounded-lg border border-input bg-background p-3 text-xs shadow-xs font-mono leading-relaxed transition-all"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
-                <Button size="sm" onClick={handleSaveProfile} className="gap-2 font-semibold bg-emerald-600 hover:bg-emerald-500 text-white">
-                  <Save className="h-4 w-4" /> Save Profile
-                </Button>
-              </div>
-            </div>
-          ) : (
-            /* Overview View Card */
-            <div className="p-6 rounded-2xl border border-border bg-card space-y-6 shadow-md">
-              {/* Personal Header */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-4">
-                <div className="flex items-start gap-4">
-                  <div className="h-14 w-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xl shrink-0">
-                    <User className="h-7 w-7" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-xl text-foreground">{currentProfile.full_name || currentProfile.name}</h3>
-                      {currentProfile.location && <Badge variant="secondary" className="text-xs">{currentProfile.location}</Badge>}
-                    </div>
-                    <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-4 mt-1.5 font-medium">
-                      {currentProfile.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5 text-primary" /> {currentProfile.email}</span>}
-                      {currentProfile.phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-primary" /> {currentProfile.phone}</span>}
-                      {currentProfile.notice_period && <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-emerald-400" /> Notice: {currentProfile.notice_period}</span>}
-                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button size="sm" onClick={() => setIsEditing(true)} className="gap-1.5 text-xs font-semibold">
-                    <Edit2 className="h-3.5 w-3.5" /> Edit Profile
+                {/* Section 5: Education Editor */}
+                <div className="space-y-4 pt-3 border-t border-border/40">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <GraduationCap className="h-3.5 w-3.5 text-sky-400" /> Education History ({educations.length})
+                    </h4>
+                    <Button type="button" size="sm" variant="outline" onClick={addEdu} className="gap-1 text-xs font-semibold">
+                      <Plus className="h-3.5 w-3.5" /> Add Education
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {educations.map((edu, idx) => (
+                      <div key={edu.id} id={`edu-card-${edu.id}`} className="p-4 rounded-xl border border-border/80 bg-card space-y-3 transition-all">
+                        <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                          <div className="font-bold text-xs text-foreground">{edu.institution || `Education #${idx + 1}`}</div>
+                          <Button type="button" size="icon" variant="ghost" onClick={() => deleteEdu(edu.id)} className="h-7 w-7 text-rose-400 hover:bg-rose-500/10">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-semibold">University / Institution</Label>
+                            <Input value={edu.institution} onChange={(e) => updateEdu(edu.id, "institution", e.target.value)} placeholder="Lovely Professional University" className="text-xs" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-semibold">Degree / Field of Study</Label>
+                            <Input value={edu.degree} onChange={(e) => updateEdu(edu.id, "degree", e.target.value)} placeholder="Bachelor's, Computer Engineering" className="text-xs" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-semibold">Dates / Duration</Label>
+                            <Input value={edu.period} onChange={(e) => updateEdu(edu.id, "period", e.target.value)} placeholder="Aug 2020 - Oct 2024" className="text-xs font-mono" />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-semibold">Grade / GPA</Label>
+                          <Input value={edu.gpa || ""} onChange={(e) => updateEdu(edu.id, "gpa", e.target.value)} placeholder="GPA: 8.29" className="text-xs" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Master Summary Text */}
+                <div className="space-y-1.5 pt-2 border-t border-border/40" id="field-summary">
+                  <Label className="text-xs font-semibold">Master Professional Summary Paragraph</Label>
+                  <textarea
+                    value={summary}
+                    onChange={(e) => setSummary(e.target.value)}
+                    placeholder="Enter your professional summary paragraph..."
+                    rows={4}
+                    className="w-full rounded-lg border border-input bg-background p-3 text-xs shadow-xs font-mono leading-relaxed transition-all"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
+                  <Button size="sm" onClick={handleSaveProfile} className="gap-2 font-semibold bg-emerald-600 hover:bg-emerald-500 text-white">
+                    <Save className="h-4 w-4" /> Save Profile
                   </Button>
                 </div>
               </div>
-
-              {/* Master Technical Skills Badges */}
-              <div className="space-y-2">
-                <div className="text-xs font-bold text-foreground flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-primary" /> Technical Skills & Core Tools ({skills.length})
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {skills.length > 0 ? (
-                    skills.map((skill, idx) => (
-                      <Badge key={idx} variant="secondary" className="font-mono text-xs py-1 px-2.5 bg-muted/60">
-                        {skill}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic">No skills listed yet</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Preferences & Target Role Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-muted/20 border border-border/60 text-xs">
-                <div className="space-y-1">
-                  <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
-                    <Target className="h-3.5 w-3.5 text-primary" /> Target Job Titles
+            ) : (
+              /* Overview View Card (Clean Read-Only Display) */
+              <div className="p-6 rounded-2xl border border-border bg-card space-y-6 shadow-md">
+                {/* Personal Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-4">
+                  <div className="flex items-start gap-4">
+                    <div className="h-14 w-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xl shrink-0">
+                      <User className="h-7 w-7" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-xl text-foreground">{currentProfile.full_name || currentProfile.name}</h3>
+                        {currentProfile.location && <Badge variant="secondary" className="text-xs">{currentProfile.location}</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-4 mt-1.5 font-medium">
+                        {currentProfile.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5 text-primary" /> {currentProfile.email}</span>}
+                        {currentProfile.phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-primary" /> {currentProfile.phone}</span>}
+                        {currentProfile.notice_period && <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-emerald-400" /> Notice: {currentProfile.notice_period}</span>}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1 pt-0.5">
-                    {titles.length > 0 ? (
-                      titles.map((t, idx) => (
-                        <span key={idx} className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-medium">
-                          {t}
-                        </span>
+
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={() => setIsEditing(true)} className="gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90">
+                      <Edit2 className="h-3.5 w-3.5" /> Edit Profile
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Master Technical Skills Badges */}
+                <div className="space-y-2">
+                  <div className="text-xs font-bold text-foreground flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-primary" /> Technical Skills & Core Tools ({skills.length})
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {skills.length > 0 ? (
+                      skills.map((skill, idx) => (
+                        <Badge key={idx} variant="secondary" className="font-mono text-xs py-1 px-2.5 bg-muted/60">
+                          {skill}
+                        </Badge>
                       ))
                     ) : (
-                      <span className="text-muted-foreground italic">Not specified</span>
+                      <span className="text-xs text-muted-foreground italic">No skills listed yet</span>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-primary" /> Experience & Level
-                  </div>
-                  <div className="font-medium text-foreground text-xs pt-0.5">
-                    {currentProfile.experience_years ?? 3} Years ({currentProfile.seniority || "Mid-Level"})
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
-                    <DollarSign className="h-3.5 w-3.5 text-primary" /> Expected Min Salary
-                  </div>
-                  <div className="font-medium text-emerald-400 text-xs pt-0.5 font-mono">
-                    {currentProfile.salary_currency || "INR"} {formattedSalary} / year
-                  </div>
-                </div>
-              </div>
-
-              {/* Exclusions & Work Auth */}
-              {(excludeCompanies.length > 0 || excludeKeywords.length > 0 || currentProfile.visa_required === 1) && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1 text-xs">
-                  {excludeCompanies.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
-                        <Building2 className="h-3.5 w-3.5 text-rose-400" /> Excluded Companies
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {excludeCompanies.map((c, idx) => (
-                          <span key={idx} className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 text-[11px]">
-                            {c}
+                {/* Preferences & Target Role Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-muted/20 border border-border/60 text-xs">
+                  <div className="space-y-1">
+                    <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                      <Target className="h-3.5 w-3.5 text-primary" /> Target Job Titles
+                    </div>
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {titles.length > 0 ? (
+                        titles.map((t, idx) => (
+                          <span key={idx} className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-medium">
+                            {t}
                           </span>
-                        ))}
-                      </div>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground italic">Not specified</span>
+                      )}
                     </div>
-                  )}
+                  </div>
 
-                  {excludeKeywords.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
-                        <Ban className="h-3.5 w-3.5 text-amber-400" /> Excluded Keywords
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {excludeKeywords.map((k, idx) => (
-                          <span key={idx} className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[11px]">
-                            {k}
-                          </span>
-                        ))}
-                      </div>
+                  <div className="space-y-1">
+                    <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-primary" /> Experience & Level
                     </div>
-                  )}
-
-                  {currentProfile.visa_required === 1 && (
-                    <div className="space-y-1">
-                      <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
-                        <Globe className="h-3.5 w-3.5 text-sky-400" /> Visa Sponsorship
-                      </div>
-                      <span className="text-sky-400 font-semibold text-[11px]">Requires Visa Sponsorship</span>
+                    <div className="font-medium text-foreground text-xs pt-0.5">
+                      {currentProfile.experience_years ?? 3} Years ({currentProfile.seniority || "Mid-Level"})
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
 
-              {/* ── WORK EXPERIENCE SECTION ── */}
-              <div className="space-y-4 pt-4 border-t border-border/40">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-lg text-foreground">Work Experience</h3>
-                  <Button size="icon" variant="outline" onClick={() => { setIsEditing(true); addWorkExp(); }} className="h-8 w-8 rounded-lg">
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <div className="space-y-1">
+                    <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                      <DollarSign className="h-3.5 w-3.5 text-primary" /> Expected Min Salary
+                    </div>
+                    <div className="font-medium text-emerald-400 text-xs pt-0.5 font-mono">
+                      {currentProfile.salary_currency || "INR"} {formattedSalary} / year
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  {workExperiences.map((exp) => (
-                    <div key={exp.id} className="p-5 rounded-2xl border border-border/80 bg-card space-y-3.5 shadow-sm">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3.5">
-                          <div className="h-11 w-11 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
-                            <Briefcase className="h-5 w-5" />
-                          </div>
-                          <div className="space-y-1">
-                            <h4 className="font-bold text-base text-foreground leading-snug">{exp.role || "DevOps Engineer"}</h4>
-                            <div className="text-xs font-semibold text-muted-foreground">{exp.company || "Company Name"}</div>
+                {/* Exclusions & Work Auth */}
+                {(excludeCompanies.length > 0 || excludeKeywords.length > 0 || currentProfile.visa_required === 1) && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1 text-xs">
+                    {excludeCompanies.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                          <Building2 className="h-3.5 w-3.5 text-rose-400" /> Excluded Companies
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {excludeCompanies.map((c, idx) => (
+                            <span key={idx} className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 text-[11px]">
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                            <div className="flex flex-wrap items-center gap-2 pt-1.5">
-                              {exp.location && (
+                    {excludeKeywords.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                          <Ban className="h-3.5 w-3.5 text-amber-400" /> Excluded Keywords
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {excludeKeywords.map((k, idx) => (
+                            <span key={idx} className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[11px]">
+                              {k}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {currentProfile.visa_required === 1 && (
+                      <div className="space-y-1">
+                        <div className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                          <Globe className="h-3.5 w-3.5 text-sky-400" /> Visa Sponsorship
+                        </div>
+                        <span className="text-sky-400 font-semibold text-[11px]">Requires Visa Sponsorship</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── WORK EXPERIENCE SECTION (Clean Read-Only Display) ── */}
+                <div className="space-y-4 pt-4 border-t border-border/40">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-lg text-foreground">Work Experience</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    {workExperiences.map((exp) => (
+                      <div key={exp.id} className="p-5 rounded-2xl border border-border/80 bg-card space-y-3.5 shadow-sm">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-3.5">
+                            <div className="h-11 w-11 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+                              <Briefcase className="h-5 w-5" />
+                            </div>
+                            <div className="space-y-1">
+                              <h4 className="font-bold text-base text-foreground leading-snug">{exp.role || "DevOps Engineer"}</h4>
+                              <div className="text-xs font-semibold text-muted-foreground">{exp.company || "Company Name"}</div>
+
+                              <div className="flex flex-wrap items-center gap-2 pt-1.5">
+                                {exp.location && (
+                                  <Badge variant="secondary" className="rounded-full px-3 py-0.5 text-[11px] font-medium bg-muted text-foreground">
+                                    {exp.location}
+                                  </Badge>
+                                )}
+                                {exp.period && (
+                                  <Badge variant="secondary" className="rounded-full px-3 py-0.5 text-[11px] font-medium bg-muted text-foreground">
+                                    {exp.period}
+                                  </Badge>
+                                )}
                                 <Badge variant="secondary" className="rounded-full px-3 py-0.5 text-[11px] font-medium bg-muted text-foreground">
-                                  {exp.location}
+                                  {exp.employmentType || "Full-Time"}
                                 </Badge>
-                              )}
-                              {exp.period && (
-                                <Badge variant="secondary" className="rounded-full px-3 py-0.5 text-[11px] font-medium bg-muted text-foreground">
-                                  {exp.period}
-                                </Badge>
-                              )}
-                              <Badge variant="secondary" className="rounded-full px-3 py-0.5 text-[11px] font-medium bg-muted text-foreground">
-                                {exp.employmentType || "Full-Time"}
-                              </Badge>
+                              </div>
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditingWorkExpId(exp.id);
-                              scrollToAndHighlightField(`exp-card-${exp.id}`);
-                            }}
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => deleteWorkExp(exp.id)}
-                            className="h-8 w-8 text-rose-400 hover:bg-rose-500/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        {exp.bulletsStr && (
+                          <div className="pt-2 border-t border-border/30">
+                            <ul className="space-y-1.5 text-xs text-muted-foreground leading-relaxed">
+                              {exp.bulletsStr.split("\n").map((b, bIdx) => {
+                                const cleanBullet = b.replace(/^[•\-*]\s*/, "").trim();
+                                if (!cleanBullet) return null;
+                                return (
+                                  <li key={bIdx} className="flex items-start gap-2">
+                                    <span className="text-primary font-bold">•</span>
+                                    <span>{cleanBullet}</span>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        )}
                       </div>
-
-                      {exp.bulletsStr && (
-                        <div className="pt-2 border-t border-border/30">
-                          <ul className="space-y-1.5 text-xs text-muted-foreground leading-relaxed">
-                            {exp.bulletsStr.split("\n").map((b, bIdx) => {
-                              const cleanBullet = b.replace(/^[•\-*]\s*/, "").trim();
-                              if (!cleanBullet) return null;
-                              return (
-                                <li key={bIdx} className="flex items-start gap-2">
-                                  <span className="text-primary font-bold">•</span>
-                                  <span>{cleanBullet}</span>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* ── EDUCATION SECTION ── */}
-              <div className="space-y-4 pt-4 border-t border-border/40">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-lg text-foreground">Education</h3>
-                  <Button size="icon" variant="outline" onClick={() => { setIsEditing(true); addEdu(); }} className="h-8 w-8 rounded-lg">
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  {educations.map((edu) => (
-                    <div key={edu.id} className="p-5 rounded-2xl border border-border/80 bg-card flex items-start justify-between gap-4 shadow-sm">
-                      <div className="flex items-start gap-3.5">
-                        <div className="h-11 w-11 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
-                          <GraduationCap className="h-5 w-5" />
-                        </div>
-                        <div className="space-y-1">
-                          <h4 className="font-bold text-base text-foreground leading-snug">{edu.institution || "Lovely Professional University"}</h4>
+                {/* ── EDUCATION SECTION (Clean Read-Only Display) ── */}
+                <div className="space-y-4 pt-4 border-t border-border/40">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-lg text-foreground">Education</h3>
+                  </div>
 
-                          <div className="flex flex-wrap items-center gap-2 pt-1.5">
-                            {edu.period && (
-                              <Badge variant="secondary" className="rounded-full px-3 py-0.5 text-[11px] font-medium bg-muted text-foreground">
-                                {edu.period}
-                              </Badge>
-                            )}
-                            {edu.degree && (
-                              <Badge variant="secondary" className="rounded-full px-3 py-0.5 text-[11px] font-medium bg-muted text-foreground">
-                                {edu.degree}
-                              </Badge>
-                            )}
-                            {edu.gpa && (
-                              <Badge variant="secondary" className="rounded-full px-3 py-0.5 text-[11px] font-medium bg-muted text-foreground font-mono">
-                                {edu.gpa}
-                              </Badge>
-                            )}
+                  <div className="space-y-4">
+                    {educations.map((edu) => (
+                      <div key={edu.id} className="p-5 rounded-2xl border border-border/80 bg-card flex items-start justify-between gap-4 shadow-sm">
+                        <div className="flex items-start gap-3.5">
+                          <div className="h-11 w-11 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+                            <GraduationCap className="h-5 w-5" />
+                          </div>
+                          <div className="space-y-1">
+                            <h4 className="font-bold text-base text-foreground leading-snug">{edu.institution || "Lovely Professional University"}</h4>
+
+                            <div className="flex flex-wrap items-center gap-2 pt-1.5">
+                              {edu.period && (
+                                <Badge variant="secondary" className="rounded-full px-3 py-0.5 text-[11px] font-medium bg-muted text-foreground">
+                                  {edu.period}
+                                </Badge>
+                              )}
+                              {edu.degree && (
+                                <Badge variant="secondary" className="rounded-full px-3 py-0.5 text-[11px] font-medium bg-muted text-foreground">
+                                  {edu.degree}
+                                </Badge>
+                              )}
+                              {edu.gpa && (
+                                <Badge variant="secondary" className="rounded-full px-3 py-0.5 text-[11px] font-medium bg-muted text-foreground font-mono">
+                                  {edu.gpa}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => {
-                            setEditingEduId(edu.id);
-                            scrollToAndHighlightField(`edu-card-${edu.id}`);
-                          }}
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => deleteEdu(edu.id)}
-                          className="h-8 w-8 text-rose-400 hover:bg-rose-500/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+            )}
+          </div>
+        )}
+      </div>
   );
 };
