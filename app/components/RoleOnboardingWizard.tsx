@@ -33,6 +33,8 @@ import {
   Calendar,
   MapPin,
   Building2,
+  FileText,
+  Upload,
 } from "lucide-react";
 import { parseMasterCV } from "@/lib/providers/cv-parser";
 
@@ -132,6 +134,8 @@ export const RoleOnboardingWizard: React.FC<RoleOnboardingWizardProps> = ({ isOp
   const [rawResumeInput, setRawResumeInput] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [parseStatusMsg, setParseStatusMsg] = useState("");
+  const [resumeFilePath, setResumeFilePath] = useState<string | null>(null);
+  const [parseLog, setParseLog] = useState<string[]>([]);
 
   // Step 2 state: Structured Item Lists
   const [fullName, setFullName] = useState("");
@@ -168,11 +172,44 @@ export const RoleOnboardingWizard: React.FC<RoleOnboardingWizardProps> = ({ isOp
     }
   };
 
+  // Upload PDF Handler
+  const handleUploadPdf = async () => {
+    setParseLog([]);
+    const addLog = (msg: string) => setParseLog((prev) => [...prev, msg]);
+    addLog("📂 Opening file picker…");
+
+    try {
+      const result = await conveyor.data.pickAndExtractResume();
+      if (result.canceled) {
+        addLog("❌ File picker cancelled.");
+        return;
+      }
+
+      addLog(`✅ Selected: ${result.fileName} (${result.fileSizeKB} KB)`);
+      addLog(`🔍 Extracting text from PDF…`);
+
+      if (!result.extractedText || result.extractedText.trim().length < 20) {
+        addLog("⚠️ Could not extract enough text from PDF. Try pasting text manually.");
+        return;
+      }
+
+      addLog(`📝 Extracted ${result.extractedText.length.toLocaleString()} characters`);
+      setRawResumeInput(result.extractedText);
+      setResumeFilePath(result.filePath || null);
+      addLog(`✅ PDF text loaded into editor — click \"✨ Extract Resume\" to run AI parse!`);
+    } catch (err) {
+      console.error("[RoleWizard] PDF upload error:", err);
+      addLog(`❌ Error: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
   // Real AI LLM Resume Parse Handler
   const handleParseResumeText = async () => {
     if (!rawResumeInput.trim()) return;
     setIsParsing(true);
     setParseStatusMsg("");
+    const addLog = (msg: string) => setParseLog((prev) => [...prev, msg]);
+    addLog("🤖 Running AI resume extraction…");
 
     try {
       console.log("[RoleWizard] Extracting candidate details with AI LLM (Resume-Matcher format)...");
@@ -301,10 +338,15 @@ export const RoleOnboardingWizard: React.FC<RoleOnboardingWizardProps> = ({ isOp
         setTargetTitlesStr("DevOps Engineer, DevSecOps Engineer, SRE");
       }
 
+      // Log extraction summary
+      addLog(`✅ Extracted: ${aiWorkExp.length} work experiences, ${aiProjects.length} projects, ${aiCertObjects.length || aiCertStrings.length} certifications, ${aiSkills.length} skills`);
+      addLog(`✨ Done! All sections extracted into editable cards.`);
+
       setParseStatusMsg("✨ All resume sections extracted with AI into editable item cards!");
       setStep(2);
     } catch (err) {
       console.error("[RoleWizard] AI extraction error:", err);
+      addLog(`❌ AI extraction failed: ${err instanceof Error ? err.message : String(err)}`);
       setParseStatusMsg("Could not parse resume automatically. You can fill fields manually.");
       setStep(2);
     } finally {
@@ -459,6 +501,16 @@ ${eduFormatted}
 
       if (createdProfile?.id) {
         await conveyor.data.setActiveProfile(createdProfile.id);
+
+        // Store the base resume PDF file if one was uploaded
+        if (resumeFilePath) {
+          try {
+            await conveyor.data.storeResumeFile(createdProfile.id, resumeFilePath);
+            console.log("[RoleWizard] Base resume PDF stored for profile:", createdProfile.id);
+          } catch (err) {
+            console.warn("[RoleWizard] Failed to store resume file:", err);
+          }
+        }
       }
 
       // 2. Auto-create Search Queries
@@ -535,14 +587,35 @@ ${eduFormatted}
               </div>
 
               <div className="space-y-3 p-4 rounded-xl border border-primary/30 bg-primary/5">
-                <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                  <Wand2 className="h-4 w-4 text-primary" />
-                  <span>Resume Text (Copy from PDF / Word / LinkedIn)</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                    <Wand2 className="h-4 w-4 text-primary" />
+                    <span>Resume Text (Upload PDF or Paste Text)</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleUploadPdf}
+                    disabled={isParsing}
+                    className="gap-1.5 text-xs border-primary/40 hover:bg-primary/10"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    📎 Upload Resume PDF
+                  </Button>
                 </div>
+
+                {resumeFilePath && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
+                    <FileText className="h-4 w-4 shrink-0" />
+                    <span className="truncate font-mono">{resumeFilePath.split(/[\\/]/).pop()}</span>
+                    <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400 ml-auto shrink-0">Base Resume</Badge>
+                  </div>
+                )}
+
                 <textarea
                   value={rawResumeInput}
                   onChange={(e) => setRawResumeInput(e.target.value)}
-                  placeholder="Paste your resume text here (Full Name, Contact Info, Work Experience, Education, Certifications, Technical Skills)..."
+                  placeholder="Paste your resume text here or click 'Upload Resume PDF' above…"
                   rows={9}
                   className="w-full rounded-lg border border-input bg-card p-3 text-xs font-mono outline-none shadow-inner focus:ring-1 focus:ring-primary leading-relaxed"
                 />
@@ -550,6 +623,32 @@ ${eduFormatted}
                   <span className="text-[11px] text-muted-foreground">Extracts work experience, education, certs, and skills automatically</span>
                 </div>
               </div>
+
+              {/* CLI-Style Parse Log Panel */}
+              {parseLog.length > 0 && (
+                <div className="rounded-xl border border-border bg-zinc-950 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border-b border-zinc-800">
+                    <div className="flex gap-1">
+                      <span className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
+                    </div>
+                    <span className="text-[10px] text-zinc-500 font-mono">applykit — resume extraction</span>
+                  </div>
+                  <div className="p-3 max-h-36 overflow-y-auto space-y-0.5">
+                    {parseLog.map((line, i) => (
+                      <div key={i} className="text-[11px] font-mono text-zinc-300 leading-relaxed">
+                        <span className="text-zinc-600 select-none">$ </span>{line}
+                      </div>
+                    ))}
+                    {isParsing && (
+                      <div className="text-[11px] font-mono text-primary animate-pulse leading-relaxed">
+                        <span className="text-zinc-600 select-none">$ </span>Processing…
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -294,7 +294,7 @@ import fs from "fs";
  * Helper to safely extract plaintext from PDF buffer using pdf-parse v2 (PDFParse class) with v1 & stream fallbacks.
  * Handles disk file paths, Base64 DataURLs, and binary buffers cleanly without UTF-8 corruption.
  */
-async function extractPdfText(input: string): Promise<string> {
+export async function extractPdfText(input: string): Promise<string> {
   let buffer: Buffer;
 
   // 1. Disk file path

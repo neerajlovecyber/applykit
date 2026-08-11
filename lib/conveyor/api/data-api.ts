@@ -468,6 +468,23 @@ export class DataApi {
   };
 
   // ═══════════════════════════════════════════════════════════
+  // RESUME FILE PICKER & STORAGE
+  // ═══════════════════════════════════════════════════════════
+
+  pickAndExtractResume = async (): Promise<{
+    canceled: boolean;
+    filePath?: string;
+    fileName?: string;
+    fileSizeKB?: number;
+    extractedText?: string;
+  }> => {
+    return this.api.ipcRenderer.invoke("resume:pick-and-extract");
+  };
+  storeResumeFile = async (profileId: string, sourcePath: string): Promise<string> => {
+    return this.api.ipcRenderer.invoke("resume:store-file", { profileId, sourcePath });
+  };
+
+  // ═══════════════════════════════════════════════════════════
   // LEGACY: Jobs & History
   // ═══════════════════════════════════════════════════════════
 

@@ -1,4 +1,6 @@
-import { app, ipcMain } from "electron";
+import { app, dialog, ipcMain } from "electron";
+import * as fs from "fs";
+import * as path from "path";
 import * as dbQueries from "@/lib/main/db-queries";
 import * as llmRegistry from "@/lib/providers/provider-registry";
 import { fetchOpenRouterModels, fetchProviderModels } from "@/lib/providers/model-fetcher";
@@ -464,6 +466,41 @@ export function registerAppHandlers(): void {
   ipcMain.handle("llm:answer-question", (_, { profileSummary, question, context }) => llmRegistry.answerQuestion(profileSummary, question, context));
   ipcMain.handle("llm:parse-resume", (_, resumeText) => llmRegistry.parseResume(resumeText));
   ipcMain.handle("llm:tailor-resume", (_, { profileSummary, jobDescription }) => llmRegistry.tailorResume(profileSummary, jobDescription));
+
+  // ===========================================================
+  // RESUME FILE PICKER & STORAGE
+  // ===========================================================
+
+  ipcMain.handle("resume:pick-and-extract", async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: "Select Resume PDF",
+      filters: [{ name: "PDF Files", extensions: ["pdf"] }],
+      properties: ["openFile"],
+    });
+    if (canceled || !filePaths.length) return { canceled: true };
+
+    const filePath = filePaths[0];
+    const stats = fs.statSync(filePath);
+    const fileName = path.basename(filePath);
+    const fileSizeKB = Math.round(stats.size / 1024);
+    console.log(`[Resume] Selected file: ${fileName} (${fileSizeKB} KB)`);
+
+    const extractedText = await llmRegistry.extractPdfText(filePath);
+    console.log(`[Resume] Extracted ${extractedText.length} characters from PDF`);
+
+    return { canceled: false, filePath, fileName, fileSizeKB, extractedText };
+  });
+
+  ipcMain.handle("resume:store-file", async (_, { profileId, sourcePath }) => {
+    const destDir = path.join(app.getPath("userData"), "resumes");
+    fs.mkdirSync(destDir, { recursive: true });
+    const ext = path.extname(sourcePath) || ".pdf";
+    const destPath = path.join(destDir, `${profileId}${ext}`);
+    fs.copyFileSync(sourcePath, destPath);
+    dbQueries.updateProfile(profileId, { resume_path: destPath });
+    console.log(`[Resume] Stored base resume: ${destPath}`);
+    return destPath;
+  });
 
   // ===========================================================
   // LEGACY: Jobs & History (backward compatibility)
