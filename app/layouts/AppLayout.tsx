@@ -247,10 +247,11 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                   ))}
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link to="/profiles" className="flex items-center gap-2 text-xs">
-                    <Plus className="size-3.5" /> Add Profile
-                  </Link>
+                <DropdownMenuItem
+                  className="flex items-center gap-2 text-xs cursor-pointer text-emerald-400 font-semibold"
+                  onClick={() => setShowWizard(true)}
+                >
+                  <Plus className="size-3.5" /> Add Profile
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

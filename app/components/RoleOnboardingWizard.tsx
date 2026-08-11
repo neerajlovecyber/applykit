@@ -497,27 +497,28 @@ ${eduFormatted}
     <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-4xl bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header Bar */}
+        {/* Wizard Header Bar */}
         <div className="p-5 border-b border-border flex items-center justify-between bg-muted/20">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-9 w-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold shrink-0">
               <Sparkles className="h-5 w-5" />
             </div>
-            <div>
-              <h3 className="font-bold text-base">Candidate Profile & Role Setup</h3>
-              <p className="text-xs text-muted-foreground">Build your candidate profile & target role tracks</p>
+            <div className="min-w-0">
+              <h3 className="font-bold text-base truncate">AI Resume Import</h3>
+              <p className="text-xs text-muted-foreground truncate">Auto-fill candidate details and target preferences</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mr-2">
-              <span className={`px-2 py-0.5 rounded-full ${step === 1 ? "bg-primary text-primary-foreground font-bold" : "bg-muted"}`}>1. Resume Text</span>
-              <span>→</span>
-              <span className={`px-2 py-0.5 rounded-full ${step === 2 ? "bg-primary text-primary-foreground font-bold" : "bg-muted"}`}>2. Candidate Fields</span>
-              <span>→</span>
-              <span className={`px-2 py-0.5 rounded-full ${step === 3 ? "bg-primary text-primary-foreground font-bold" : "bg-muted"}`}>3. Target Roles</span>
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+              <span className={`px-2.5 py-1 rounded-full whitespace-nowrap ${step === 1 ? "bg-primary text-primary-foreground font-bold" : "bg-muted"}`}>1. Resume Text</span>
+              <span className="shrink-0">→</span>
+              <span className={`px-2.5 py-1 rounded-full whitespace-nowrap ${step === 2 ? "bg-primary text-primary-foreground font-bold" : "bg-muted"}`}>2. Details</span>
+              <span className="shrink-0">→</span>
+              <span className={`px-2.5 py-1 rounded-full whitespace-nowrap ${step === 3 ? "bg-primary text-primary-foreground font-bold" : "bg-muted"}`}>3. Target Roles</span>
             </div>
 
-            <Button size="icon" variant="ghost" onClick={onClose} className="h-8 w-8">
+            <Button size="icon" variant="ghost" onClick={onClose} className="h-8 w-8 shrink-0">
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -530,7 +531,7 @@ ${eduFormatted}
             <div className="space-y-5 animate-in fade-in duration-150">
               <div>
                 <h4 className="font-bold text-lg">Step 1: Paste Resume for AI Auto-Fill</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">Copy and paste your resume text below. AI will automatically parse every job, project, certification, and education into individual editable cards.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Copy and paste your resume text below. AI will automatically parse work experience, education, certifications, and skills.</p>
               </div>
 
               <div className="space-y-3 p-4 rounded-xl border border-primary/30 bg-primary/5">
@@ -541,36 +542,25 @@ ${eduFormatted}
                 <textarea
                   value={rawResumeInput}
                   onChange={(e) => setRawResumeInput(e.target.value)}
-                  placeholder="Paste your resume text here (Full Name, Contact Info, Experience, Education, Certifications, Skills)..."
-                  rows={8}
-                  className="w-full rounded-lg border border-input bg-card p-3 text-xs font-mono outline-none shadow-inner focus:ring-1 focus:ring-primary"
+                  placeholder="Paste your resume text here (Full Name, Contact Info, Work Experience, Education, Certifications, Technical Skills)..."
+                  rows={9}
+                  className="w-full rounded-lg border border-input bg-card p-3 text-xs font-mono outline-none shadow-inner focus:ring-1 focus:ring-primary leading-relaxed"
                 />
                 <div className="flex items-center justify-between pt-1">
-                  <span className="text-[11px] text-muted-foreground">Extracts every work experience role, project, cert, and degree into editable item cards</span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleParseResumeText}
-                      disabled={isParsing || !rawResumeInput.trim()}
-                      className="gap-2 text-xs"
-                    >
-                      {isParsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                      ✨ Extract into Item Cards
-                    </Button>
-                  </div>
+                  <span className="text-[11px] text-muted-foreground">Extracts work experience, education, certs, and skills automatically</span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* STEP 2: REVIEW EXTRACTED CANDIDATE FIELDS AS INDIVIDUAL EDITABLE CARDS */}
+          {/* STEP 2: REVIEW EXTRACTED DETAILS */}
           {step === 2 && (
             <div className="space-y-6 animate-in fade-in duration-150">
               <div>
                 <h4 className="font-bold text-lg flex items-center gap-2">
-                  <UserCheck className="h-5 w-5 text-primary" /> Step 2: Review & Edit Extracted Candidate Item Cards
+                  <UserCheck className="h-5 w-5 text-primary" /> Step 2: Review & Edit Extracted Details
                 </h4>
-                <p className="text-xs text-muted-foreground mt-0.5">Edit role titles, company names, locations, dates, and bullet points for each item independently.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Review contact information, experience, education, and skills.</p>
               </div>
 
               {parseStatusMsg && (
@@ -927,20 +917,20 @@ ${eduFormatted}
             {step === 1 && (
               <Button size="sm" onClick={handleParseResumeText} disabled={isParsing || !rawResumeInput.trim()} className="gap-1.5 text-xs font-semibold">
                 {isParsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                ✨ Extract into Item Cards
+                ✨ Extract Resume
               </Button>
             )}
 
             {step === 2 && (
               <Button size="sm" onClick={() => setStep(3)} className="gap-1.5 text-xs font-semibold">
-                Next: Role Track Setup <ArrowRight className="h-3.5 w-3.5" />
+                Next: Target Roles <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             )}
 
             {step === 3 && (
               <Button size="sm" onClick={handleFinishOnboarding} disabled={isSaving} className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white">
                 {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                ✨ Save Profile Track & Launch Engine
+                ✨ Save Profile
               </Button>
             )}
           </div>
