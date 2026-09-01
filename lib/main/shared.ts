@@ -8,14 +8,14 @@ import {
 } from "@/lib/conveyor/schemas";
 
 /**
- * Helper to register IPC handlers
+ * Helper to register IPC handlers with Zod validation
  * @param channel - The IPC channel to register the handler for
- * @param handler - The handler function to register
+ * @param handler - The handler function to register (sync or async)
  * @returns void
  */
 export const handle = <T extends keyof typeof ipcSchemas>(
   channel: T,
-  handler: (...args: ChannelArgs<T>) => ChannelReturn<T>,
+  handler: (...args: ChannelArgs<T>) => ChannelReturn<T> | Promise<ChannelReturn<T>>,
 ) => {
   ipcMain.handle(channel, async (_, ...args) => {
     try {
@@ -24,7 +24,7 @@ export const handle = <T extends keyof typeof ipcSchemas>(
 
       return validateReturn(channel, result);
     } catch (error) {
-      console.error(`IPC Error in ${channel}:`, error);
+      console.error(`[Conveyor] IPC Error in channel "${String(channel)}":`, error);
       throw error;
     }
   });

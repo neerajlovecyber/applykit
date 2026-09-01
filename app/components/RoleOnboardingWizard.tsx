@@ -205,7 +205,7 @@ export const RoleOnboardingWizard: React.FC<RoleOnboardingWizardProps> = ({ isOp
       addLog(`📝 Extracted ${result.extractedText.length.toLocaleString()} characters`);
       setRawResumeInput(result.extractedText);
       setResumeFilePath(result.filePath || null);
-      addLog(`✅ PDF text loaded into editor — click \"✨ Extract Resume\" to run AI parse!`);
+      addLog(`✅ PDF text loaded into editor — click "✨ Extract Resume" to run AI parse!`);
     } catch (err) {
       console.error("[RoleWizard] PDF upload error:", err);
       addLog(`❌ Error: ${err instanceof Error ? err.message : String(err)}`);
