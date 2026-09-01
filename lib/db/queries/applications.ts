@@ -110,6 +110,93 @@ export function updateApplicationOutcome(id: string, outcome: string, note?: str
     .run();
 }
 
+export function updateApplicationMaterials(id: string, data: {
+  resume_version?: string;
+  cover_letter?: string;
+  qa_responses?: string;
+}): void {
+  const db = getDrizzleDb();
+  const updateData: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (data.resume_version !== undefined) updateData.resume_version = data.resume_version;
+  if (data.cover_letter !== undefined) updateData.cover_letter = data.cover_letter;
+  if (data.qa_responses !== undefined) updateData.qa_responses = data.qa_responses;
+
+  db.update(applications)
+    .set(updateData)
+    .where(eq(applications.id, id))
+    .run();
+}
+
+export function updateApplicationFillDetails(id: string, data: {
+  fields_filled: number;
+  fields_total: number;
+  fill_details?: string;
+  screenshot_path?: string;
+}): void {
+  const db = getDrizzleDb();
+  const updateData: Record<string, unknown> = {
+    fields_filled: data.fields_filled,
+    fields_total: data.fields_total,
+    updated_at: new Date().toISOString(),
+  };
+  if (data.fill_details !== undefined) updateData.fill_details = data.fill_details;
+  if (data.screenshot_path !== undefined) updateData.screenshot_path = data.screenshot_path;
+
+  db.update(applications)
+    .set(updateData)
+    .where(eq(applications.id, id))
+    .run();
+}
+
+export function clearApplicationHistory(profileId?: string): void {
+  const db = getDrizzleDb();
+  if (profileId) {
+    db.delete(applications).where(eq(applications.profile_id, profileId)).run();
+  } else {
+    db.delete(applications).run();
+  }
+}
+
+export function getApplicationsWithJobs(profileId?: string): (ApplicationRecord & {
+  title: string;
+  company: string;
+  location: string | null;
+  platform: string;
+  application_url: string | null;
+})[] {
+  const db = getDrizzleDb();
+  const query = profileId
+    ? sql`
+      SELECT 
+        a.*,
+        COALESCE(j.title, 'Untitled Role') as title,
+        COALESCE(j.company, 'Unknown Company') as company,
+        j.location,
+        COALESCE(j.source, 'linkedin') as platform,
+        j.application_url
+      FROM applications a
+      LEFT JOIN job_postings j ON (a.job_id = j.id OR a.job_id = j.source_id)
+      WHERE a.profile_id = ${profileId}
+      ORDER BY a.created_at DESC
+    `
+    : sql`
+      SELECT 
+        a.*,
+        COALESCE(j.title, 'Untitled Role') as title,
+        COALESCE(j.company, 'Unknown Company') as company,
+        j.location,
+        COALESCE(j.source, 'linkedin') as platform,
+        j.application_url
+      FROM applications a
+      LEFT JOIN job_postings j ON (a.job_id = j.id OR a.job_id = j.source_id)
+      ORDER BY a.created_at DESC
+    `;
+
+  return db.all(query) as any;
+}
+
 export function getApplicationStats(): {
   total: number;
   pending: number;
@@ -133,3 +220,4 @@ export function getApplicationStats(): {
     failed: countStatus("failed"),
   };
 }
+

@@ -4,7 +4,7 @@
     "app/index.d.ts",
     "app/**/*",
     "components/**/*",
-    "lib/conveyor/*.d.ts",
+    "lib/**/*",
     "resources/**/*"
   ],
   "exclude": ["**/*.test.*", "references/**/*"],

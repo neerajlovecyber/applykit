@@ -15,25 +15,25 @@ export const profiles = sqliteTable("profiles", {
   linkedin_url: text("linkedin_url"),
   portfolio_url: text("portfolio_url"),
   summary: text("summary"),
-  skills: text("skills", { mode: "json" }).$type<string[]>().default(sql`'[]'`),
+  skills: text("skills").default(sql`'[]'`),
   experience_years: integer("experience_years"),
   seniority: text("seniority").default("mid"),
-  target_titles: text("target_titles", { mode: "json" }).$type<string[]>().default(sql`'[]'`),
-  target_locations: text("target_locations", { mode: "json" }).$type<string[]>().default(sql`'[]'`),
+  target_titles: text("target_titles").default(sql`'[]'`),
+  target_locations: text("target_locations").default(sql`'[]'`),
   work_mode: text("work_mode").default("any"),
   salary_min: integer("salary_min"),
   salary_max: integer("salary_max"),
   salary_currency: text("salary_currency").default("INR"),
-  target_industries: text("target_industries", { mode: "json" }).$type<string[]>().default(sql`'[]'`),
-  exclude_companies: text("exclude_companies", { mode: "json" }).$type<string[]>().default(sql`'[]'`),
-  exclude_keywords: text("exclude_keywords", { mode: "json" }).$type<string[]>().default(sql`'[]'`),
+  target_industries: text("target_industries").default(sql`'[]'`),
+  exclude_companies: text("exclude_companies").default(sql`'[]'`),
+  exclude_keywords: text("exclude_keywords").default(sql`'[]'`),
   min_company_size: text("min_company_size"),
   visa_required: integer("visa_required").default(0),
   resume_path: text("resume_path"),
   resume_data: text("resume_data"),
   resume_parsed: text("resume_parsed"),
   cover_letter_template: text("cover_letter_template"),
-  default_answers: text("default_answers", { mode: "json" }).$type<Record<string, string>>().default(sql`'{}'`),
+  default_answers: text("default_answers").default(sql`'{}'`),
   notice_period: text("notice_period").default("30 days"),
   is_active: integer("is_active").default(0),
   created_at: text("created_at").default(sql`(datetime('now'))`),
@@ -188,6 +188,7 @@ export const searchQueries = sqliteTable(
 );
 
 export type SearchQueryRecord = typeof searchQueries.$inferSelect;
+export type NewSearchQueryRecord = typeof searchQueries.$inferInsert;
 
 // ════════════════════════════════════════════════════════════
 // PLATFORMS
@@ -209,6 +210,8 @@ export const platforms = sqliteTable("platforms", {
 });
 
 export type PlatformRecord = typeof platforms.$inferSelect;
+export type NewPlatformRecord = typeof platforms.$inferInsert;
+
 
 // ════════════════════════════════════════════════════════════
 // TASKS
@@ -231,6 +234,7 @@ export const tasks = sqliteTable(
     scheduled_for: text("scheduled_for").default(sql`(datetime('now'))`),
     started_at: text("started_at"),
     finished_at: text("finished_at"),
+    priority: integer("priority").default(0),
     created_at: text("created_at").default(sql`(datetime('now'))`),
   },
   (table) => [
@@ -240,6 +244,7 @@ export const tasks = sqliteTable(
 );
 
 export type TaskRecord = typeof tasks.$inferSelect;
+export type NewTaskRecord = typeof tasks.$inferInsert;
 
 // ════════════════════════════════════════════════════════════
 // DOCUMENTS
@@ -272,6 +277,7 @@ export const documents = sqliteTable(
 );
 
 export type DocumentRecord = typeof documents.$inferSelect;
+export type NewDocumentRecord = typeof documents.$inferInsert;
 
 // ════════════════════════════════════════════════════════════
 // SETTINGS
@@ -283,6 +289,8 @@ export const settings = sqliteTable("settings", {
 });
 
 export type SettingRecord = typeof settings.$inferSelect;
+export type NewSettingRecord = typeof settings.$inferInsert;
+
 
 // ════════════════════════════════════════════════════════════
 // AUTOMATION PLANS
@@ -299,13 +307,18 @@ export const automationPlans = sqliteTable("automation_plans", {
   min_match_score: integer("min_match_score").default(70),
   max_applies_per_run: integer("max_applies_per_run").default(10),
   run_interval_hours: integer("run_interval_hours").default(12),
+  enabled: integer("enabled").default(1),
   last_run_at: text("last_run_at"),
   next_run_at: text("next_run_at"),
+  total_runs: integer("total_runs").default(0),
+  total_applied: integer("total_applied").default(0),
   created_at: text("created_at").default(sql`(datetime('now'))`),
   updated_at: text("updated_at").default(sql`(datetime('now'))`),
 });
 
 export type AutomationPlanRecord = typeof automationPlans.$inferSelect;
+export type NewAutomationPlanRecord = typeof automationPlans.$inferInsert;
+
 
 // ════════════════════════════════════════════════════════════
 // LEGACY: JOBS & HISTORY
@@ -320,9 +333,12 @@ export const jobs = sqliteTable("jobs", {
   status: text("status").default("pending"),
   error_message: text("error_message"),
   profile_id: text("profile_id"),
-  created_at: text("created_at").default(sql`(datetime('now'))`),
-  updated_at: text("updated_at").default(sql`(datetime('now'))`),
+  added_at: text("added_at").default(sql`(datetime('now'))`),
+  applied_at: text("applied_at"),
 });
+
+export type JobRecord = typeof jobs.$inferSelect;
+export type NewJobRecord = typeof jobs.$inferInsert;
 
 export const history = sqliteTable("history", {
   id: text("id").primaryKey(),
@@ -330,7 +346,14 @@ export const history = sqliteTable("history", {
   title: text("title").notNull(),
   company: text("company"),
   platform: text("platform"),
+  url: text("url"),
+  profile_id: text("profile_id"),
+  profile_name: text("profile_name"),
   status: text("status").notNull(),
   error_message: text("error_message"),
   applied_at: text("applied_at").default(sql`(datetime('now'))`),
 });
+
+export type HistoryRecord = typeof history.$inferSelect;
+export type NewHistoryRecord = typeof history.$inferInsert;
+

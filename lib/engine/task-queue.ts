@@ -78,7 +78,7 @@ async function processNextTask(): Promise<boolean> {
 
     if (outcome.error) {
       // Check retry eligibility
-      if (task.attempts + 1 < task.max_attempts) {
+      if ((task.attempts ?? 0) + 1 < (task.max_attempts ?? 3)) {
         // Re-queue for retry with exponential backoff
         dbQueries.updateTaskStatus(task.id, "queued", undefined, outcome.error);
         // The task will be picked up again after the backoff period
@@ -94,7 +94,7 @@ async function processNextTask(): Promise<boolean> {
     }
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    if (task.attempts + 1 < task.max_attempts) {
+    if ((task.attempts ?? 0) + 1 < (task.max_attempts ?? 3)) {
       dbQueries.updateTaskStatus(task.id, "queued", undefined, errorMsg);
     } else {
       dbQueries.updateTaskStatus(task.id, "failed", undefined, errorMsg);

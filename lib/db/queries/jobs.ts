@@ -163,3 +163,13 @@ export function getJobPostingStats(): {
     skipped: countState("skipped"),
   };
 }
+
+export function getRecentJobPostings(limit = 10): JobPostingRecord[] {
+  return getDrizzleDb().select().from(jobPostings).orderBy(desc(jobPostings.discovered_at)).limit(limit).all();
+}
+
+export function clearAllJobPostings(): void {
+  getDrizzleDb().delete(jobPostings).run();
+}
+
+export const getJobStats = getJobPostingStats;
