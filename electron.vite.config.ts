@@ -15,10 +15,14 @@ const aliases = {
 export default defineConfig({
   main: {
     build: {
-      lib: {
-        entry: resolve(__dirname, "lib/main/main.ts"),
-        formats: ["cjs"],
-        fileName: () => "main.js",
+      rollupOptions: {
+        input: {
+          main: resolve(__dirname, "lib/main/main.ts"),
+          "automation-worker": resolve(__dirname, "lib/workers/automation-worker.ts"),
+        },
+        output: {
+          entryFileNames: "[name].js",
+        },
       },
     },
     resolve: {
