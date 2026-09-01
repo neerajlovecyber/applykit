@@ -5,7 +5,7 @@
  * Inspired by Auto_job_applier_linkedIn search modules.
  */
 
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser } from "playwright";
 import type { RawJobPosting, SearchOptions, SearchResultPayload } from "../types";
 import { actionDelay, randomDelay } from "@/lib/utils/delay";
 

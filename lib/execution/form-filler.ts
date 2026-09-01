@@ -262,7 +262,7 @@ export class FormFiller {
   /**
    * Fill a select dropdown element.
    */
-  private async fillSelectDropdown(page: Page, select: ElementHandle<SVGElement | HTMLElement>): Promise<FormFieldResult | null> {
+  private async fillSelectDropdown(_page: Page, select: ElementHandle<SVGElement | HTMLElement>): Promise<FormFieldResult | null> {
     try {
       const isVisible = await select.isVisible();
       if (!isVisible) return null;
@@ -322,7 +322,7 @@ export class FormFiller {
   /**
    * Fill a radio button group (fieldset).
    */
-  private async fillRadioFieldset(page: Page, fieldset: ElementHandle<SVGElement | HTMLElement>): Promise<FormFieldResult | null> {
+  private async fillRadioFieldset(_page: Page, fieldset: ElementHandle<SVGElement | HTMLElement>): Promise<FormFieldResult | null> {
     try {
       const isVisible = await fieldset.isVisible();
       if (!isVisible) return null;

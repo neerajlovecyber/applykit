@@ -8,6 +8,7 @@
     "app/**/*",
     "components/**/*"
   ],
+  "exclude": ["**/*.test.*", "references/**/*"],
   "compilerOptions": {
     "composite": true,
     "moduleResolution": "bundler",

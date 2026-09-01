@@ -52,7 +52,9 @@ export function configureProvider(config: LLMProviderConfig): void {
         const parsed = JSON.parse(savedJson);
         if (parsed.apiKey && !parsed.apiKey.startsWith("••••")) {
           realKey = parsed.apiKey;
-          setSetting(`llm_key_${config.id}`, realKey);
+          if (realKey) {
+            setSetting(`llm_key_${config.id}`, realKey);
+          }
         }
       } catch {}
     }
@@ -223,7 +225,6 @@ export async function testProviderConnection(config: LLMProviderConfig): Promise
     const { text } = await generateText({
       model,
       prompt: "Reply with 'OK'",
-      maxTokens: 5,
     });
     if (text) return { success: true };
     return { success: false, error: "Empty response from provider" };
@@ -546,6 +547,8 @@ export function parseResumeSectionsStructured(text: string): ResumeParseResult {
     summary: text.trim(),
     work_experience: workExperience,
     education: education,
+    projects: [],
+    certifications: [],
   };
 }
 

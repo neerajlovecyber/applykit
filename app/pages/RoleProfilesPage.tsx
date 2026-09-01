@@ -653,7 +653,7 @@ export const RoleProfilesPage: React.FC = () => {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Work Mode</Label>
-                    <Select value={workMode} onValueChange={setWorkMode}>
+                    <Select value={workMode} onValueChange={(val) => val && setWorkMode(val)}>
                       <SelectTrigger className="text-xs w-full">
                         <SelectValue />
                       </SelectTrigger>
@@ -674,7 +674,7 @@ export const RoleProfilesPage: React.FC = () => {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Seniority Level</Label>
-                    <Select value={seniority} onValueChange={setSeniority}>
+                    <Select value={seniority} onValueChange={(val) => val && setSeniority(val)}>
                       <SelectTrigger className="text-xs w-full">
                         <SelectValue />
                       </SelectTrigger>
@@ -688,7 +688,7 @@ export const RoleProfilesPage: React.FC = () => {
                   </div>
                   <div className="space-y-1.5" id="field-notice-period">
                     <Label className="text-xs font-semibold">Notice Period</Label>
-                    <Select value={noticePeriod} onValueChange={setNoticePeriod}>
+                    <Select value={noticePeriod} onValueChange={(val) => val && setNoticePeriod(val)}>
                       <SelectTrigger className="text-xs w-full transition-all">
                         <SelectValue />
                       </SelectTrigger>
@@ -703,7 +703,7 @@ export const RoleProfilesPage: React.FC = () => {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Currency</Label>
-                    <Select value={salaryCurrency} onValueChange={setSalaryCurrency}>
+                    <Select value={salaryCurrency} onValueChange={(val) => val && setSalaryCurrency(val)}>
                       <SelectTrigger className="text-xs w-full font-mono">
                         <SelectValue />
                       </SelectTrigger>

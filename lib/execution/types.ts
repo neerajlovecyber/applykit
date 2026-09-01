@@ -2,7 +2,7 @@
  * Execution layer type definitions for browser automation and form filling.
  */
 
-import type { Page, BrowserContext } from "playwright";
+import type { Page } from "playwright";
 
 export interface FormFieldResult {
   selector?: string;

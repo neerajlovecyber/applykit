@@ -11,7 +11,7 @@ import type { TailoredResumeResult } from "./types";
 
 export async function generateTailoredResume(
   profileId: string,
-  jobId: string
+  jobId: string,
 ): Promise<{ result: TailoredResumeResult; documentId: string }> {
   const profile = getProfileById(profileId);
   if (!profile) {
@@ -24,9 +24,25 @@ export async function generateTailoredResume(
   }
 
   const profileSummary = `Candidate: ${profile.name}. Skills: ${profile.skills}. Experience: ${profile.experience_years} years (${profile.seniority}). ${profile.summary || ""}`;
-  const jobDescription = `Job Title: ${job.title} at ${job.company}.\nDescription:\n${job.description_text || ""}\nRequirements:\n${job.requirements_text || ""}`;
+  const jobDescription = `Job Title: ${job.title} at ${job.company}.\nDescription:\n${job.description || ""}\nRequirements:\n${job.requirements || ""}`;
 
-  const result = await tailorResume(profileSummary, jobDescription);
+  const text = await tailorResume(profileSummary, jobDescription);
+
+  let result: TailoredResumeResult;
+  try {
+    const parsed = JSON.parse(text);
+    result = {
+      tailoredSummary: parsed.tailoredSummary || parsed.summary || text,
+      tailoredBullets: Array.isArray(parsed.tailoredBullets) ? parsed.tailoredBullets : [],
+      matchedKeywords: Array.isArray(parsed.matchedKeywords) ? parsed.matchedKeywords : [],
+    };
+  } catch {
+    result = {
+      tailoredSummary: text,
+      tailoredBullets: [],
+      matchedKeywords: [],
+    };
+  }
 
   const tailoredContent = `
 # ${profile.name} — Resume (Tailored for ${job.title} at ${job.company})
@@ -34,11 +50,9 @@ export async function generateTailoredResume(
 ## Professional Summary
 ${result.tailoredSummary}
 
-## Key Targeted Skills & Keywords
-${result.matchedKeywords.map((k) => `- ${k}`).join("\n")}
+${result.matchedKeywords.length ? `## Key Targeted Skills & Keywords\n${result.matchedKeywords.map((k) => `- ${k}`).join("\n")}` : ""}
 
-## Professional Highlights
-${result.tailoredBullets.map((b) => `- ${b}`).join("\n")}
+${result.tailoredBullets.length ? `## Professional Highlights\n${result.tailoredBullets.map((b) => `- ${b}`).join("\n")}` : ""}
   `.trim();
 
   // Save tailored document in SQLite `documents` table
@@ -51,11 +65,7 @@ ${result.tailoredBullets.map((b) => `- ${b}`).join("\n")}
   });
 
   return {
-    result: {
-      tailoredSummary: result.tailoredSummary,
-      tailoredBullets: result.tailoredBullets,
-      matchedKeywords: result.matchedKeywords,
-    },
+    result,
     documentId: doc.id,
   };
 }

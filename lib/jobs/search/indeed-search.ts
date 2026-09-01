@@ -4,7 +4,7 @@
 
 import { chromium, type Browser } from "playwright";
 import type { RawJobPosting, SearchOptions, SearchResultPayload } from "../types";
-import { actionDelay, randomDelay } from "@/lib/utils/delay";
+import { actionDelay } from "@/lib/utils/delay";
 
 export async function searchIndeedJobs(options: SearchOptions): Promise<SearchResultPayload> {
   const keywords = encodeURIComponent(options.keywords);

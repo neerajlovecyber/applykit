@@ -12,3 +12,5 @@ electron.vite.config.*.js
 *.tmp
 *.tsbuildinfo
 .applykit
+tsconfig.web.tsbuildinfo
+tsconfig.web.tsbuildinfo

@@ -33,6 +33,10 @@ export interface Profile {
   resume_parsed: string | null;
   cover_letter_template: string | null;
   default_answers: string;
+  notice_period?: string;
+  years_experience?: number | null;
+  expected_salary?: number | null;
+  title?: string | null;
   is_active: number;
   created_at: string;
   updated_at: string;

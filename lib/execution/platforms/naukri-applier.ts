@@ -666,7 +666,7 @@ export class NaukriApplier implements PlatformApplier {
           // 2. Fallback to candidate profile heuristics
           if (selectedIdx === -1) {
             selectedIdx = 0;
-            const userExp = profile?.years_experience ?? 5;
+            const userExp = profile?.experience_years ?? (profile as any)?.years_experience ?? 5;
 
             for (let i = 0; i < options.length; i++) {
               const optText = options[i].label.toLowerCase();
@@ -797,7 +797,7 @@ export class NaukriApplier implements PlatformApplier {
           }
           // 6. Experience / Years
           else if (/experience|years|exp|working with|how many/i.test(qLower)) {
-            answerVal = String(profile?.years_experience ?? 5);
+            answerVal = String(profile?.experience_years ?? (profile as any)?.years_experience ?? 5);
           }
           // 7. Skills / Tech Stack
           else if (/skill|technology|tool|framework|primary|tech stack|key skills/i.test(qLower)) {
@@ -868,7 +868,7 @@ export class NaukriApplier implements PlatformApplier {
   /**
    * Dismiss Naukri Recruiter Chatbot Drawer (.chatbot_Drawer) without filling forms.
    */
-  private async dismissChatbotDrawer(
+  protected async dismissChatbotDrawer(
     page: Page,
     drawerElement?: ElementHandle<SVGElement | HTMLElement> | null
   ): Promise<void> {

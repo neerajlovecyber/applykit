@@ -6,14 +6,13 @@
 
 import { chromium, type Browser } from "playwright";
 import type { RawJobPosting, SearchOptions, SearchResultPayload } from "../types";
-import { actionDelay, randomDelay } from "@/lib/utils/delay";
+import { randomDelay } from "@/lib/utils/delay";
 import { searchNaukriJobsAPI } from "@/lib/execution/platforms/naukri-api";
 import { getPlatformById } from "@/lib/main/db-queries";
 
 export async function searchNaukriJobs(options: SearchOptions): Promise<SearchResultPayload> {
   const keywordsList = options.keywords.split(",").map((k) => k.trim()).filter(Boolean);
   const location = options.location || "bangalore";
-  const locSlug = location.toLowerCase().replace(/\s+/g, "-");
   const maxPages = options.maxPages || 2;
   const scrapedAt = new Date().toISOString();
   const allJobs: RawJobPosting[] = [];

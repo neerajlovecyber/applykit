@@ -599,7 +599,7 @@ export class LinkedInApplier implements PlatformApplier {
     console.log(
       `[LinkedInApplier] Batch complete — Applied: ${applied}, Skipped: ${skipped}, Failed: ${failed}`
     );
-    return { processed: jobsProcessed, applied, skipped, failed, results };
+    return { processed: totalScanned, applied, skipped, failed, results };
   }
 
   // ── Easy Apply Wizard (extracted for reuse in batch loop) ───────────────

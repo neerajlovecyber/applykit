@@ -5,7 +5,6 @@
 
 import { hashJobContent } from "@/lib/utils/hash";
 import type { RawJobPosting } from "./types";
-import type { JobPosting } from "@/lib/main/db-queries";
 
 export function normalizeRawJob(raw: RawJobPosting): {
   source: string;
