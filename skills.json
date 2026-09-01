@@ -3,10 +3,20 @@
     {
       "source": "mattpocock/skills",
       "skills": [
+        "code-review",
+        "codebase-design",
+        "diagnosing-bugs",
+        "domain-modeling",
+        "grill-me",
+        "grill-with-docs",
+        "grilling",
         "implement",
         "improve-codebase-architecture",
+        "research",
         "setup-matt-pocock-skills",
-        "tdd"
+        "tdd",
+        "to-spec",
+        "to-tickets"
       ]
     }
   ]
