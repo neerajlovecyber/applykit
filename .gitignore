@@ -10,3 +10,5 @@ references/
 electron.vite.config.*.mjs
 electron.vite.config.*.js
 *.tmp
+*.tsbuildinfo
+.applykit

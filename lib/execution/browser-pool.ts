@@ -1,49 +1,40 @@
 /**
- * Playwright Browser Pool — ApplyKit Isolated Profile Strategy
+ * Playwright Browser Pool — Stealth & Profile Management
  *
  * ─── How it works ───────────────────────────────────────────────────────────
  *
- * We use ONE persistent Playwright Chromium profile stored at:
- *   ~/.applykit/browser_profile
+ * Uses `playwright-extra` with `puppeteer-extra-plugin-stealth` to automatically
+ * bypass modern anti-bot systems (Cloudflare, LinkedIn Bot Detection, Naukri Bot Shield)
+ * by applying full evasion prototypes (chrome.runtime, PluginArray, WebGL, permissions).
  *
- * This profile is SEPARATE from your real Chrome — no conflicts, no locked
- * profile errors, no tabs opening in your real browser.
- *
- * Session persistence:
- *   - User logs in to LinkedIn / Naukri ONCE via "Connect Account" flow
- *   - Session cookies are saved in the profile directory
- *   - All future auto-apply runs reuse that saved session — no re-login needed
- *
- * ONE shared BrowserContext lives for the entire app session. Every feature
- * (connect flow, auto-apply, etc.) opens a new Page in the same context,
- * so they all share cookies and login state.
- *
- * Anti-bot detection:
- *   - --disable-blink-features=AutomationControlled
- *   - navigator.webdriver overridden to undefined
- *   - Realistic Chrome user-agent
- *   - --enable-automation banner removed
+ * Profile persistence:
+ *   - Stored at ~/.applykit/browser_profile (isolated from user's regular Chrome)
+ *   - Session cookies are persisted across runs (login once, reused everywhere)
+ *   - Automatic context switching handles headless vs visible transitions cleanly
  * ────────────────────────────────────────────────────────────────────────────
  */
 
-import { chromium, type BrowserContext, type Page } from "playwright";
+import { chromium } from "playwright-extra";
+import stealthPlugin from "puppeteer-extra-plugin-stealth";
+import type { BrowserContext, Page } from "playwright";
 import path from "path";
 import os from "os";
 import fs from "fs";
 
-// The one persistent profile directory — shared by all Playwright sessions
+// Initialize stealth plugin once on the chromium instance
+const stealth = stealthPlugin();
+chromium.use(stealth);
+
+// The persistent profile directory — shared by all Playwright sessions
 export const APPLYKIT_PROFILE_DIR = path.join(os.homedir(), ".applykit", "browser_profile");
 
-// One shared BrowserContext for the whole app session
+// Active shared BrowserContext and tracking for its headless mode
 let sharedContext: BrowserContext | null = null;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared context management
-// ─────────────────────────────────────────────────────────────────────────────
+let currentHeadlessMode: boolean | null = null;
 
 /**
- * Get (or launch) the single shared Playwright Chromium context.
- * All pages share cookies and login sessions through this context.
+ * Get (or launch) the shared Playwright Chromium context with stealth plugins.
+ * Automatically switches context if a different headless mode is requested.
  */
 export async function getSharedContext(headless = false): Promise<BrowserContext> {
   // Check if existing sharedContext is still alive
@@ -51,18 +42,28 @@ export async function getSharedContext(headless = false): Promise<BrowserContext
     try {
       if (sharedContext.browser() && !sharedContext.browser()?.isConnected()) {
         sharedContext = null;
+        currentHeadlessMode = null;
+      } else if (currentHeadlessMode !== headless) {
+        // Mode changed (e.g. was headless batch, now visible human login or vice-versa)
+        console.log(
+          `[BrowserPool] Switching context from headless=${currentHeadlessMode} to headless=${headless}. Gracefully closing previous context.`,
+        );
+        await sharedContext.close().catch(() => {});
+        sharedContext = null;
+        currentHeadlessMode = null;
       } else {
-        // Ping pages to ensure context is active
+        // Ping pages to ensure context is healthy
         sharedContext.pages();
         return sharedContext;
       }
     } catch {
       sharedContext = null;
+      currentHeadlessMode = null;
     }
   }
 
   fs.mkdirSync(APPLYKIT_PROFILE_DIR, { recursive: true });
-  console.log(`[BrowserPool] Launching shared context at: ${APPLYKIT_PROFILE_DIR}`);
+  console.log(`[BrowserPool] Launching stealth context (headless=${headless}) at: ${APPLYKIT_PROFILE_DIR}`);
 
   sharedContext = await chromium.launchPersistentContext(APPLYKIT_PROFILE_DIR, {
     headless,
@@ -83,34 +84,32 @@ export async function getSharedContext(headless = false): Promise<BrowserContext
     permissions: ["geolocation", "notifications"],
   });
 
-  // Automatically reset sharedContext reference on browser close
-  sharedContext.on("close", () => {
-    console.log("[BrowserPool] Browser context closed by user or system. Resetting pool state.");
-    sharedContext = null;
-  });
+  currentHeadlessMode = headless;
 
-  // Stealth: hide automation fingerprints on every page
-  await sharedContext.addInitScript(() => {
-    Object.defineProperty(navigator, "webdriver", { get: () => undefined });
-    Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
-    Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
+  // Automatically reset state on browser close
+  sharedContext.on("close", () => {
+    console.log("[BrowserPool] Browser context closed. Resetting pool state.");
+    sharedContext = null;
+    currentHeadlessMode = null;
   });
 
   return sharedContext;
 }
 
 /**
- * Open a new page in the shared browser context.
- * Automatically recovers if the browser was previously closed.
+ * Open a new page in the stealth browser context.
+ * Automatically recovers if the browser was previously closed or invalid.
  */
 export async function createStealthPage(options?: { headless?: boolean }): Promise<Page> {
+  const isHeadless = options?.headless ?? false;
   try {
-    const ctx = await getSharedContext(options?.headless ?? false);
+    const ctx = await getSharedContext(isHeadless);
     return await ctx.newPage();
   } catch (err) {
     console.warn("[BrowserPool] Context closed or invalid. Re-launching browser...", err);
     sharedContext = null;
-    const ctx = await getSharedContext(options?.headless ?? false);
+    currentHeadlessMode = null;
+    const ctx = await getSharedContext(isHeadless);
     return await ctx.newPage();
   }
 }
@@ -130,8 +129,12 @@ export async function createIsolatedPage(): Promise<Page> {
  */
 export async function closeBrowserPool(): Promise<void> {
   if (sharedContext) {
-    try { await sharedContext.close(); } catch { /* ignore */ }
+    try {
+      await sharedContext.close();
+    } catch {
+      // ignore
+    }
     sharedContext = null;
+    currentHeadlessMode = null;
   }
 }
-
