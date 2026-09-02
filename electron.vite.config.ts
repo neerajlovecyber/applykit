@@ -24,6 +24,14 @@ export default defineConfig({
           entryFileNames: "[name].js",
           format: "cjs",
         },
+        external: [
+          "electron",
+          /^electron\/.*/,
+          "electron-updater",
+          "better-sqlite3",
+          /^puppeteer-extra/,
+          /^playwright/,
+        ],
       },
     },
     resolve: {
