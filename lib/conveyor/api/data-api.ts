@@ -96,6 +96,9 @@ export class DataApi extends ConveyorApi {
   insertDocument = (data: { profile_id: string; doc_type: string; display_name: string; file_path: string; [key: string]: any }) =>
     this.invoke("documents:insert", data as any);
   deleteDocument = (id: string) => this.invoke("documents:delete", id);
+  intakeDocument = (options: { filePath?: string; rawText?: string; profileId?: string; profileTrackName?: string }) =>
+    this.invoke("documents:intake", options);
+  pickDocumentFile = () => this.invoke("documents:pick-file");
 
   // ── Automation Plans ─────────────────────────────────────────────────────
   getAutomationPlans = (profileId?: string) => this.invoke("automation-plans:get", profileId);

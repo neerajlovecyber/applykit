@@ -17,4 +17,19 @@ export const documentIpcSchema = {
     args: z.tuple([z.string()]),
     return: z.void().or(z.any()),
   },
+  "documents:intake": {
+    args: z.tuple([
+      z.object({
+        filePath: z.string().optional(),
+        rawText: z.string().optional(),
+        profileId: z.string().optional(),
+        profileTrackName: z.string().optional(),
+      }),
+    ]),
+    return: z.any(),
+  },
+  "documents:pick-file": {
+    args: z.tuple([]),
+    return: z.any(),
+  },
 } as const;

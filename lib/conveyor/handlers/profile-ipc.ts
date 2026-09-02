@@ -6,6 +6,7 @@
 
 import { handle } from "@/lib/main/shared";
 import * as dbQueries from "@/lib/db";
+import { documentIntakeService } from "@/lib/documents";
 
 export function registerProfileIpc(): void {
   // ── Profiles ─────────────────────────────────────────────────────────────
@@ -22,6 +23,28 @@ export function registerProfileIpc(): void {
   handle("documents:get-by-id", (id) => dbQueries.getDocumentById(id));
   handle("documents:insert", (data) => dbQueries.insertDocument(data as any));
   handle("documents:delete", (id) => dbQueries.deleteDocument(id));
+  handle("documents:intake", (options) => documentIntakeService.intakeResume(options as any));
+  handle("documents:pick-file", async () => {
+    try {
+      const { dialog } = require("electron");
+      const fs = require("fs");
+      const path = require("path");
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: "Select Resume PDF",
+        filters: [{ name: "PDF Files", extensions: ["pdf"] }],
+        properties: ["openFile"],
+      });
+      if (canceled || !filePaths.length) return { canceled: true };
+
+      const filePath = filePaths[0];
+      const stats = fs.statSync(filePath);
+      const fileName = path.basename(filePath);
+      const fileSizeKB = Math.round(stats.size / 1024);
+      return { canceled: false, filePath, fileName, fileSizeKB };
+    } catch (err) {
+      return { canceled: true, error: (err as Error).message };
+    }
+  });
 
   // ── QA Bank ──────────────────────────────────────────────────────────────
   handle("qa-bank:get", (profileId) => (profileId ? dbQueries.getQABankEntries(profileId) : []));

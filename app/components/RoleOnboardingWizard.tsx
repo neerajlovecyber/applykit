@@ -188,183 +188,89 @@ export const RoleOnboardingWizard: React.FC<RoleOnboardingWizardProps> = ({ isOp
     }
   };
 
-  // Upload PDF Handler
+  // Helper to apply canonical NormalizedResume to component state
+  const applyNormalizedResume = (data: any, addLog: (m: string) => void) => {
+    if (data.fullName) setFullName(data.fullName);
+    if (data.email) setEmail(data.email);
+    if (data.phone) setPhone(data.phone);
+    if (data.location) setLocation(data.location);
+    if (data.summary) setProfSummary(data.summary);
+    if (data.skillsStr) setSkillsStr(data.skillsStr);
+    if (data.experienceYears) setExperienceYears(data.experienceYears);
+    if (data.seniority) setSeniority(data.seniority.toLowerCase());
+
+    if (data.workExperiences?.length) setWorkExperiences(data.workExperiences);
+    if (data.projects?.length) setProjects(data.projects);
+    if (data.certifications?.length) setCertifications(data.certifications);
+    if (data.educations?.length) setEducations(data.educations);
+
+    const skillText = ((data.skills || []).join(" ") + (data.rawText || "")).toLowerCase();
+    if (skillText.includes("devsecops") || skillText.includes("security") || skillText.includes("pentest")) {
+      setProfileTrackName("DevSecOps & Security Track");
+      setSelectedCategoryId("cybersecurity");
+      setTargetTitlesStr("DevSecOps Engineer, Penetration Tester, Security Specialist");
+    } else if (skillText.includes("devops") || skillText.includes("kubernetes")) {
+      setProfileTrackName("DevOps & Cloud SRE Track");
+      setSelectedCategoryId("devops");
+      setTargetTitlesStr("DevOps Engineer, DevSecOps Engineer, SRE");
+    }
+
+    addLog(`✅ Canonicalized: ${data.workExperiences?.length || 0} work experiences, ${data.projects?.length || 0} projects, ${data.certifications?.length || 0} certifications, ${data.skills?.length || 0} skills`);
+    addLog(`✨ Done! All sections extracted into editable cards.`);
+    setParseStatusMsg("✨ All resume sections extracted with AI into editable item cards!");
+    setStep(2);
+  };
+
+  // Upload PDF Handler using deep Document Intake Service
   const handleUploadPdf = async () => {
     setParseLog([]);
     const addLog = (msg: string) => setParseLog((prev) => [...prev, msg]);
     addLog("📂 Opening file picker…");
 
     try {
-      const result = await conveyor.data.pickAndExtractResume();
-      if (result.canceled) {
+      const result = await conveyor.data.pickDocumentFile();
+      if (result.canceled || !result.filePath) {
         addLog("❌ File picker cancelled.");
         return;
       }
 
       addLog(`✅ Selected: ${result.fileName} (${result.fileSizeKB} KB)`);
-      addLog(`🔍 Extracting text from PDF…`);
+      addLog(`🤖 Ingesting, extracting, and normalizing via Document Intake…`);
+      setIsParsing(true);
+      setResumeFilePath(result.filePath);
 
-      if (!result.extractedText || result.extractedText.trim().length < 20) {
-        addLog("⚠️ Could not extract enough text from PDF. Try pasting text manually.");
-        return;
+      const intakeRes = await conveyor.data.intakeDocument({ filePath: result.filePath });
+      if (intakeRes?.parsedData) {
+        if (intakeRes.parsedData.rawText) {
+          setRawResumeInput(intakeRes.parsedData.rawText);
+        }
+        applyNormalizedResume(intakeRes.parsedData, addLog);
       }
-
-      addLog(`📝 Extracted ${result.extractedText.length.toLocaleString()} characters`);
-      setRawResumeInput(result.extractedText);
-      setResumeFilePath(result.filePath || null);
-      addLog(`✅ PDF text loaded into editor — click "✨ Extract Resume" to run AI parse!`);
     } catch (err) {
       console.error("[RoleWizard] PDF upload error:", err);
       addLog(`❌ Error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsParsing(false);
     }
   };
 
-  // Real AI LLM Resume Parse Handler
+  // Resume Parse Handler using deep Document Intake Service
   const handleParseResumeText = async () => {
     if (!rawResumeInput.trim()) return;
     setIsParsing(true);
     setParseStatusMsg("");
+    setParseLog([]);
     const addLog = (msg: string) => setParseLog((prev) => [...prev, msg]);
-    addLog("🤖 Running AI resume extraction…");
+    addLog("🤖 Running deep Document Intake extraction…");
 
     try {
-      console.log("[RoleWizard] Extracting candidate details with AI LLM (Resume-Matcher format)...");
-      const parsed = await conveyor.data.parseResume(rawResumeInput);
-
-      // ── Normalize Resume-Matcher camelCase output → flat fields ────────────
-      // LLM returns either flat fields (old) or Resume-Matcher personalInfo/workExperience format.
-      const piName = parsed.personalInfo?.name || parsed.personal_info?.full_name || parsed.full_name || "";
-      const piEmail = parsed.personalInfo?.email || parsed.personal_info?.email || parsed.email || "";
-      const piPhone = parsed.personalInfo?.phone || parsed.personal_info?.phone || parsed.phone || "";
-      const piLocation = parsed.personalInfo?.location || parsed.personal_info?.location || parsed.location || "";
-
-      // Skills: merge additional.technicalSkills + flat skills array
-      const aiSkills: string[] = [
-        ...(parsed.additional?.technicalSkills || []),
-        ...(parsed.skills || []),
-      ].filter(Boolean);
-
-      // Certs from additional.certificationsTraining
-      const aiCertStrings: string[] = parsed.additional?.certificationsTraining || [];
-
-      // Work Experience: prefer camelCase workExperience, fall back to work_experience
-      const aiWorkExp = parsed.workExperience || parsed.work_experience || [];
-
-      // Projects: prefer personalProjects, fall back to projects
-      const aiProjects = parsed.personalProjects || parsed.projects || [];
-
-      // Education: always in education[]
-      const aiEducation = parsed.education || [];
-
-      // Certifications: prefer structured certifications[], then parse from strings
-      const aiCertObjects = parsed.certifications || [];
-
-      setFullName(piName);
-      setEmail(piEmail);
-      setPhone(piPhone);
-      setLocation(piLocation);
-      setProfSummary(parsed.summary || "");
-
-      // 1. Work Experience → item cards
-      if (aiWorkExp.length > 0) {
-        setWorkExperiences(
-          aiWorkExp.map((exp, idx) => {
-            const rawDesc = exp.description;
-            const descStr = Array.isArray(rawDesc)
-              ? rawDesc.map((b) => (b.startsWith("•") ? b : `• ${b}`)).join("\n")
-              : (rawDesc || "");
-            return {
-              id: `exp-${idx}-${Date.now()}`,
-              role: exp.title || "",
-              company: exp.company || "",
-              location: (exp as any).location || "",
-              period: (exp as any).duration || (exp as any).years || "",
-              bulletsStr: descStr,
-            };
-          })
-        );
+      const intakeRes = await conveyor.data.intakeDocument({ rawText: rawResumeInput });
+      if (intakeRes?.parsedData) {
+        applyNormalizedResume(intakeRes.parsedData, addLog);
       }
-
-      // 2. Projects → item cards (personalProjects or projects)
-      if (aiProjects.length > 0) {
-        setProjects(
-          aiProjects.map((p, idx) => {
-            const rawDesc = p.description;
-            const descStr = Array.isArray(rawDesc) ? rawDesc.join("\n") : (rawDesc || "");
-            return {
-              id: `proj-${idx}-${Date.now()}`,
-              title: (p as any).title || p.name || "",
-              description: descStr,
-            };
-          })
-        );
-      }
-
-      // 3. Certifications → item cards
-      //    Prefer structured certifications[], but if empty, parse aiCertStrings
-      if (aiCertObjects.length > 0) {
-        setCertifications(
-          aiCertObjects.map((c, idx) => ({
-            id: `cert-${idx}-${Date.now()}`,
-            title: c.title || "",
-            issuer: c.issuer || "",
-          }))
-        );
-      } else if (aiCertStrings.length > 0) {
-        setCertifications(
-          aiCertStrings.map((cert, idx) => {
-            const parts = cert.split(/\s*[-–by|]\s*/i);
-            return {
-              id: `cert-${idx}-${Date.now()}`,
-              title: parts[0]?.trim() || cert,
-              issuer: parts[1]?.trim() || "",
-            };
-          })
-        );
-      }
-
-      // 4. Education → item cards
-      if (aiEducation.length > 0) {
-        setEducations(
-          aiEducation.map((e, idx) => ({
-            id: `edu-${idx}-${Date.now()}`,
-            degree: e.degree || "",
-            institution: e.institution || "",
-            year: e.years || e.year || "",
-          }))
-        );
-      }
-
-      // 5. Skills → comma-separated string
-      if (aiSkills.length > 0) {
-        setSkillsStr(aiSkills.join(", "));
-      }
-
-      if (parsed.experience_years) setExperienceYears(parsed.experience_years);
-      if (parsed.seniority) setSeniority(parsed.seniority.toLowerCase());
-
-      const skillText = (aiSkills.join(" ") + rawResumeInput).toLowerCase();
-      if (skillText.includes("devsecops") || skillText.includes("security") || skillText.includes("pentest")) {
-        setProfileTrackName("DevSecOps & Security Track");
-        setSelectedCategoryId("cybersecurity");
-        setTargetTitlesStr("DevSecOps Engineer, Penetration Tester, Security Specialist");
-      } else if (skillText.includes("devops") || skillText.includes("kubernetes")) {
-        setProfileTrackName("DevOps & Cloud SRE Track");
-        setSelectedCategoryId("devops");
-        setTargetTitlesStr("DevOps Engineer, DevSecOps Engineer, SRE");
-      }
-
-      // Log extraction summary
-      addLog(`✅ Extracted: ${aiWorkExp.length} work experiences, ${aiProjects.length} projects, ${aiCertObjects.length || aiCertStrings.length} certifications, ${aiSkills.length} skills`);
-      addLog(`✨ Done! All sections extracted into editable cards.`);
-
-      setParseStatusMsg("✨ All resume sections extracted with AI into editable item cards!");
-      setStep(2);
     } catch (err) {
       console.error("[RoleWizard] AI extraction error:", err);
       addLog(`❌ AI extraction failed: ${err instanceof Error ? err.message : String(err)}`);
-      setParseStatusMsg("Could not parse resume automatically. You can fill fields manually.");
-      setStep(2);
     } finally {
       setIsParsing(false);
     }
