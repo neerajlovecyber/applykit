@@ -18,6 +18,7 @@
     "lint": "oxlint --fix",
     "typecheck": "tsc -b --noEmit",
     "test": "bun test lib/",
+    "db:generate": "drizzle-kit generate",
     "start": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
     "vite:build:app": "electron-vite build",

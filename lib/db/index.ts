@@ -2,13 +2,52 @@
  * Database Persistence Module (Unified Drizzle ORM + SQLite).
  *
  * Consolidates connection management, Drizzle client lifecycle,
- * table schemas, and typed query operations behind the @/lib/db seam.
+ * table schemas, migrations, and typed query operations behind the @/lib/db seam.
  */
 
 import * as schema from "./schema";
 import { getDb } from "./connection";
+import { join } from "path";
+import fs from "fs";
 
 let drizzleInstance: any = null;
+
+function resolveMigrationsFolder(): string {
+  const localPath = join(__dirname, "migrations");
+  if (fs.existsSync(localPath)) return localPath;
+  const projectPath = join(process.cwd(), "lib", "db", "migrations");
+  if (fs.existsSync(projectPath)) return projectPath;
+  try {
+    const electron = require("electron");
+    if (electron?.app?.isPackaged) {
+      return join(process.resourcesPath, "migrations");
+    }
+  } catch {}
+  return localPath;
+}
+
+/**
+ * Executes Drizzle ORM schema migrations on the given Drizzle instance.
+ */
+export function runMigrations(drizzleClient: any): void {
+  const migrationsFolder = resolveMigrationsFolder();
+  if (!fs.existsSync(migrationsFolder)) return;
+
+  try {
+    if (typeof (process.versions as any).bun !== "undefined") {
+      const { migrate } = require("drizzle-orm/bun-sqlite/migrator");
+      migrate(drizzleClient, { migrationsFolder });
+    } else {
+      const { migrate } = require("drizzle-orm/better-sqlite3/migrator");
+      migrate(drizzleClient, { migrationsFolder });
+    }
+  } catch (err: any) {
+    // If tables already exist in an existing DB, ignore already existing errors
+    if (!err?.message?.includes("already exists")) {
+      console.warn("[Drizzle Migrator] Notice:", err?.message || err);
+    }
+  }
+}
 
 /**
  * Get the typed Drizzle ORM database instance wrapping SQLite.
@@ -21,11 +60,12 @@ export function getDrizzleDb(): any {
   if (typeof (process.versions as any).bun !== "undefined") {
     const { drizzle } = require("drizzle-orm/bun-sqlite");
     drizzleInstance = drizzle({ client: sqlite, schema });
-    return drizzleInstance;
+  } else {
+    const { drizzle } = require("drizzle-orm/better-sqlite3");
+    drizzleInstance = drizzle(sqlite, { schema });
   }
 
-  const { drizzle } = require("drizzle-orm/better-sqlite3");
-  drizzleInstance = drizzle(sqlite, { schema });
+  runMigrations(drizzleInstance);
   return drizzleInstance;
 }
 
@@ -54,6 +94,7 @@ export function initDrizzleDb(clientOrSqlite: any): any {
     const { drizzle } = require("drizzle-orm/better-sqlite3");
     drizzleInstance = drizzle(clientOrSqlite, { schema });
   }
+  runMigrations(drizzleInstance);
   return drizzleInstance;
 }
 
