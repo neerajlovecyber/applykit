@@ -12,6 +12,8 @@
     "composite": true,
     "jsx": "react-jsx",
     "types": ["electron-vite/node"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "paths": {
       "@/*": ["./*"]
     }

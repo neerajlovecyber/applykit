@@ -6,6 +6,13 @@ import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Badge } from "@/app/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import {
   FileText,
   Upload,
   Sparkles,
@@ -59,24 +66,25 @@ export const DocumentsPage: React.FC = () => {
     setIsParsing(true);
     try {
       // 1. Save document to SQLite DB
-      const newDoc = await conveyor.data.insertDocument({
+      await conveyor.data.insertDocument({
         profile_id: activeProfile.id,
-        name: docName.trim() || `Resume — ${new Date().toLocaleDateString()}`,
-        type: docType,
-        content_text: rawText.trim(),
-        is_primary: documents.length === 0,
+        display_name: docName.trim() || `Resume — ${new Date().toLocaleDateString()}`,
+        doc_type: docType,
+        extracted_text: rawText.trim(),
+        file_path: "",
+        is_default: documents.length === 0 ? 1 : 0,
       });
 
       // 2. Parse text with Vercel AI SDK and update active profile
       const parsed = await (window as any).electron?.ipcRenderer?.invoke("llm:parse-resume", rawText.trim());
       if (parsed) {
-        await conveyor.data.upsertProfile({
+        await conveyor.data.updateProfile(activeProfile.id, {
           ...activeProfile,
           name: parsed.name || activeProfile.name,
           email: parsed.email || activeProfile.email,
           phone: parsed.phone || activeProfile.phone,
           location: parsed.location || activeProfile.location,
-          skills: parsed.skills?.length ? parsed.skills.join(", ") : activeProfile.skills,
+          skills: parsed.skills?.length ? JSON.stringify(parsed.skills) : activeProfile.skills,
           seniority: parsed.seniority || activeProfile.seniority,
           experience_years: parsed.experienceYears || activeProfile.experience_years,
           summary: parsed.summary || activeProfile.summary,

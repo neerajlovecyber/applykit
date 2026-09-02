@@ -299,7 +299,7 @@ export const NaukriPage: React.FC = () => {
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Work Mode</Label>
-            <Select value={workMode} onValueChange={(v) => setWorkMode(v)}>
+            <Select value={workMode} onValueChange={(v) => setWorkMode(v || "any")}>
               <SelectTrigger className="text-xs w-full">
                 <SelectValue />
               </SelectTrigger>

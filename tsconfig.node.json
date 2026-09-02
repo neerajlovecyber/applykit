@@ -3,16 +3,17 @@
   "include": [
     "lib/main/index.d.ts",
     "electron.vite.config.*",
+    "drizzle.config.ts",
     "lib/**/*",
-    "resources/**/*",
-    "app/**/*",
-    "components/**/*"
+    "resources/**/*"
   ],
   "exclude": ["**/*.test.*", "references/**/*"],
   "compilerOptions": {
     "composite": true,
     "moduleResolution": "bundler",
     "types": ["electron-vite/node", "bun"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "paths": {
       "@/*": ["./*"]
     }

@@ -310,9 +310,11 @@ export const RoleProfilesPage: React.FC = () => {
     setEducations(loadedEdu);
   };
 
-  const parseJsonArray = (jsonStr: string): string[] => {
+  const parseJsonArray = (jsonStr?: string | null): string[] => {
+    if (!jsonStr) return [];
     try {
-      return JSON.parse(jsonStr);
+      const parsed = JSON.parse(jsonStr);
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }

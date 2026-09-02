@@ -36,7 +36,7 @@ const TitlebarControls = () => {
   const { window: wcontext } = useWindowContext();
 
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider delay={300}>
       <div className="window-titlebar-controls flex items-center gap-1.5 px-3 py-1.5">
         {wcontext?.minimizable && (
           <TitlebarIconButton label="Minimize" icon={<Minus className="size-3.5" />} action="minimize" variant="minimize" />
@@ -80,17 +80,19 @@ const TitlebarIconButton = ({
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          className={`size-7 rounded-lg border transition-all duration-150 shadow-sm ${variantStyles[variant]}`}
-          onClick={handleAction}
-        >
-          {icon}
-          <span className="sr-only">{label}</span>
-        </Button>
-      </TooltipTrigger>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="outline"
+            size="icon"
+            className={`size-7 rounded-lg border transition-all duration-150 shadow-sm ${variantStyles[variant]}`}
+            onClick={handleAction}
+          >
+            {icon}
+            <span className="sr-only">{label}</span>
+          </Button>
+        }
+      />
       <TooltipContent className="px-2 py-1 text-[11px] font-medium" side="bottom">
         {label}
       </TooltipContent>

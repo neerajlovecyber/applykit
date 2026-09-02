@@ -151,7 +151,7 @@ export const HistoryPage: React.FC = () => {
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
             <span>Platform:</span>
-            <Select value={platformFilter} onValueChange={setPlatformFilter}>
+            <Select value={platformFilter} onValueChange={(val) => setPlatformFilter(val || "all")}>
               <SelectTrigger size="sm" className="text-xs h-7 min-w-[90px]">
                 <SelectValue />
               </SelectTrigger>
@@ -165,7 +165,7 @@ export const HistoryPage: React.FC = () => {
 
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
             <span>Status:</span>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "all")}>
               <SelectTrigger size="sm" className="text-xs h-7 min-w-[110px]">
                 <SelectValue />
               </SelectTrigger>

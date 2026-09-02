@@ -40,18 +40,32 @@ const buttonVariants = cva(
   }
 )
 
+import * as React from "react"
+
 function Button({
   className,
   variant = "default",
   size = "default",
+  asChild,
+  render,
+  children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonPrimitive.Props & { asChild?: boolean } & VariantProps<typeof buttonVariants>) {
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children as React.ReactElement<any>, {
+      className: cn(buttonVariants({ variant, size }), (children.props as any)?.className, className),
+      ...props,
+    });
+  }
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      render={render}
       {...props}
-    />
+    >
+      {children}
+    </ButtonPrimitive>
   )
 }
 

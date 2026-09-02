@@ -7,6 +7,13 @@ import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Badge } from "@/app/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import {
   Shield,
   Cloud,
   Code,
@@ -873,14 +880,14 @@ ${eduFormatted}
                     {educations.map((e) => (
                       <div key={e.id} className="p-2.5 rounded-lg border border-border/60 bg-muted/20 space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <Input value={e.degree} onChange={(e) => updateEdu(e.id, "degree", e.target.value)} placeholder="B.Tech Computer Science" className="text-xs flex-1" />
+                          <Input value={e.degree} onChange={(ev) => updateEdu(e.id, "degree", ev.target.value)} placeholder="B.Tech Computer Science" className="text-xs flex-1" />
                           <Button size="icon" variant="ghost" onClick={() => deleteEdu(e.id)} className="h-7 w-7 text-rose-400 shrink-0">
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                          <Input value={e.institution} onChange={(e) => updateEdu(e.id, "institution", e.target.value)} placeholder="State University" className="text-xs" />
-                          <Input value={e.year} onChange={(e) => updateEdu(e.id, "year", e.target.value)} placeholder="2020 – 2024" className="text-xs" />
+                          <Input value={e.institution} onChange={(ev) => updateEdu(e.id, "institution", ev.target.value)} placeholder="State University" className="text-xs" />
+                          <Input value={e.year} onChange={(ev) => updateEdu(e.id, "year", ev.target.value)} placeholder="2020 – 2024" className="text-xs" />
                         </div>
                       </div>
                     ))}
@@ -903,7 +910,7 @@ ${eduFormatted}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold">Seniority Level</Label>
-                  <Select value={seniority} onValueChange={setSeniority}>
+                  <Select value={seniority} onValueChange={(val) => setSeniority(val || "mid")}>
                     <SelectTrigger className="text-xs w-full">
                       <SelectValue />
                     </SelectTrigger>

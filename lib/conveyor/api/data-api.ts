@@ -7,11 +7,7 @@
 
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import { ConveyorApi } from "@/lib/preload/shared";
-import type { ChannelName, ChannelArgs, ChannelReturn } from "../schemas";
-import type {
-  Profile, JobPosting, Application, QABankEntry,
-  SearchQuery, Task, Platform, Document, AutomationPlan,
-} from "../schemas";
+import type { Profile, JobPosting, AutomationPlan } from "../schemas";
 
 export class DataApi extends ConveyorApi {
   constructor(api: ElectronAPI) {
@@ -24,6 +20,7 @@ export class DataApi extends ConveyorApi {
   getProfileById = (id: string) => this.invoke("profiles:get-by-id", id);
   createProfile = (data: Partial<Profile>) => this.invoke("profiles:create", data);
   updateProfile = (id: string, data: Partial<Profile>) => this.invoke("profiles:update", { id, data });
+  upsertProfile = (id: string, data: Partial<Profile>) => this.invoke("profiles:update", { id, data });
   setActiveProfile = (id: string) => this.invoke("profiles:set-active", id);
   deleteProfile = (id: string) => this.invoke("profiles:delete", id);
 
@@ -95,6 +92,8 @@ export class DataApi extends ConveyorApi {
   getDocuments = (profileId: string, _docType?: string) => this.invoke("documents:get", profileId);
   getDocumentById = (id: string) => this.invoke("documents:get-by-id", id);
   createDocument = (data: { profile_id: string; doc_type: string; display_name: string; file_path: string; [key: string]: any }) =>
+    this.invoke("documents:insert", data as any);
+  insertDocument = (data: { profile_id: string; doc_type: string; display_name: string; file_path: string; [key: string]: any }) =>
     this.invoke("documents:insert", data as any);
   deleteDocument = (id: string) => this.invoke("documents:delete", id);
 

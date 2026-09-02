@@ -141,47 +141,39 @@ export const AutoApplyPage: React.FC = () => {
 
   const handleConnectLinkedIn = async () => {
     setLiConnectState("connecting");
-    setStatusType("info");
-    setStatusMsg("🌐 Opening Chromium browser... Log in to LinkedIn in the window that appears.");
+    updateStatus("🌐 Opening Chromium browser... Log in to LinkedIn in the window that appears.", "info");
 
     try {
       const res = await conveyor.data.connectLinkedIn();
       if (res?.success) {
         setLiConnectState("connected");
-        setStatusType("success");
-        setStatusMsg("✅ LinkedIn connected! Session saved.");
+        updateStatus("✅ LinkedIn connected! Session saved.", "success");
       } else {
         setLiConnectState("disconnected");
-        setStatusType("error");
-        setStatusMsg(`⚠️ ${res?.error || "Login not detected."}`);
+        updateStatus(`⚠️ ${res?.error || "Login not detected."}`, "error");
       }
     } catch (err) {
       setLiConnectState("disconnected");
-      setStatusType("error");
-      setStatusMsg(err instanceof Error ? err.message : "Connection failed.");
+      updateStatus(err instanceof Error ? err.message : "Connection failed.", "error");
     }
   };
 
   const handleConnectNaukri = async () => {
     setNaukriConnectState("connecting");
-    setStatusType("info");
-    setStatusMsg("🌐 Opening Chromium browser... Log in to Naukri in the window that appears.");
+    updateStatus("🌐 Opening Chromium browser... Log in to Naukri in the window that appears.", "info");
 
     try {
       const res = await conveyor.data.connectNaukri();
       if (res?.success) {
         setNaukriConnectState("connected");
-        setStatusType("success");
-        setStatusMsg("✅ Naukri connected! Session saved.");
+        updateStatus("✅ Naukri connected! Session saved.", "success");
       } else {
         setNaukriConnectState("disconnected");
-        setStatusType("error");
-        setStatusMsg(`⚠️ ${res?.error || "Login not detected."}`);
+        updateStatus(`⚠️ ${res?.error || "Login not detected."}`, "error");
       }
     } catch (err) {
       setNaukriConnectState("disconnected");
-      setStatusType("error");
-      setStatusMsg(err instanceof Error ? err.message : "Connection failed.");
+      updateStatus(err instanceof Error ? err.message : "Connection failed.", "error");
     }
   };
 
