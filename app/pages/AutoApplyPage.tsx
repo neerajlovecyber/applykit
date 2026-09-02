@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { useConveyor } from "@/app/hooks/use-conveyor";
+import { useTaskStream } from "@/app/hooks/use-task-stream";
 import { useProfileStore } from "@/app/stores/profile-store";
 import { useExecutionStore } from "@/app/stores/execution-store";
 import { Button } from "@/app/components/ui/button";
@@ -97,6 +98,24 @@ export const AutoApplyPage: React.FC = () => {
     updateStatus,
     finishExecution,
   } = useExecutionStore();
+
+  // ── Real-time task stream subscriber ─────────────────────────────────────
+  useTaskStream({
+    kinds: ["apply", "discovery"],
+    onEvent: (event) => {
+      if (event.kind === "apply") {
+        if (event.status === "running") {
+          updateStatus(`⚙️ Processing application task ${event.taskId.slice(0, 8)}...`, "info");
+        } else if (event.status === "succeeded") {
+          const filled = event.result?.fieldsFilled ?? 0;
+          const total = event.result?.fieldsTotal ?? 0;
+          updateStatus(`✅ Application submitted! Form fields completed: ${filled}/${total}`, "success");
+        } else if (event.status === "failed") {
+          updateStatus(`❌ Application error: ${event.error || "Form automation failed"}`, "error");
+        }
+      }
+    },
+  });
 
   // ─────────────────────────────────────────────────────────────────────────
   // Init

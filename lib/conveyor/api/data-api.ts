@@ -89,6 +89,8 @@ export class DataApi extends ConveyorApi {
   updateTaskStatus = (id: string, status: string, result?: string, error?: string) =>
     this.invoke("tasks:update-status", { id, status, result, error });
   getTaskStats = () => this.invoke("tasks:get-stats");
+  onTaskEvent = (listener: (event: { taskId: string; kind: string; status: "queued" | "running" | "succeeded" | "failed"; result?: Record<string, any>; error?: string; task?: any }) => void) =>
+    this.on("tasks:event", listener);
 
   // ── Documents ────────────────────────────────────────────────────────────
   getDocuments = (profileId: string, _docType?: string) => this.invoke("documents:get", profileId);

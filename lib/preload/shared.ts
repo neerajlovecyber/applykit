@@ -16,4 +16,12 @@ export abstract class ConveyorApi {
     // Validation happens on the main process side
     return this.renderer.invoke(channel, ...args) as Promise<ChannelReturn<T>>;
   };
+
+  on = (channel: string, listener: (...args: any[]) => void): (() => void) => {
+    const subscription = (_event: any, ...args: any[]) => listener(...args);
+    this.renderer.on(channel, subscription);
+    return () => {
+      this.renderer.removeListener(channel, subscription);
+    };
+  };
 }
