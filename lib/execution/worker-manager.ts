@@ -135,6 +135,14 @@ export class AutomationWorkerManager {
     if (type === "CLOSE_POOL") {
       return { closed: true, fallback: true } as R;
     }
+    if (type === "CONNECT_PLATFORM") {
+      const { platform } = (payload as any) || {};
+      return { connected: true, platform, fallback: true } as R;
+    }
+    if (type === "LAUNCH_BROWSER") {
+      const { url } = (payload as any) || {};
+      return { launched: true, url, fallback: true } as R;
+    }
     if (type === "EXECUTE_TASK") {
       const { taskKind, executeOptions } = (payload as any) || {};
       if (taskKind === "apply" && executeOptions) {
@@ -163,8 +171,15 @@ export class AutomationWorkerManager {
   /**
    * Connect platform account via isolated browser.
    */
-  public async connectPlatform(platform: string): Promise<any> {
-    return this.sendCommand("CONNECT_PLATFORM", { platform });
+  public async connectPlatform(platform: string, timeoutMs = 300000): Promise<any> {
+    return this.sendCommand("CONNECT_PLATFORM", { platform, timeoutMs }, timeoutMs + 5000);
+  }
+
+  /**
+   * Launch a browser instance via the isolated worker.
+   */
+  public async launchBrowser(url?: string, cookies?: any[]): Promise<any> {
+    return this.sendCommand("LAUNCH_BROWSER", { url, cookies });
   }
 
   /**

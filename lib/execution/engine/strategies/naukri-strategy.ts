@@ -52,12 +52,20 @@ export class NaukriApplyStrategy implements PlatformApplyStrategy {
   }
 
   async isModalOpen(page: Page): Promise<boolean> {
+    // Check if application completed directly (e.g. 1-click apply or success banner)
+    const successBanner = await page.$(
+      ".chatbot_MessageContainer:has-text('successfully applied'), .chatbot_MessageContainer:has-text('Thank you'), .botMsg:has-text('Applied'), div:has-text('successfully applied'), .apply-message:has-text('applied')"
+    );
+    if (successBanner && (await successBanner.isVisible().catch(() => false))) {
+      return false;
+    }
+
     const drawer = await page.$(
-      "div.chatbot_Drawer, div.layer-wrap, div[class*='apply-drawer'], div[class*='apply-modal']"
+      "div.chatbot_Drawer, div.layer-wrap, div[class*='apply-drawer'], div[class*='apply-modal'], .chatbot_MessageContainer, .questionnaire-modal"
     );
     if (!drawer) {
       // Check if page still has active questions or inputs
-      const activeInput = await page.$("div.apply-message input, div.chatbot_Drawer input");
+      const activeInput = await page.$("div.apply-message input, div.chatbot_Drawer input, .custom-questions input");
       return !!activeInput;
     }
     return await drawer.isVisible();
@@ -69,13 +77,13 @@ export class NaukriApplyStrategy implements PlatformApplyStrategy {
 
   async findNextButton(page: Page): Promise<any | null> {
     return await page.$(
-      'button:has-text("Save and Next"), button:has-text("Next"), button:has-text("Continue"), button.next-btn'
+      'button:has-text("Save and Next"), button:has-text("Next"), button:has-text("Continue"), button.next-btn, a:has-text("Next")'
     );
   }
 
   async findSubmitButton(page: Page): Promise<any | null> {
     return await page.$(
-      'button:has-text("Submit"), button:has-text("Submit and Apply"), button.submit-btn, button:has-text("Apply Now")'
+      'button:has-text("Submit"), button:has-text("Save & Apply"), button:has-text("Submit application"), button[type="submit"], button:has-text("Submit and Apply"), button.submit-btn, button:has-text("Apply Now")'
     );
   }
 

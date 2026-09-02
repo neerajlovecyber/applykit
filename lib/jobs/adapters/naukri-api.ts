@@ -1,13 +1,9 @@
 /**
  * Naukri.com API Client & Utilities.
  *
- * Adapted from Naukri-Automation reference repo.
- * Provides helper functions for Naukri API requests, header construction,
- * authentication login, session token extraction from Playwright pages,
- * job search, details, match score, and apply endpoints.
+ * Provides helper functions for Naukri HTTP API requests, header construction,
+ * authentication login, session token extraction, and job search endpoints.
  */
-
-import type { Page } from "playwright";
 
 export const NAUKRI_COMMON_HEADERS: Record<string, string> = {
   accept: "application/json",
@@ -45,7 +41,6 @@ export function getNaukriHeaders(authToken?: string): Record<string, string> {
 
 /**
  * Perform login to Naukri central login service using candidate credentials.
- * Derived from Naukri-Automation api.js loginAPI
  */
 export async function loginNaukriAPI(username: string, password?: string): Promise<{
   success: boolean;
@@ -86,7 +81,6 @@ export async function loginNaukriAPI(username: string, password?: string): Promi
       ((data.data as Record<string, unknown>)?.token as string) ||
       cookieToken;
 
-    // Check if HTTP status is 200 OK
     if (res.ok) {
       if (data.status === "FAILURE" || data.status === "FAILED" || data.error) {
         return {
@@ -122,32 +116,6 @@ export async function loginNaukriAPI(username: string, password?: string): Promi
       success: false,
       errorMessage: err instanceof Error ? err.message : String(err),
     };
-  }
-}
-
-/**
- * Extract auth token (nauk_at cookie or bearer header) from an active Playwright page context.
- */
-export async function extractNaukriAuthToken(page: Page): Promise<string | undefined> {
-  try {
-    const cookies = await page.context().cookies("https://www.naukri.com");
-    const naukAtCookie = cookies.find((c) => c.name === "nauk_at");
-    if (naukAtCookie?.value) {
-      return naukAtCookie.value;
-    }
-
-    // Try evaluating local/session storage if cookie isn't available directly
-    const storedToken = await page.evaluate(() => {
-      return (
-        window.localStorage.getItem("authorization") ||
-        window.localStorage.getItem("nauk_at") ||
-        window.sessionStorage.getItem("authorization")
-      );
-    });
-
-    return storedToken || undefined;
-  } catch {
-    return undefined;
   }
 }
 
