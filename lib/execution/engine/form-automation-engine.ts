@@ -22,21 +22,60 @@ import {
   updateApplicationFillDetails,
 } from "@/lib/main/db-queries";
 import { actionDelay, preSubmitDelay, randomDelay } from "@/lib/utils/delay";
+import {
+  LinkedInApplyStrategy,
+  NaukriApplyStrategy,
+  IndeedApplyStrategy,
+  GreenhouseApplyStrategy,
+  LeverApplyStrategy,
+  ReedApplyStrategy,
+  GlassdoorApplyStrategy,
+  GenericApplyStrategy,
+} from "./strategies";
 
 export class FormAutomationEngine {
   private readonly defaultMaxSteps = 10;
   private readonly defaultScreenshotDir = path.join(os.homedir(), ".applykit", "screenshots");
+  private readonly strategies = new Map<string, PlatformApplyStrategy>();
 
-  constructor(private readonly options: FormEngineOptions = {}) {}
+  constructor(private readonly options: FormEngineOptions = {}) {
+    this.registerStrategy(new LinkedInApplyStrategy());
+    this.registerStrategy(new NaukriApplyStrategy());
+    this.registerStrategy(new IndeedApplyStrategy());
+    this.registerStrategy(new GreenhouseApplyStrategy());
+    this.registerStrategy(new LeverApplyStrategy());
+    this.registerStrategy(new ReedApplyStrategy());
+    this.registerStrategy(new GlassdoorApplyStrategy());
+    this.registerStrategy(new GenericApplyStrategy());
+  }
 
   /**
-   * Execute an application on the given page using the provided platform strategy.
+   * Register a platform apply strategy.
+   */
+  registerStrategy(strategy: PlatformApplyStrategy): void {
+    this.strategies.set(strategy.platform.toLowerCase(), strategy);
+  }
+
+  /**
+   * Retrieve the strategy for a given platform, falling back to GenericApplyStrategy.
+   */
+  getStrategy(platform: string): PlatformApplyStrategy {
+    const key = (platform || "").toLowerCase();
+    return this.strategies.get(key) ?? this.strategies.get("generic") ?? new GenericApplyStrategy();
+  }
+
+  /**
+   * Execute an application on the given page using the provided platform strategy or platform name.
    */
   async execute(
     page: Page,
-    strategy: PlatformApplyStrategy,
+    strategyOrPlatform: PlatformApplyStrategy | string,
     executeOptions: ApplicationExecuteOptions
   ): Promise<ApplicationExecuteResult> {
+    const strategy =
+      typeof strategyOrPlatform === "string"
+        ? this.getStrategy(strategyOrPlatform)
+        : strategyOrPlatform;
     const { applicationId, jobUrl, profileId, pauseBeforeSubmit = true } = executeOptions;
     const maxSteps = this.options.maxSteps ?? this.defaultMaxSteps;
 

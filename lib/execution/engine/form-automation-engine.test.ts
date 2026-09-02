@@ -259,4 +259,80 @@ describe("Form Automation Engine (Candidate 3)", () => {
     expect(stepCount).toBe(5);
     expect(result.status).toBe("failed");
   });
+
+  describe("Strategy Registry & String Dispatch", () => {
+    it("resolves built-in strategies by platform name case-insensitively", () => {
+      expect(engine.getStrategy("greenhouse").platform).toBe("greenhouse");
+      expect(engine.getStrategy("GREENHOUSE").platform).toBe("greenhouse");
+      expect(engine.getStrategy("lever").platform).toBe("lever");
+      expect(engine.getStrategy("reed").platform).toBe("reed");
+      expect(engine.getStrategy("glassdoor").platform).toBe("glassdoor");
+      expect(engine.getStrategy("linkedin").platform).toBe("linkedin");
+      expect(engine.getStrategy("naukri").platform).toBe("naukri");
+      expect(engine.getStrategy("indeed").platform).toBe("indeed");
+    });
+
+    it("falls back to generic strategy for unknown platforms", () => {
+      const fallback = engine.getStrategy("some_unknown_ats_portal");
+      expect(fallback.platform).toBe("generic");
+    });
+
+    it("dispatches execute() using platform string ID", async () => {
+      const navigatedUrls: string[] = [];
+      const mockPage: any = {
+        goto: async (url: string) => {
+          navigatedUrls.push(url);
+        },
+        $: async () => null,
+        $$: async () => [],
+        screenshot: async () => Buffer.from("mock-screenshot"),
+      };
+
+      const result = await engine.execute(mockPage, "greenhouse", {
+        applicationId: testApplicationId,
+        jobUrl: "https://boards.greenhouse.io/acme/jobs/123",
+        platform: "greenhouse",
+        profileId: testProfileId,
+      });
+
+      expect(navigatedUrls.length).toBe(1);
+      expect(navigatedUrls[0]).toBe("https://boards.greenhouse.io/acme/jobs/123");
+      expect(result).toBeDefined();
+    });
+
+    it("LeverStrategy normalizes job URL with /apply route", async () => {
+      const navigatedUrls: string[] = [];
+      const mockPage: any = {
+        goto: async (url: string) => {
+          navigatedUrls.push(url);
+        },
+        $: async () => null,
+        $$: async () => [],
+        screenshot: async () => Buffer.from("mock-screenshot"),
+      };
+
+      await engine.execute(mockPage, "lever", {
+        applicationId: testApplicationId,
+        jobUrl: "https://jobs.lever.co/acme/12345",
+        platform: "lever",
+        profileId: testProfileId,
+      });
+
+      expect(navigatedUrls[0]).toBe("https://jobs.lever.co/acme/12345/apply");
+    });
+
+    it("verifies container selectors and button contracts across ATS strategies", () => {
+      const gh = engine.getStrategy("greenhouse");
+      expect(gh.getModalContainerSelector()).toContain("form#application_form");
+
+      const lever = engine.getStrategy("lever");
+      expect(lever.getModalContainerSelector()).toContain("form#application-form");
+
+      const reed = engine.getStrategy("reed");
+      expect(reed.getModalContainerSelector()).toContain(".apply-container");
+
+      const glassdoor = engine.getStrategy("glassdoor");
+      expect(glassdoor.getModalContainerSelector()).toContain("div.modal");
+    });
+  });
 });

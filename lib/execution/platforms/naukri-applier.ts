@@ -9,7 +9,7 @@ import type { PlatformApplier, ApplicationExecuteOptions, ApplicationExecuteResu
 import { FormFiller } from "../form-filler";
 import { getProfileById, updateApplicationStatus, updateApplicationFillDetails, findQAAnswer, upsertQABankEntry, type Profile } from "@/lib/main/db-queries";
 import { actionDelay, preSubmitDelay, randomDelay } from "@/lib/utils/delay";
-import { extractNaukriAuthToken, applyNaukriJobAPI } from "./naukri-api";
+import { extractNaukriAuthToken } from "./naukri-api";
 import { join } from "path";
 import { app } from "electron";
 import { mkdirSync } from "fs";

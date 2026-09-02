@@ -20,7 +20,6 @@ import type {
 } from "@/lib/db/schema";
 
 import {
-  getProfileById,
   upsertJobPosting,
   updateJobPostingState,
   getApplicationByJobId,

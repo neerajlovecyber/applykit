@@ -7,6 +7,7 @@
  * Sleep for a specified duration.
  */
 export function sleep(ms: number): Promise<void> {
+  if (process.env.NODE_ENV === "test") return Promise.resolve();
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
