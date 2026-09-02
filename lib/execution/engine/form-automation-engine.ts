@@ -156,10 +156,45 @@ export class FormAutomationEngine {
           await strategy.beforeStepFill(page, step);
         }
 
-        // Fill form fields on current step
-        const stepSummary = await formFiller.fillCurrentStep(page, containerSelector);
-        totalFilled += stepSummary.fieldsFilled;
-        totalFields += stepSummary.fieldsTotal;
+        // Fill form fields on current step (custom platform strategy or generic form filler)
+        let stepSummary = { fieldsFilled: 0, fieldsTotal: 0 };
+        if (strategy.fillStep) {
+          const customResult = await strategy.fillStep(page, profile, step);
+          if (customResult.handled) {
+            stepSummary = {
+              fieldsFilled: customResult.fieldsFilled,
+              fieldsTotal: customResult.fieldsFilled || 1,
+            };
+            totalFilled += stepSummary.fieldsFilled;
+            totalFields += stepSummary.fieldsTotal;
+
+            if (customResult.completed) {
+              console.log(`[FormEngine] [${strategy.platform}] Custom step filler marked application complete.`);
+              screenshotPath = await this.captureScreenshot(page, applicationId);
+              updateApplicationStatus(applicationId, "submitted");
+              updateApplicationFillDetails(applicationId, {
+                fields_filled: totalFilled,
+                fields_total: totalFields,
+                screenshot_path: screenshotPath,
+              });
+              return {
+                success: true,
+                status: "submitted",
+                fieldsFilled: totalFilled,
+                fieldsTotal: totalFields,
+                screenshotPath,
+              };
+            }
+          } else {
+            stepSummary = await formFiller.fillCurrentStep(page, containerSelector);
+            totalFilled += stepSummary.fieldsFilled;
+            totalFields += stepSummary.fieldsTotal;
+          }
+        } else {
+          stepSummary = await formFiller.fillCurrentStep(page, containerSelector);
+          totalFilled += stepSummary.fieldsFilled;
+          totalFields += stepSummary.fieldsTotal;
+        }
 
         // Platform-specific hook after filling fields
         if (strategy.afterStepFill) {

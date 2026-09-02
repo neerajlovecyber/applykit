@@ -43,6 +43,12 @@ export interface PlatformApplyStrategy {
   findSubmitButton(page: Page): Promise<any | null>;
 
   /**
+   * Optional platform-specific form/chatbot filler.
+   * If implemented and returns handled: true, FormAutomationEngine uses this instead of generic FormFiller.
+   */
+  fillStep?(page: Page, profile: any, stepIndex: number): Promise<StepFillResult>;
+
+  /**
    * Optional hook called before filling fields on a step (e.g. dismiss popups, wait for animations).
    */
   beforeStepFill?(page: Page, stepIndex: number): Promise<void>;
@@ -56,6 +62,12 @@ export interface PlatformApplyStrategy {
    * Optional hook called after clicking submit to dismiss post-apply modals or close dialogs.
    */
   dismissPostApplyModal?(page: Page): Promise<void>;
+}
+
+export interface StepFillResult {
+  handled: boolean;
+  fieldsFilled: number;
+  completed?: boolean;
 }
 
 export interface FormEngineOptions {
