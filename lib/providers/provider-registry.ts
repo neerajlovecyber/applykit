@@ -18,7 +18,7 @@ import {
   resumeParseSchema,
   ResumeParseResult,
 } from "./types";
-import { getSetting, setSetting } from "@/lib/main/db-queries";
+import { getSetting, setSetting } from "@/lib/db";
 
 const providerConfigs = new Map<string, LLMProviderConfig>();
 let activeProviderId: string | null = null;

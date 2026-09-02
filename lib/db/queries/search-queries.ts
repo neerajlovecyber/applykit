@@ -88,3 +88,24 @@ export function updateSearchQueryLastRun(id: string, resultCount: number, succes
 export function deleteSearchQuery(id: string): void {
   getDrizzleDb().delete(searchQueries).where(eq(searchQueries.id, id)).run();
 }
+
+export function updateSearchQuery(id: string, data: Partial<SearchQueryRecord>): void {
+  const query = getSearchQueryById(id);
+  if (!query) return;
+  getDrizzleDb()
+    .update(searchQueries)
+    .set({
+      keywords: data.keywords ?? query.keywords,
+      location: data.location !== undefined ? data.location : query.location,
+      filters: data.filters !== undefined ? (typeof data.filters === "string" ? data.filters : JSON.stringify(data.filters)) : query.filters,
+      max_pages: data.max_pages ?? query.max_pages,
+      run_interval_hours: data.run_interval_hours ?? query.run_interval_hours,
+      status: data.status ?? query.status,
+    })
+    .where(eq(searchQueries.id, id))
+    .run();
+}
+
+export function recordSearchRun(id: string, foundCount: number): void {
+  updateSearchQueryLastRun(id, foundCount, true);
+}

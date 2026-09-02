@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Application } from "@/lib/main/db-queries";
+import type { Application } from "./types";
 
 export const applicationIpcSchema = {
   "applications:get": {

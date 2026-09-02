@@ -17,7 +17,7 @@ import {
   Send,
   Loader2,
 } from "lucide-react";
-import type { Application, JobPosting } from "@/lib/main/db-queries";
+import type { Application, JobPosting } from "@/lib/conveyor/schemas";
 
 interface ApplicationItem extends Application {
   job?: JobPosting;

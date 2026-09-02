@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Task } from "@/lib/main/db-queries";
+import type { Task } from "@/lib/conveyor/schemas";
 
 interface TaskState {
   tasks: Task[];

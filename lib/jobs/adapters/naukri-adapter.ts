@@ -8,7 +8,7 @@ import type { Page } from "playwright";
 import type { JobDiscoveryAdapter, RawJobPosting, SearchOptions } from "../types";
 import { randomDelay } from "@/lib/utils/delay";
 import { searchNaukriJobsAPI } from "@/lib/execution/platforms/naukri-api";
-import { getPlatformById } from "@/lib/main/db-queries";
+import { getPlatformById } from "@/lib/db";
 
 export class NaukriDiscoveryAdapter implements JobDiscoveryAdapter {
   readonly platform = "naukri";

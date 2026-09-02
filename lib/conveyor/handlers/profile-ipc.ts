@@ -5,7 +5,7 @@
  */
 
 import { handle } from "@/lib/main/shared";
-import * as dbQueries from "@/lib/main/db-queries";
+import * as dbQueries from "@/lib/db";
 
 export function registerProfileIpc(): void {
   // ── Profiles ─────────────────────────────────────────────────────────────

@@ -35,7 +35,7 @@ import {
   Check,
 } from "lucide-react";
 import { Linkedin } from "@/components/icons/brand-icons";
-import type { Profile } from "@/lib/main/db-queries";
+import type { Profile } from "@/lib/conveyor/schemas";
 import { RoleOnboardingWizard } from "@/app/components/RoleOnboardingWizard";
 import { parseMasterCV } from "@/lib/providers/cv-parser";
 import { cn } from "@/lib/utils";

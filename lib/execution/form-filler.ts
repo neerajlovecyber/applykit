@@ -9,8 +9,8 @@
  */
 
 import type { Page, ElementHandle } from "playwright";
-import type { Profile } from "@/lib/main/db-queries";
-import { findQAAnswer, upsertQABankEntry } from "@/lib/main/db-queries";
+import type { Profile } from "@/lib/db";
+import { findQAAnswer, upsertQABankEntry } from "@/lib/db";
 import { answerQuestion } from "@/lib/providers/provider-registry";
 import { keystrokeDelay, fieldDelay, randomDelay } from "@/lib/utils/delay";
 import type { FormFieldResult, FormFillSummary } from "./types";

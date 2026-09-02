@@ -9,7 +9,7 @@ import { registerTaskHandler } from "@/lib/engine/task-queue";
 import { createStealthPage } from "./browser-pool";
 import { FormAutomationEngine } from "./engine";
 import type { ApplicationExecuteOptions } from "./types";
-import { getApplicationById, getJobPostingById } from "@/lib/main/db-queries";
+import { getApplicationById, getJobPostingById } from "@/lib/db";
 
 const formEngine = new FormAutomationEngine();
 

@@ -7,7 +7,7 @@
 import type { Page, ElementHandle } from "playwright";
 import type { PlatformApplier, ApplicationExecuteOptions, ApplicationExecuteResult } from "../types";
 import { FormFiller } from "../form-filler";
-import { getProfileById, updateApplicationStatus, updateApplicationFillDetails, findQAAnswer, upsertQABankEntry, type Profile } from "@/lib/main/db-queries";
+import { getProfileById, updateApplicationStatus, updateApplicationFillDetails, findQAAnswer, upsertQABankEntry, type Profile } from "@/lib/db";
 import { actionDelay, preSubmitDelay, randomDelay } from "@/lib/utils/delay";
 import { extractNaukriAuthToken } from "./naukri-api";
 import { join } from "path";

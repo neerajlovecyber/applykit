@@ -13,7 +13,7 @@ import {
   updateJobPostingScore,
   getActiveProfile,
   updateSearchQueryLastRun,
-} from "@/lib/main/db-queries";
+} from "@/lib/db";
 import { scoreJobFit } from "@/lib/providers/provider-registry";
 import { acquirePage, releasePage } from "@/lib/execution/browser-pool";
 import {

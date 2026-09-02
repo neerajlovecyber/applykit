@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Profile } from "@/lib/main/db-queries";
+import type { Profile } from "@/lib/conveyor/schemas";
 
 interface ProfileState {
   activeProfile: Profile | null;

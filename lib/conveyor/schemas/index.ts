@@ -62,3 +62,6 @@ export const validateReturn = <T extends ChannelName>(
   }
   return schema.return.parse(data) as ChannelReturn<T>;
 };
+
+// Re-export all domain contract types
+export * from "./types";

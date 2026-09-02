@@ -6,7 +6,7 @@
 
 import { app } from "electron";
 import { handle } from "@/lib/main/shared";
-import * as dbQueries from "@/lib/main/db-queries";
+import * as dbQueries from "@/lib/db";
 import { registerPlatformHandlers } from "./platform-handler";
 import { registerLLMHandlers } from "./llm-handler";
 

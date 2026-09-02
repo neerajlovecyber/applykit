@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { QABankEntry } from "@/lib/main/db-queries";
+import type { QABankEntry } from "./types";
 
 export const qaIpcSchema = {
   "qa-bank:get": {

@@ -2,7 +2,7 @@ import { app, dialog } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import { handle } from "@/lib/main/shared";
-import * as dbQueries from "@/lib/main/db-queries";
+import * as dbQueries from "@/lib/db";
 import * as llmRegistry from "@/lib/providers/provider-registry";
 import { fetchOpenRouterModels, fetchProviderModels } from "@/lib/providers/model-fetcher";
 

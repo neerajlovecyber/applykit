@@ -1,8 +1,15 @@
+/**
+ * SQLite Connection & Database Initialization.
+ *
+ * Provides resilient SQLite instance lifecycle, WAL mode configuration,
+ * and canonical schema creation for ApplyKit.
+ */
+
 import { join } from "path";
 import os from "os";
 import fs from "fs";
 
-let db: any = null;
+let dbInstance: any = null;
 
 function createSqliteConnection(dbPath: string): any {
   if (typeof (process.versions as any).bun !== "undefined") {
@@ -27,7 +34,7 @@ export function resolveDbPath(): string {
 }
 
 export function getDb(customPath?: string): any {
-  if (db && !customPath) return db;
+  if (dbInstance && !customPath) return dbInstance;
 
   const dbPath = customPath || resolveDbPath();
   if (dbPath !== ":memory:") {
@@ -39,7 +46,7 @@ export function getDb(customPath?: string): any {
 
   const instance = createSqliteConnection(dbPath);
 
-  // Enable WAL mode for better concurrent read performance
+  // Enable WAL mode for high-performance concurrent reads
   if (dbPath !== ":memory:") {
     try {
       if (instance.pragma) instance.pragma("journal_mode = WAL");
@@ -54,26 +61,27 @@ export function getDb(customPath?: string): any {
   initSchema(instance);
 
   if (!customPath) {
-    db = instance;
+    dbInstance = instance;
   }
   return instance;
 }
 
 export function setDb(customDb: any): void {
-  db = customDb;
+  dbInstance = customDb;
 }
 
 export function closeDb(): void {
-  if (db) {
+  if (dbInstance) {
     try {
-      db.close();
+      dbInstance.close();
     } catch {}
-    db = null;
+    dbInstance = null;
   }
 }
 
 /**
  * Initializes table schemas matching Drizzle ORM models if not yet present.
+ * Note: Legacy 'jobs' and 'history' tables are retired.
  */
 function initSchema(sqlite: any): void {
   const ddl = `
@@ -289,33 +297,6 @@ function initSchema(sqlite: any): void {
       created_at          TEXT DEFAULT (datetime('now')),
       updated_at          TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS jobs (
-      id            TEXT PRIMARY KEY,
-      title         TEXT NOT NULL,
-      company       TEXT,
-      url           TEXT NOT NULL,
-      platform      TEXT,
-      status        TEXT DEFAULT 'pending',
-      error_message TEXT,
-      profile_id    TEXT,
-      added_at      TEXT DEFAULT (datetime('now')),
-      applied_at    TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS history (
-      id            TEXT PRIMARY KEY,
-      job_id        TEXT,
-      title         TEXT NOT NULL,
-      company       TEXT,
-      platform      TEXT,
-      url           TEXT,
-      profile_id    TEXT,
-      profile_name  TEXT,
-      status        TEXT NOT NULL,
-      error_message TEXT,
-      applied_at    TEXT DEFAULT (datetime('now'))
     );
   `;
 

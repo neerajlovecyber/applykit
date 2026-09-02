@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { JobPosting } from "@/lib/main/db-queries";
+import type { JobPosting } from "./types";
 
 export const jobIpcSchema = {
   "job-postings:get": {

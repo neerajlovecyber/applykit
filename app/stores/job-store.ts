@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { JobPosting } from "@/lib/main/db-queries";
+import type { JobPosting } from "@/lib/conveyor/schemas";
 
 interface JobState {
   jobPostings: JobPosting[];

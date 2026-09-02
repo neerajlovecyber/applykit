@@ -6,7 +6,7 @@
  */
 
 import { tailorResume } from "@/lib/providers/provider-registry";
-import { getProfileById, getJobPostingById, insertDocument } from "@/lib/main/db-queries";
+import { getProfileById, getJobPostingById, insertDocument } from "@/lib/db";
 import type { TailoredResumeResult } from "./types";
 
 export async function generateTailoredResume(

@@ -17,7 +17,7 @@ import type { Page } from "playwright";
 import type { PlatformApplier, ApplicationExecuteOptions, ApplicationExecuteResult } from "../types";
 import { FormFiller } from "../form-filler";
 import { FormAutomationEngine, LinkedInApplyStrategy } from "../engine";
-import { getProfileById } from "@/lib/main/db-queries";
+import { getProfileById } from "@/lib/db";
 import { actionDelay, preSubmitDelay, randomDelay } from "@/lib/utils/delay";
 import { isLoggedInLinkedIn, loginLinkedIn } from "./linkedin-login";
 import { join } from "path";

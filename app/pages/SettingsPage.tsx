@@ -28,7 +28,7 @@ import {
   Check,
 } from "lucide-react";
 import { Github } from "@/components/icons/brand-icons";
-import type { Platform } from "@/lib/main/db-queries";
+import type { Platform } from "@/lib/conveyor/schemas";
 import type { LLMProviderConfig } from "@/lib/providers/types";
 import { ProviderModel } from "@/lib/providers/model-fetcher";
 import { ProviderIcon } from "@/app/components/ui/provider-icons";

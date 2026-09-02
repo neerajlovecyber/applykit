@@ -74,7 +74,28 @@ export function createDocument(data: {
   return getDocumentById(id)!;
 }
 
-export const insertDocument = createDocument;
+export function insertDocument(data: {
+  profile_id: string;
+  name?: string;
+  display_name?: string;
+  type?: string;
+  doc_type?: string;
+  file_path?: string;
+  content_text?: string;
+  extracted_text?: string;
+  is_primary?: boolean;
+  is_default?: number;
+  [key: string]: any;
+}): DocumentRecord {
+  return createDocument({
+    profile_id: data.profile_id,
+    doc_type: data.doc_type || data.type || "resume",
+    display_name: data.display_name || data.name || "Document",
+    file_path: data.file_path || "",
+    extracted_text: data.extracted_text || data.content_text,
+    is_default: data.is_default !== undefined ? data.is_default : (data.is_primary ? 1 : 0),
+  });
+}
 
 export function deleteDocument(id: string): void {
   getDrizzleDb().delete(documents).where(eq(documents.id, id)).run();

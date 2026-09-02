@@ -3,7 +3,7 @@ import { ConveyorApi } from "@/lib/preload/shared";
 import type {
   Profile, JobPosting, Application, QABankEntry,
   SearchQuery, Task, Platform, Document, AutomationPlan,
-} from "@/lib/main/db-queries";
+} from "../schemas";
 
 export class DataApi extends ConveyorApi {
   constructor(api: ElectronAPI) {

@@ -5,8 +5,8 @@
  * SQLite as a persistent task store with a polling-based processor.
  */
 
-import * as dbQueries from "@/lib/main/db-queries";
-import type { Task } from "@/lib/main/db-queries";
+import * as dbQueries from "@/lib/db";
+import type { Task } from "@/lib/db";
 
 export type TaskHandler = (task: Task, payload: Record<string, unknown>) => Promise<{
   result?: Record<string, unknown>;

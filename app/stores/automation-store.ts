@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AutomationPlan, SearchQuery } from "@/lib/main/db-queries";
+import type { AutomationPlan, SearchQuery } from "@/lib/conveyor/schemas";
 
 interface AutomationState {
   plans: AutomationPlan[];

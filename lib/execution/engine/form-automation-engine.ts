@@ -20,7 +20,7 @@ import {
   getProfileById,
   updateApplicationStatus,
   updateApplicationFillDetails,
-} from "@/lib/main/db-queries";
+} from "@/lib/db";
 import { actionDelay, preSubmitDelay, randomDelay } from "@/lib/utils/delay";
 import {
   LinkedInApplyStrategy,

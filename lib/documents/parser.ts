@@ -5,7 +5,7 @@
  */
 
 import { parseResume } from "@/lib/providers/provider-registry";
-import { updateProfile, getProfileById } from "@/lib/main/db-queries";
+import { updateProfile, getProfileById } from "@/lib/db";
 
 /**
  * Parse raw resume text into structured fields using Vercel AI SDK.

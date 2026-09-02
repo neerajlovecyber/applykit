@@ -12,7 +12,7 @@ import {
   BrainCircuit,
   Sparkles,
 } from "lucide-react";
-import type { QABankEntry } from "@/lib/main/db-queries";
+import type { QABankEntry } from "@/lib/conveyor/schemas";
 
 export const QABankPage: React.FC = () => {
   const conveyor = useConveyor();

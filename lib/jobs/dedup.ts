@@ -3,7 +3,7 @@
  * Checks for duplicate job postings by (source, source_id) or content_hash.
  */
 
-import { getJobPostingBySourceId, getJobPostingByContentHash } from "@/lib/main/db-queries";
+import { getJobPostingBySourceId, getJobPostingByContentHash } from "@/lib/db";
 import type { RawJobPosting } from "./types";
 import { normalizeRawJob } from "./normalizer";
 

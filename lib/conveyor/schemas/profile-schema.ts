@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Profile } from "@/lib/main/db-queries";
+import type { Profile } from "./types";
 
 export const profileIpcSchema = {
   "profiles:get": {
