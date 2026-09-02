@@ -1,5 +1,6 @@
 import { handle } from "@/lib/main/shared";
 import * as dbQueries from "@/lib/db";
+import { getActiveTaskForApplication } from "@/lib/db/queries/tasks";
 import { workerManager } from "@/lib/execution/worker-manager";
 import { enqueueTask } from "@/lib/engine/task-queue";
 import { JobDiscoveryService } from "@/lib/jobs/discovery-service";
@@ -100,7 +101,7 @@ export function registerPlatformHandlers(): void {
     const profile = dbQueries.getActiveProfile();
     if (!profile) return { error: "No active profile found. Please select a profile in Role Profiles." };
 
-    console.log(`[NaukriAutoApply] Batch auto-apply requested: "${keywords}" in "${location}"...`);
+    console.log(`[NaukriAutoApply] Batch auto-apply requested: "${keywords}" in "${location || 'all-India'}"...`);
 
     try {
       // 1. Discover or fetch jobs matching search parameters
@@ -108,7 +109,7 @@ export function registerPlatformHandlers(): void {
       const searchRes = await discovery.executeSearch({
         source: "naukri",
         keywords: keywords || "Software Engineer",
-        location: location || "bangalore",
+        location: location || "",
         maxPages: Math.ceil((maxJobs || 5) / 20),
         filters,
       });
@@ -129,6 +130,22 @@ export function registerPlatformHandlers(): void {
             profile_id: profile.id,
             status: "queued",
           });
+        }
+
+        // Skip if there's already a queued/running/succeeded task for this application
+        const existingTask = getActiveTaskForApplication(app.id);
+        if (existingTask && ["queued", "running", "succeeded"].includes(existingTask.status ?? "")) {
+          results.push({
+            jobId: storedJob.id,
+            taskId: existingTask.id,
+            title: storedJob.title,
+            company: storedJob.company,
+            location: storedJob.location,
+            status: existingTask.status,
+            success: true,
+            skipped: true,
+          });
+          continue;
         }
 
         // Enqueue task for task queue supervisor
@@ -233,6 +250,22 @@ export function registerPlatformHandlers(): void {
             profile_id: profile.id,
             status: "queued",
           });
+        }
+
+        // Skip if there's already a queued/running/succeeded task for this application
+        const existingTask = getActiveTaskForApplication(app.id);
+        if (existingTask && ["queued", "running", "succeeded"].includes(existingTask.status ?? "")) {
+          results.push({
+            jobId: storedJob.id,
+            taskId: existingTask.id,
+            title: storedJob.title,
+            company: storedJob.company,
+            location: storedJob.location,
+            status: existingTask.status,
+            success: true,
+            skipped: true,
+          });
+          continue;
         }
 
         const task = enqueueTask({

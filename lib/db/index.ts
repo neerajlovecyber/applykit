@@ -29,7 +29,11 @@ function resolveMigrationsFolder(): string {
 /**
  * Executes Drizzle ORM schema migrations on the given Drizzle instance.
  */
+let _migrationsDone = false;
+
 export function runMigrations(drizzleClient: any): void {
+  if (_migrationsDone) return;
+
   const migrationsFolder = resolveMigrationsFolder();
   if (!fs.existsSync(migrationsFolder)) return;
 
@@ -41,11 +45,18 @@ export function runMigrations(drizzleClient: any): void {
       const { migrate } = require("drizzle-orm/better-sqlite3/migrator");
       migrate(drizzleClient, { migrationsFolder });
     }
+    _migrationsDone = true;
   } catch (err: any) {
-    // If tables already exist in an existing DB, ignore already existing errors
-    if (!err?.message?.includes("already exists")) {
-      console.warn("[Drizzle Migrator] Notice:", err?.message || err);
+    const msg: string = err?.message || String(err);
+    // Suppress benign "table/index already exists" re-run notices from Drizzle
+    const isBenign =
+      msg.includes("already exists") ||
+      msg.includes("Failed to run the query") && (msg.includes("CREATE TABLE") || msg.includes("CREATE INDEX"));
+    if (!isBenign) {
+      console.warn("[Drizzle Migrator] Notice:", msg);
     }
+    // Still mark as done to prevent retry loops
+    _migrationsDone = true;
   }
 }
 

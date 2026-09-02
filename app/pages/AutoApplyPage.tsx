@@ -130,6 +130,12 @@ export const AutoApplyPage: React.FC = () => {
         if (Array.isArray(titles) && titles.length > 0) setKeywords(titles[0]);
       } catch { /* ignore */ }
     }
+    if (activeProfile?.target_locations) {
+      try {
+        const locs = JSON.parse(activeProfile.target_locations);
+        if (Array.isArray(locs) && locs.length > 0) setLocation(locs[0]);
+      } catch { /* ignore */ }
+    }
   }, [activeProfile]);
 
   useEffect(() => {

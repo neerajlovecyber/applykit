@@ -71,6 +71,19 @@ export function getNextPendingTask(): TaskRecord | undefined {
   const db = getDrizzleDb();
   const now = new Date().toISOString();
 
+  // Recover tasks stuck as 'running' (e.g. app crash mid-task) older than 15 minutes
+  const staleRunningCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  db
+    .update(tasks)
+    .set({ status: "queued", error: "Recovered from stale running state (app restart)" })
+    .where(
+      and(
+        eq(tasks.status, "running"),
+        lte(tasks.started_at, staleRunningCutoff),
+      )
+    )
+    .run();
+
   // Find next queued task scheduled before now, ordered by priority DESC, scheduled_for ASC
   const task = db
     .select()
@@ -113,6 +126,25 @@ export function updateTaskStatus(
 export function cleanupFinishedTasks(olderThanDays = 7): void {
   const cutoff = new Date(Date.now() - olderThanDays * 86400000).toISOString();
   getDrizzleDb().delete(tasks).where(and(eq(tasks.status, "completed"), lte(tasks.finished_at, cutoff))).run();
+}
+
+/**
+ * Returns any queued or running task for a given application ID.
+ * Use to prevent duplicate task creation on repeated auto-apply triggers.
+ */
+export function getActiveTaskForApplication(applicationId: string): TaskRecord | undefined {
+  return getDrizzleDb()
+    .select()
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.application_id, applicationId),
+        eq(tasks.kind, "apply"),
+      )
+    )
+    .orderBy(desc(tasks.created_at))
+    .limit(1)
+    .get();
 }
 
 export function getTaskStats(): { total: number; queued: number; running: number; completed: number; failed: number } {

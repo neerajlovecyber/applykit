@@ -15,7 +15,7 @@ export class NaukriDiscoveryAdapter implements JobDiscoveryAdapter {
 
   async scrape(page: Page, options: SearchOptions): Promise<RawJobPosting[]> {
     const keywordsList = options.keywords.split(",").map((k) => k.trim()).filter(Boolean);
-    const location = options.location || "bangalore";
+    const location = options.location?.trim() || ""; // empty = search all-India
     const maxPages = options.maxPages || 2;
     const scrapedAt = new Date().toISOString();
     const allJobs: RawJobPosting[] = [];
@@ -94,33 +94,41 @@ export class NaukriDiscoveryAdapter implements JobDiscoveryAdapter {
         const searchUrl = `https://www.naukri.com/job-search?k=${encKw}${encL ? `&l=${encL}` : ""}&pageNo=${p}${qStr}`;
 
         console.log(`[NaukriDiscovery: "${kw}"] Navigating to page ${p}: ${searchUrl}`);
-        await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 25000 });
-        await randomDelay(1000, 2000);
+        await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
 
-        // Extract Naukri tuple selectors
+        // Naukri SRP is a React SPA — wait for job cards to render (up to 10s)
+        await page
+          .waitForSelector(
+            "div.srp-jobtuple-wrapper, article.jobTuple, div[data-job-id], div.cust-job-tuple",
+            { timeout: 10000 }
+          )
+          .catch(() => console.debug(`[NaukriDiscovery: "${kw}"] No job cards found on page ${p} within 10s`));
+        await randomDelay(800, 1500);
+
+        // Extract Naukri tuple selectors — use broad class-contains to handle obfuscation
         const tuples = await page.$$(
-          "div.srp-jobtuple-wrapper, article.jobTuple, div.cust-job-tuple, div[data-job-id]"
+          "div.srp-jobtuple-wrapper, article.jobTuple, div[class*='jobTuple'], div[data-job-id], div.cust-job-tuple"
         );
 
         for (const tuple of tuples) {
           try {
             const titleEl = await tuple.$(
-              "a.title, a[class*='title'], .job-title, [data-testid='job-title']"
+              "a.title, a[class*='title'], .row1 a, [data-testid='job-title'], a.jobtitle"
             );
             const compEl = await tuple.$(
-              "a.subTitle, a.comp-name, a[class*='comp-name'], [data-testid='company-name']"
+              "a.subTitle, a.comp-name, a[class*='comp-name'], [data-testid='company-name'], .comp-dtls-wrap a, .companyInfo a"
             );
             const expEl = await tuple.$(
-              "span.exp, li[class*='experience'], .expwdth, [data-testid='experience']"
+              "span.exp, li[class*='experience'], .expwdth, [data-testid='experience'], span[class*='exp']"
             );
             const salEl = await tuple.$(
-              "span.sal, li[class*='salary'], .salwdth, [data-testid='salary']"
+              "span.sal, li[class*='salary'], .salwdth, [data-testid='salary'], span[class*='sal']"
             );
             const locEl = await tuple.$(
-              "span.loc, li[class*='location'], .locwdth, [data-testid='location']"
+              "span.loc, li[class*='location'], .locwdth, [data-testid='location'], span[class*='loc'], .locWdth"
             );
             const descEl = await tuple.$(
-              "div.job-desc, div.job-description, .job-desc-snippet, .ellipsis"
+              "div.job-desc, div.job-description, .job-desc-snippet, .ellipsis, .jd-desc"
             );
 
             const title = titleEl ? (await titleEl.textContent())?.trim() : "";
@@ -145,7 +153,7 @@ export class NaukriDiscoveryAdapter implements JobDiscoveryAdapter {
                 sourceId,
                 title,
                 company,
-                location: loc || options.location,
+                location: loc || location || options.location,
                 seniority: exp,
                 salaryInfo: salary,
                 description: desc,

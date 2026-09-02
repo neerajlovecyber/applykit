@@ -33,9 +33,14 @@ export function registerDefaultTaskHandlers(): void {
       return { error: `Job posting not found: ${app.job_id}` };
     }
 
+    const jobUrl = job.application_url;
+    if (!jobUrl) {
+      return { error: `Job ${job.id} (${job.title} @ ${job.company}) has no application URL. Skipping.` };
+    }
+
     const executeOptions: ApplicationExecuteOptions = {
       applicationId: app.id,
-      jobUrl: job.application_url || "https://linkedin.com",
+      jobUrl,
       platform: job.source || "linkedin",
       profileId: app.profile_id,
       pauseBeforeSubmit: payload.pauseBeforeSubmit !== undefined ? Boolean(payload.pauseBeforeSubmit) : true,
