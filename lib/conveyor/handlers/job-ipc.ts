@@ -6,7 +6,7 @@
 
 import { handle } from "@/lib/main/shared";
 import * as dbQueries from "@/lib/db";
-import { executeSearch } from "@/lib/jobs/search/search-manager";
+import { executeSearch } from "@/lib/jobs";
 
 export function registerJobIpc(): void {
   // ── Job Postings ─────────────────────────────────────────────────────────

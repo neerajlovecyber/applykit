@@ -200,3 +200,13 @@ export class JobDiscoveryService {
 
 // Global singleton instance
 export const discoveryService = new JobDiscoveryService();
+
+/**
+ * Execute job discovery across target source using the deep discovery service.
+ */
+export async function executeSearch(
+  options: import("./types").SearchOptions,
+  queryId?: string
+): Promise<import("./types").SearchRunResult> {
+  return discoveryService.executeSearch(options, queryId);
+}
