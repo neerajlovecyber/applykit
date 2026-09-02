@@ -22,7 +22,6 @@ import {
   BrainCircuit,
   ListTodo,
   Settings,
-  Linkedin,
   Zap,
   Building2,
   TrendingUp,
@@ -31,6 +30,7 @@ import {
   ChevronRight,
   SkipForward,
 } from "lucide-react";
+import { Linkedin } from "@/components/icons/brand-icons";
 import { Link } from "react-router-dom";
 
 interface RecentItem {

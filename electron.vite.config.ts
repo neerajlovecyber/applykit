@@ -28,6 +28,8 @@ export default defineConfig({
           "electron",
           /^electron\/.*/,
           "electron-updater",
+          "electron-log",
+          /^electron-log\/.*/,
           "better-sqlite3",
           /^puppeteer-extra/,
           /^playwright/,

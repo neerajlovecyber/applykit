@@ -20,7 +20,6 @@ import {
   MapPin,
   Calendar,
   Layers,
-  Linkedin,
   Clock,
   DollarSign,
   X,
@@ -35,6 +34,7 @@ import {
   Pencil,
   Check,
 } from "lucide-react";
+import { Linkedin } from "@/components/icons/brand-icons";
 import type { Profile } from "@/lib/main/db-queries";
 import { RoleOnboardingWizard } from "@/app/components/RoleOnboardingWizard";
 import { parseMasterCV } from "@/lib/providers/cv-parser";

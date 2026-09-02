@@ -14,7 +14,6 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  Linkedin,
   ChevronDown,
   ChevronUp,
   Filter,
@@ -27,6 +26,7 @@ import {
   Sparkles,
   ArrowRight,
 } from "lucide-react";
+import { Linkedin } from "@/components/icons/brand-icons";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ContinuousTabs } from "@/app/components/ui/continuous-tabs";

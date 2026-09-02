@@ -22,12 +22,12 @@ import {
   Sparkles,
   Info,
   DownloadCloud,
-  Github,
   Sliders,
   Terminal,
   Database,
   Check,
 } from "lucide-react";
+import { Github } from "@/components/icons/brand-icons";
 import type { Platform } from "@/lib/main/db-queries";
 import type { LLMProviderConfig } from "@/lib/providers/types";
 import { ProviderModel } from "@/lib/providers/model-fetcher";

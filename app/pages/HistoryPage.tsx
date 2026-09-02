@@ -6,7 +6,8 @@ import { useProfileStore } from "@/app/stores/profile-store";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { Input } from "@/app/components/ui/input";
-import { Download, Search, CheckCircle2, XCircle, ExternalLink, SkipForward, Clock, Linkedin, Zap, Building2, Trash2, AlertTriangle } from "lucide-react";
+import { Download, Search, CheckCircle2, XCircle, ExternalLink, SkipForward, Clock, Zap, Building2, Trash2, AlertTriangle } from "lucide-react";
+import { Linkedin } from "@/components/icons/brand-icons";
 import { cn } from "@/lib/utils";
 
 export const HistoryPage: React.FC = () => {

@@ -1,8 +1,21 @@
 import { app, BrowserWindow } from "electron";
 import { electronApp, optimizer } from "@electron-toolkit/utils";
+import log from "electron-log/main";
 import { createAppWindow } from "./app";
 import { registerExecutionTaskHandlers } from "@/lib/execution/executor";
 import { startTaskQueue, stopTaskQueue } from "@/lib/engine/task-queue";
+
+// Initialize persistent file & console logger
+log.initialize();
+log.info("[ApplyKit] Starting up desktop process...");
+
+// Catch global unhandled exceptions and log them
+process.on("uncaughtException", (error) => {
+  log.error("[ApplyKit UncaughtException]", error);
+});
+process.on("unhandledRejection", (reason) => {
+  log.error("[ApplyKit UnhandledRejection]", reason);
+});
 
 // Initialization when Electron is ready
 app.setName("ApplyKit");
