@@ -8,6 +8,5 @@ export * from "./qa";
 export * from "./documents";
 export * from "./search-queries";
 export * from "./automation-plans";
-export * from "./legacy";
 export { getDb } from "@/lib/db";
 

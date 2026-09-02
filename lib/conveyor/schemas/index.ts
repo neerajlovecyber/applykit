@@ -11,7 +11,6 @@ import { settingsIpcSchema } from "./settings-schema";
 import { llmIpcSchema } from "./llm-schema";
 import { documentIpcSchema } from "./document-schema";
 import { automationPlanIpcSchema } from "./automation-plan-schema";
-import { legacyIpcSchema } from "./legacy-schema";
 
 // Define all IPC channel schemas in one place
 export const ipcSchemas = {
@@ -27,7 +26,6 @@ export const ipcSchemas = {
   ...llmIpcSchema,
   ...documentIpcSchema,
   ...automationPlanIpcSchema,
-  ...legacyIpcSchema,
 } as const;
 
 // Extract types from Zod schemas

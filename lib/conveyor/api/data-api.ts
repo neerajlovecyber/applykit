@@ -3,7 +3,6 @@ import { ConveyorApi } from "@/lib/preload/shared";
 import type {
   Profile, JobPosting, Application, QABankEntry,
   SearchQuery, Task, Platform, Document, AutomationPlan,
-  Job, HistoryEntry,
 } from "@/lib/main/db-queries";
 
 export class DataApi extends ConveyorApi {
@@ -469,38 +468,6 @@ export class DataApi extends ConveyorApi {
   };
   storeResumeFile = async (profileId: string, sourcePath: string): Promise<string> => {
     return this.invoke("resume:store-file", { profileId, sourcePath });
-  };
-
-  // ═══════════════════════════════════════════════════════════
-  // LEGACY: Jobs & History
-  // ═══════════════════════════════════════════════════════════
-
-  getJobs = async (status?: string): Promise<Job[]> => {
-    return this.invoke("jobs:get", status);
-  };
-  addJob = async (data: { title: string; company?: string; url: string; platform?: string; profile_id?: string }): Promise<Job> => {
-    return this.invoke("jobs:add", data);
-  };
-  updateJobStatus = async (id: string, status: string, errorMessage?: string): Promise<void> => {
-    return this.invoke("jobs:update-status", { id, status, errorMessage });
-  };
-  removeJob = async (id: string): Promise<void> => {
-    return this.invoke("jobs:remove", id);
-  };
-  clearCompletedJobs = async (): Promise<number> => {
-    return this.invoke("jobs:clear-completed");
-  };
-  getQueueStats = async (): Promise<{ pending: number; running: number; done: number; failed: number; total: number }> => {
-    return this.invoke("jobs:get-stats");
-  };
-  getHistory = async (filters?: { status?: string; platform?: string; limit?: number }): Promise<HistoryEntry[]> => {
-    return this.invoke("history:get", filters);
-  };
-  addHistoryEntry = async (data: Omit<HistoryEntry, "id" | "applied_at">): Promise<HistoryEntry> => {
-    return this.invoke("history:add", data);
-  };
-  getHistoryStats = async (): Promise<{ total: number; applied: number; failed: number; todayCount: number; weekCount: number }> => {
-    return this.invoke("history:get-stats");
   };
 
   // ═══════════════════════════════════════════════════════════

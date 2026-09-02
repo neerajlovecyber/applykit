@@ -16,8 +16,6 @@ import type {
   TaskRecord,
   DocumentRecord,
   AutomationPlanRecord,
-  JobRecord,
-  HistoryRecord,
   SettingRecord,
 } from "@/lib/db/schema";
 
@@ -30,7 +28,6 @@ import {
   updateApplicationFillDetails,
   createApplication,
   getApplicationById,
-  addHistoryEntry,
   updateApplicationMaterials,
   getSearchQueryById,
   updateSearchQueryLastRun,
@@ -54,8 +51,6 @@ export type Platform = PlatformRecord;
 export type Task = TaskRecord;
 export type Document = DocumentRecord;
 export type AutomationPlan = AutomationPlanRecord;
-export type Job = JobRecord;
-export type HistoryEntry = HistoryRecord;
 export type Setting = SettingRecord;
 
 // ── Re-export all query operations from lib/db/queries ──
@@ -123,31 +118,6 @@ export function recordAutoApplyResult(
       });
     }
     appRecord = getApplicationById(appRecord.id)!;
-  }
-
-  // Record entry into history log table for the History UI tab
-  try {
-    const profile = getProfileById(profileId);
-    const historyStatus =
-      result.success || result.status === "submitted" || result.status === "applied"
-        ? "applied"
-        : result.status === "pending_review" || result.status === "pending"
-        ? "pending"
-        : "failed";
-
-    addHistoryEntry({
-      job_id: result.jobId || job.id,
-      title: result.title || "Untitled Role",
-      company: result.company || "Unknown Company",
-      platform: platform || "linkedin",
-      url: result.jobUrl || `https://www.linkedin.com/jobs/view/${result.jobId || ""}`,
-      profile_id: profileId,
-      profile_name: profile?.name || "Default Profile",
-      status: historyStatus,
-      error_message: result.errorMessage || undefined,
-    });
-  } catch (histErr) {
-    console.warn("[recordAutoApplyResult] Failed to write history entry:", histErr);
   }
 
   return { job, application: appRecord };

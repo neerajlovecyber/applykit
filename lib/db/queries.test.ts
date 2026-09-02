@@ -23,10 +23,6 @@ import {
   createSearchQuery,
   getSearchQueryById,
   updateSearchQueryLastRun,
-  addJob,
-  getJobById,
-  addHistoryEntry,
-  getHistory,
 } from "./queries";
 
 describe("Deepened Database Persistence Module", () => {
@@ -209,32 +205,6 @@ describe("Deepened Database Persistence Module", () => {
       expect(updated?.last_run_at).toBeDefined();
       expect(updated?.last_success_at).toBeDefined();
       expect(updated?.next_run_at).toBeDefined();
-    });
-  });
-
-  describe("Legacy Compatibility (Jobs & History)", () => {
-    it("inserts and tracks legacy jobs and history rows", () => {
-      const job = addJob({
-        title: "Legacy Role",
-        url: "https://example.com/job/1",
-        platform: "indeed",
-      });
-
-      expect(job.id).toBeDefined();
-      expect(getJobById(job.id)?.title).toBe("Legacy Role");
-
-      const hist = addHistoryEntry({
-        job_id: job.id,
-        title: "Legacy Role",
-        company: "Old Company",
-        platform: "indeed",
-        status: "applied",
-      });
-
-      expect(hist.id).toBeDefined();
-      const allHist = getHistory();
-      expect(allHist.length).toBe(1);
-      expect(allHist[0].company).toBe("Old Company");
     });
   });
 });
