@@ -108,110 +108,17 @@ function buildNaukriSearchUrl(
   return `${baseUrl}?${params.toString()}`;
 }
 
+import { FormAutomationEngine, NaukriApplyStrategy } from "../engine";
+
 export class NaukriApplier implements PlatformApplier {
   readonly platformId = "naukri";
+  private readonly formEngine = new FormAutomationEngine();
+  private readonly strategy = new NaukriApplyStrategy();
 
-  // ── Single-Job Apply ────────────────────────────────────────────────────
+  // ── Single-Job Apply (delegated to FormAutomationEngine) ──────────────────
 
   async apply(page: Page, options: ApplicationExecuteOptions): Promise<ApplicationExecuteResult> {
-    console.log(`[NaukriApplier] Starting application for job: ${options.jobUrl}`);
-
-    const profile = getProfileById(options.profileId);
-    if (!profile) {
-      return {
-        success: false,
-        status: "failed",
-        fieldsFilled: 0,
-        fieldsTotal: 0,
-        errorMessage: "Profile not found",
-      };
-    }
-
-    const formFiller = new FormFiller(profile);
-    let totalFilled = 0;
-    let totalFields = 0;
-
-    try {
-      await page.goto(options.jobUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
-      await actionDelay();
-
-      // Extract Job ID from URL if present (e.g. -120424001234? or /job-listings-...)
-      const jobIdMatch = options.jobUrl.match(/-(\d{8,16})/);
-      const jobId = jobIdMatch ? jobIdMatch[1] : undefined;
-
-      // Extract auth token from browser session context
-      const authToken = await extractNaukriAuthToken(page);
-
-      // 1. Check for "Already Applied" indicators
-      const alreadyApplied = await page.$(
-        ".already-applied, .applied-message, .applied-banner, button:has-text('Applied'), span:has-text('Already Applied'), span:has-text('Applied')"
-      );
-      if (alreadyApplied) {
-        console.log(`[NaukriApplier] Job ${options.jobUrl} is already applied.`);
-        updateApplicationStatus(options.applicationId, "submitted", "Already applied on Naukri");
-        return { success: true, status: "submitted", fieldsFilled: 0, fieldsTotal: 0 };
-      }
-
-      // 2. Locate Apply Button
-      const applyBtn = await page.$(
-        "#apply-button, button.apply-button, button.waves-effect:has-text('Apply'), button:has-text('Apply on company site'), button:has-text('Apply'), div.apply-button-container button"
-      );
-
-      if (!applyBtn) {
-        // Fallback: If direct jobId & authToken are available, attempt direct API apply
-        if (jobId && authToken) {
-          console.log(`[NaukriApplier] UI apply button missing. Attempting direct API apply for Job ${jobId}...`);
-          const apiRes = await applyNaukriJobAPI([jobId], undefined, authToken);
-          if (apiRes.ok || apiRes.status === 200) {
-            updateApplicationStatus(options.applicationId, "submitted", "Applied via Naukri API fallback");
-            return { success: true, status: "submitted", fieldsFilled: 0, fieldsTotal: 0 };
-          }
-        }
-
-        return {
-          success: false,
-          status: "failed",
-          fieldsFilled: 0,
-          fieldsTotal: 0,
-          errorMessage: "Naukri apply button not found on posting.",
-        };
-      }
-
-      const buttonText = ((await applyBtn.textContent()) || "").trim().toLowerCase();
-
-      // Handle external redirect apply button
-      if (buttonText.includes("company site") || buttonText.includes("apply on company site")) {
-        console.log(`[NaukriApplier] Job requires application on company site.`);
-        updateApplicationStatus(
-          options.applicationId,
-          "failed",
-          "External company site application required"
-        );
-        return {
-          success: false,
-          status: "failed",
-          fieldsFilled: 0,
-          fieldsTotal: 0,
-          errorMessage: "Requires applying on external company site",
-        };
-      }
-
-      // Click the Apply Button
-      await applyBtn.click();
-      await actionDelay();
-
-      // 3. Multi-Step Questionnaire & Modal Loop
-      return await this.runNaukriApplyWizard(page, options, formFiller);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      return {
-        success: false,
-        status: "failed",
-        fieldsFilled: totalFilled,
-        fieldsTotal: totalFields,
-        errorMessage: errorMsg,
-      };
-    }
+    return await this.formEngine.execute(page, this.strategy, options);
   }
 
   // ── Batch Auto-Apply ────────────────────────────────────────────────────
