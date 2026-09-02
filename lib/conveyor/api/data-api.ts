@@ -84,6 +84,8 @@ export class DataApi extends ConveyorApi {
   getTaskById = (id: string) => this.invoke("tasks:get-by-id", id);
   createTask = (data: { kind: string; payload?: string; job_id?: string; application_id?: string; parent_task_id?: string; scheduled_for?: string; max_attempts?: number }) =>
     this.invoke("tasks:create", data as any);
+  enqueueTask = (data: { kind: string; payload?: Record<string, any>; jobId?: string; applicationId?: string; priority?: number }) =>
+    this.invoke("tasks:enqueue", data);
   updateTaskStatus = (id: string, status: string, result?: string, error?: string) =>
     this.invoke("tasks:update-status", { id, status, result, error });
   getTaskStats = () => this.invoke("tasks:get-stats");

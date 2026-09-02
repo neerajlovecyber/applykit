@@ -2,7 +2,7 @@ import { app, BrowserWindow } from "electron";
 import { electronApp, optimizer } from "@electron-toolkit/utils";
 import log from "electron-log/main";
 import { createAppWindow } from "./app";
-import { registerExecutionTaskHandlers } from "@/lib/execution/executor";
+import { registerDefaultTaskHandlers } from "@/lib/engine/task-handlers";
 import { startTaskQueue, stopTaskQueue } from "@/lib/engine/task-queue";
 
 // Initialize persistent file & console logger
@@ -25,7 +25,7 @@ app.whenReady().then(() => {
   electronApp.setAppUserModelId("io.github.neerajlovecyber.applykit");
 
   // Register execution task handlers & start task queue engine
-  registerExecutionTaskHandlers();
+  registerDefaultTaskHandlers();
   startTaskQueue(3000);
 
   // Create app window

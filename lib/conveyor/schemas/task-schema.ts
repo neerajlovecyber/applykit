@@ -13,6 +13,18 @@ export const taskIpcSchema = {
     args: z.tuple([z.record(z.string(), z.any())]),
     return: z.any(),
   },
+  "tasks:enqueue": {
+    args: z.tuple([
+      z.object({
+        kind: z.string(),
+        payload: z.record(z.string(), z.any()).optional(),
+        jobId: z.string().optional(),
+        applicationId: z.string().optional(),
+        priority: z.number().optional(),
+      }),
+    ]),
+    return: z.any(),
+  },
   "tasks:update-status": {
     args: z.tuple([
       z.object({

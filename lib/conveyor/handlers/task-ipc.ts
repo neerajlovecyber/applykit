@@ -6,12 +6,14 @@
 
 import { handle } from "@/lib/main/shared";
 import * as dbQueries from "@/lib/db";
+import { enqueueTask } from "@/lib/engine/task-queue";
 
 export function registerTaskIpc(): void {
   // ── Tasks ────────────────────────────────────────────────────────────────
   handle("tasks:get", (status) => dbQueries.getTasks(status as any));
   handle("tasks:get-by-id", (id) => dbQueries.getTaskById(id));
   handle("tasks:create", (data) => dbQueries.createTask(data as any));
+  handle("tasks:enqueue", (data) => enqueueTask(data as any));
   handle("tasks:update-status", (payload) =>
     dbQueries.updateTaskStatus(
       payload.id,
