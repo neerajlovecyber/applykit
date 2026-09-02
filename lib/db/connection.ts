@@ -62,11 +62,6 @@ export function getDb(customPath?: string): any {
     dbInstance = instance;
   }
 
-  // Ensure Drizzle ORM migrations run directly from schema
-  const { runMigrations, createDrizzleClient } = require("./index");
-  const client = createDrizzleClient(instance);
-  runMigrations(client);
-
   return instance;
 }
 
