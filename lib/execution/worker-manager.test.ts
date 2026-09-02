@@ -22,6 +22,13 @@ describe("AutomationWorkerManager Supervisor", () => {
     expect(result.executed).toBe(true);
   });
 
+  it("handles executeTask dispatch with generic payload", async () => {
+    const manager = new AutomationWorkerManager();
+    const result = await manager.executeTask({ taskKind: "custom", executeOptions: {} });
+    expect(result).toBeDefined();
+    expect(result.executed).toBe(true);
+  });
+
   it("handles closePool gracefully", async () => {
     const manager = new AutomationWorkerManager();
     await expect(manager.closePool()).resolves.toBeDefined();

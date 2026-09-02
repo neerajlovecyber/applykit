@@ -8,6 +8,11 @@
 
 import { createStealthPage, closeBrowserPool } from "@/lib/execution/browser-pool";
 
+import { FormAutomationEngine } from "@/lib/execution/engine";
+import type { ApplicationExecuteOptions } from "@/lib/execution/types";
+
+const formEngine = new FormAutomationEngine();
+
 export interface WorkerMessage<T = unknown> {
   id: string;
   type: "PING" | "EXECUTE_TASK" | "CONNECT_PLATFORM" | "CLOSE_POOL";
@@ -79,18 +84,36 @@ async function handleMessage(msg: WorkerMessage): Promise<void> {
 
     case "EXECUTE_TASK": {
       try {
-        sendResponse({
-          id,
-          type: "PROGRESS",
-          data: { stage: "starting", message: "Executing automation task in sidecar worker..." },
-        });
+        const { taskKind, executeOptions } = (payload as {
+          taskKind?: string;
+          executeOptions?: ApplicationExecuteOptions;
+        }) || {};
 
-        // Task execution payload handler
-        sendResponse({
-          id,
-          type: "SUCCESS",
-          data: { executed: true, result: payload },
-        });
+        if (taskKind === "apply" && executeOptions) {
+          sendResponse({
+            id,
+            type: "PROGRESS",
+            data: { stage: "launching_browser", message: `Launching browser for ${executeOptions.platform}...` },
+          });
+
+          const page = await createStealthPage({ headless: false });
+          try {
+            const result = await formEngine.execute(page, executeOptions.platform, executeOptions);
+            sendResponse({
+              id,
+              type: "SUCCESS",
+              data: result,
+            });
+          } finally {
+            await page.close().catch(() => {});
+          }
+        } else {
+          sendResponse({
+            id,
+            type: "SUCCESS",
+            data: { executed: true, result: payload },
+          });
+        }
       } catch (err) {
         sendResponse({ id, type: "ERROR", error: (err as Error).message });
       }

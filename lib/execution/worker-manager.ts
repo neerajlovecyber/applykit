@@ -135,6 +135,21 @@ export class AutomationWorkerManager {
     if (type === "CLOSE_POOL") {
       return { closed: true, fallback: true } as R;
     }
+    if (type === "EXECUTE_TASK") {
+      const { taskKind, executeOptions } = (payload as any) || {};
+      if (taskKind === "apply" && executeOptions) {
+        const { createStealthPage } = require("./browser-pool");
+        const { FormAutomationEngine } = require("./engine");
+        const formEngine = new FormAutomationEngine();
+        const page = await createStealthPage({ headless: false });
+        try {
+          const result = await formEngine.execute(page, executeOptions.platform, executeOptions);
+          return result as R;
+        } finally {
+          await page.close().catch(() => {});
+        }
+      }
+    }
     return { executed: true, payload, fallback: true } as R;
   }
 
@@ -153,10 +168,10 @@ export class AutomationWorkerManager {
   }
 
   /**
-   * Execute automation task.
+   * Execute automation task via isolated worker (with graceful in-process fallback).
    */
-  public async executeTask(task: unknown): Promise<any> {
-    return this.sendCommand("EXECUTE_TASK", task);
+  public async executeTask<T = any, R = any>(task: T): Promise<R> {
+    return this.sendCommand<T, R>("EXECUTE_TASK", task);
   }
 
   /**

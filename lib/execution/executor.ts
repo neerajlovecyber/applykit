@@ -6,12 +6,9 @@
  */
 
 import { registerTaskHandler } from "@/lib/engine/task-queue";
-import { createStealthPage } from "./browser-pool";
-import { FormAutomationEngine } from "./engine";
+import { workerManager } from "./worker-manager";
 import type { ApplicationExecuteOptions } from "./types";
 import { getApplicationById, getJobPostingById } from "@/lib/db";
-
-const formEngine = new FormAutomationEngine();
 
 /**
  * Register all execution task handlers with the Task Queue.
@@ -42,36 +39,28 @@ export function registerExecutionTaskHandlers(): void {
       pauseBeforeSubmit: true, // Human-in-the-loop pause by default
     };
 
-    console.log(`[Executor] Launching browser task for application ${app.id} on ${job.source}...`);
+    console.log(`[Executor] Delegating application task ${app.id} on ${job.source} to Worker Supervisor...`);
 
-    let page;
     try {
-      page = await createStealthPage({ headless: false });
-
-      const result = await formEngine.execute(page, job.source, executeOptions);
+      const result = await workerManager.executeTask<any, any>({
+        taskKind: "apply",
+        executeOptions,
+      });
 
       return {
         result: {
-          success: result.success,
-          status: result.status,
-          fieldsFilled: result.fieldsFilled,
-          fieldsTotal: result.fieldsTotal,
-          screenshotPath: result.screenshotPath,
+          success: result?.success,
+          status: result?.status,
+          fieldsFilled: result?.fieldsFilled,
+          fieldsTotal: result?.fieldsTotal,
+          screenshotPath: result?.screenshotPath,
         },
-        error: result.errorMessage,
+        error: result?.errorMessage,
       };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
-    } finally {
-      if (page) {
-        try {
-          await page.close();
-        } catch {
-          // ignore
-        }
-      }
     }
   });
 
-  console.log("[Executor] Execution task handlers registered with FormAutomationEngine.");
+  console.log("[Executor] Execution task handlers registered with Worker Supervisor.");
 }
