@@ -3,7 +3,7 @@
  * Checks for duplicate job postings by (source, source_id) or content_hash.
  */
 
-import { getJobPostingBySourceId, getJobPostings } from "@/lib/main/db-queries";
+import { getJobPostingBySourceId, getJobPostingByContentHash } from "@/lib/main/db-queries";
 import type { RawJobPosting } from "./types";
 import { normalizeRawJob } from "./normalizer";
 
@@ -15,6 +15,7 @@ export interface DedupCheckResult {
 
 /**
  * Check if a raw job posting is already present in the database.
+ * Uses indexed O(1) lookups for both (source, source_id) and content_hash.
  */
 export function checkDuplicateJob(raw: RawJobPosting): DedupCheckResult {
   // 1. Check unique (source, source_id)
@@ -27,17 +28,17 @@ export function checkDuplicateJob(raw: RawJobPosting): DedupCheckResult {
     };
   }
 
-  // 2. Check content_hash match
+  // 2. Check content_hash match using indexed query
   const normalized = normalizeRawJob(raw);
-  const existingPostings = getJobPostings({ limit: 500 });
-  const existingByHash = existingPostings.find((p) => p.content_hash === normalized.content_hash);
-
-  if (existingByHash) {
-    return {
-      isDuplicate: true,
-      existingId: existingByHash.id,
-      reason: "content_hash",
-    };
+  if (normalized.content_hash) {
+    const existingByHash = getJobPostingByContentHash(normalized.content_hash);
+    if (existingByHash) {
+      return {
+        isDuplicate: true,
+        existingId: existingByHash.id,
+        reason: "content_hash",
+      };
+    }
   }
 
   return { isDuplicate: false };

@@ -53,6 +53,15 @@ export function getJobPostingBySourceId(source: string, sourceId: string): JobPo
     .get();
 }
 
+export function getJobPostingByContentHash(contentHash: string): JobPostingRecord | undefined {
+  if (!contentHash) return undefined;
+  return getDrizzleDb()
+    .select()
+    .from(jobPostings)
+    .where(eq(jobPostings.content_hash, contentHash))
+    .get();
+}
+
 export function upsertJobPosting(data: Partial<NewJobPostingRecord> & { source: string; source_id: string; title: string; company: string }): JobPostingRecord {
   const db = getDrizzleDb();
   let existing = getJobPostingBySourceId(data.source, data.source_id);

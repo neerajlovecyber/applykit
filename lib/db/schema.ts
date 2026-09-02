@@ -110,6 +110,7 @@ export const jobPostings = sqliteTable(
     index("idx_job_postings_score").on(table.match_score),
     index("idx_job_postings_discovered").on(table.discovered_at),
     index("idx_job_postings_source").on(table.source, table.source_id),
+    index("idx_job_postings_content_hash").on(table.content_hash),
   ],
 );
 

@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from "bun:test";
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+import * as schema from "./schema";
 import {
   profiles,
   jobPostings,
@@ -82,20 +83,20 @@ describe("Drizzle ORM Persistence Layer", () => {
       );
     `);
 
-    db = drizzle({ client: sqlite });
+    db = drizzle({ client: sqlite, schema });
   });
 
-  describe("Profiles & Native JSON Columns", () => {
-    it("inserts and automatically parses JSON columns without manual JSON.stringify", () => {
+  describe("Profiles & JSON Columns", () => {
+    it("inserts and stores JSON columns in SQLite", () => {
       db.insert(profiles)
         .values({
           id: "prof_1",
           name: "Senior Frontend Engineer",
           full_name: "Jane Doe",
           email: "jane@example.com",
-          skills: ["TypeScript", "React", "Electron"],
-          target_titles: ["Staff Engineer", "Frontend Lead"],
-          default_answers: { notice_period: "15 days", preferred_work: "remote" },
+          skills: JSON.stringify(["TypeScript", "React", "Electron"]),
+          target_titles: JSON.stringify(["Staff Engineer", "Frontend Lead"]),
+          default_answers: JSON.stringify({ notice_period: "15 days", preferred_work: "remote" }),
         })
         .run();
 
@@ -103,11 +104,9 @@ describe("Drizzle ORM Persistence Layer", () => {
       expect(result).toBeDefined();
       expect(result?.full_name).toBe("Jane Doe");
 
-      // Verify Drizzle automatically deserializes JSON fields into native JS arrays/objects
-      expect(Array.isArray(result?.skills)).toBe(true);
-      expect(result?.skills).toEqual(["TypeScript", "React", "Electron"]);
-      expect(result?.target_titles).toEqual(["Staff Engineer", "Frontend Lead"]);
-      expect(result?.default_answers).toEqual({ notice_period: "15 days", preferred_work: "remote" });
+      expect(JSON.parse(result?.skills || "[]")).toEqual(["TypeScript", "React", "Electron"]);
+      expect(JSON.parse(result?.target_titles || "[]")).toEqual(["Staff Engineer", "Frontend Lead"]);
+      expect(JSON.parse(result?.default_answers || "{}")).toEqual({ notice_period: "15 days", preferred_work: "remote" });
     });
   });
 

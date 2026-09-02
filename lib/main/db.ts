@@ -1,4 +1,3 @@
-import type Database from "better-sqlite3";
 import { join } from "path";
 import os from "os";
 import fs from "fs";
@@ -159,6 +158,7 @@ function initSchema(sqlite: any): void {
 
     CREATE INDEX IF NOT EXISTS idx_job_postings_state ON job_postings(state);
     CREATE INDEX IF NOT EXISTS idx_job_postings_score ON job_postings(match_score DESC);
+    CREATE INDEX IF NOT EXISTS idx_job_postings_content_hash ON job_postings(content_hash);
 
     CREATE TABLE IF NOT EXISTS applications (
       id                TEXT PRIMARY KEY,

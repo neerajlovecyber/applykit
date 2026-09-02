@@ -1,6 +1,8 @@
 /**
- * Types and interfaces for the Job Intelligence layer.
+ * Types and interfaces for the Job Intelligence and Discovery layer.
  */
+
+import type { Page } from "playwright";
 
 export interface RawJobPosting {
   source: string;              // linkedin, naukri, indeed, lever, greenhouse
@@ -20,7 +22,7 @@ export interface RawJobPosting {
 }
 
 export interface SearchOptions {
-  source: "linkedin" | "naukri" | "indeed" | "lever" | "greenhouse" | "all";
+  source: "linkedin" | "naukri" | "indeed" | "lever" | "greenhouse" | "all" | string;
   keywords: string;
   location?: string;
   maxPages?: number;
@@ -38,4 +40,20 @@ export interface SearchResultPayload {
   totalFound: number;
   scrapedAt: string;
   error?: string;
+}
+
+export interface SearchRunResult {
+  source: string;
+  totalScraped: number;
+  newJobsAdded: number;
+  duplicatesSkipped: number;
+  error?: string;
+}
+
+/**
+ * Port interface for platform-specific job discovery scrapers/APIs.
+ */
+export interface JobDiscoveryAdapter {
+  readonly platform: string;
+  scrape(page: Page, options: SearchOptions): Promise<RawJobPosting[]>;
 }

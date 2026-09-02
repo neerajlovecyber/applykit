@@ -125,6 +125,22 @@ export async function createIsolatedPage(): Promise<Page> {
 }
 
 /**
+ * Acquire a stealth page for automated tasks/discovery.
+ */
+export async function acquirePage(headless = true): Promise<Page> {
+  return createStealthPage({ headless });
+}
+
+/**
+ * Safely release a page back or close it when execution is finished.
+ */
+export async function releasePage(page: Page): Promise<void> {
+  if (page && !page.isClosed()) {
+    await page.close().catch(() => {});
+  }
+}
+
+/**
  * Close the shared browser context (call on app exit).
  */
 export async function closeBrowserPool(): Promise<void> {
