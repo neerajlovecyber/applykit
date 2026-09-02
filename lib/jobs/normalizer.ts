@@ -4,6 +4,7 @@
  */
 
 import { hashJobContent } from "@/lib/utils/hash";
+import he from "he";
 import type { RawJobPosting } from "./types";
 
 export function normalizeRawJob(raw: RawJobPosting): {
@@ -47,8 +48,7 @@ export function normalizeRawJob(raw: RawJobPosting): {
 }
 
 function cleanText(text: string): string {
-  return text
-    .replace(/<[^>]*>/g, "")        // Remove HTML tags
-    .replace(/\s+/g, " ")           // Collapse multiple spaces/newlines
-    .trim();
+  const stripped = text.replace(/<[^>]*>/g, "");
+  const decoded = he.decode(stripped);
+  return decoded.replace(/\s+/g, " ").trim();
 }

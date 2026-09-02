@@ -25,15 +25,18 @@ describe("normalizeRawJob", () => {
     expect(typeof normalized.content_hash).toBe("string");
   });
 
-  it("handles missing title and company gracefully", () => {
+  it("decodes HTML entities into human-readable characters", () => {
     const raw: RawJobPosting = {
-      source: "Naukri",
-      sourceId: "999",
+      source: "LinkedIn",
+      sourceId: "456",
+      title: "R&amp;D Software Engineer",
+      company: "Ben &amp; Jerry&#39;s",
+      description: "&quot;Top-tier&quot; engineering &amp; cloud infrastructure&nbsp;&gt;&nbsp;scale.",
     };
 
     const normalized = normalizeRawJob(raw);
-    expect(normalized.title).toBe("Untitled Position");
-    expect(normalized.company).toBe("Unknown Company");
-    expect(normalized.description).toBe("");
+    expect(normalized.title).toBe("R&D Software Engineer");
+    expect(normalized.company).toBe("Ben & Jerry's");
+    expect(normalized.description).toBe('"Top-tier" engineering & cloud infrastructure > scale.');
   });
 });
