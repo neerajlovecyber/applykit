@@ -69,11 +69,38 @@ const getInitial = (name?: string) => {
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const conveyor = useConveyor();
-  const { isRunning, pendingCount, startQueue, pauseQueue } = useQueueStore();
+  const { isRunning, pendingCount, startQueue, pauseQueue, setPendingCount, setIsRunning } = useQueueStore();
   const { activeProfile, profiles, setProfiles, setActiveProfile } = useProfileStore();
   const execution = useExecutionStore();
 
   const [showWizard, setShowWizard] = useState(false);
+
+  // Sync real task queue stats on mount & live events
+  useEffect(() => {
+    const refreshQueueStats = async () => {
+      try {
+        const stats = await conveyor.data.getTaskStats();
+        if (stats) {
+          setPendingCount(stats.queued);
+          if (stats.running > 0) {
+            setIsRunning(true);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    refreshQueueStats();
+
+    const unsub = conveyor.data.onTaskEvent(() => {
+      refreshQueueStats();
+    });
+
+    return () => {
+      unsub?.();
+    };
+  }, []);
 
   // Load profiles on mount
   useEffect(() => {
@@ -274,10 +301,14 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             <BrowserModeToggle />
             <RunActionButton
               isRunning={isRunning || execution.isRunning}
-              onRun={startQueue}
-              onStop={() => {
-                if (isRunning) pauseQueue();
-                if (execution.isRunning) execution.finishExecution(false, "Execution stopped by user");
+              onRun={async () => {
+                await startQueue();
+              }}
+              onStop={async () => {
+                await pauseQueue();
+                if (execution.isRunning) {
+                  execution.finishExecution(false, "⏸️ Execution paused by user");
+                }
               }}
               runLabel={`Run Queue (${pendingCount})`}
               runningLabel={execution.isRunning ? `Applying (${execution.platform.toUpperCase()})` : "Engine Running"}

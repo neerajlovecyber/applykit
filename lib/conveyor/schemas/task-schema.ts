@@ -42,6 +42,26 @@ export const taskIpcSchema = {
     args: z.tuple([]),
     return: z.record(z.string(), z.number()).or(z.any()),
   },
+  "tasks:pause": {
+    args: z.tuple([]),
+    return: z.any(),
+  },
+  "tasks:resume": {
+    args: z.tuple([]),
+    return: z.any(),
+  },
+  "tasks:stop": {
+    args: z.tuple([]),
+    return: z.any(),
+  },
+  "tasks:cancel": {
+    args: z.tuple([z.object({ kind: z.string().optional() }).optional()]),
+    return: z.any(),
+  },
+  "tasks:get-queue-state": {
+    args: z.tuple([]),
+    return: z.any(),
+  },
   "search:execute": {
     args: z.tuple([
       z.object({

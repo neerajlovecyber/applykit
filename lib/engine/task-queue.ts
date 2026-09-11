@@ -237,6 +237,65 @@ export function stopTaskQueue(): void {
 }
 
 /**
+ * Pause the task queue processor.
+ */
+export function pauseTaskQueue(): { success: boolean; isRunning: boolean } {
+  stopTaskQueue();
+  broadcastTaskEvent({
+    taskId: "queue",
+    kind: "queue_control",
+    status: "failed",
+    error: "Queue paused",
+  });
+  return { success: true, isRunning: false };
+}
+
+/**
+ * Resume the task queue processor.
+ */
+export function resumeTaskQueue(pollIntervalMs = 2000): { success: boolean; isRunning: boolean } {
+  startTaskQueue(pollIntervalMs);
+  broadcastTaskEvent({
+    taskId: "queue",
+    kind: "queue_control",
+    status: "queued",
+  });
+  return { success: true, isRunning: true };
+}
+
+/**
+ * Cancel pending queued tasks.
+ */
+export function cancelTasks(kind?: string): { cancelledCount: number } {
+  const cancelled = dbQueries.cancelPendingTasks(kind);
+  for (const t of cancelled) {
+    broadcastTaskEvent({
+      taskId: t.id,
+      kind: t.kind,
+      status: "failed",
+      error: "Cancelled by user",
+      task: t as any,
+    });
+  }
+  return { cancelledCount: cancelled.length };
+}
+
+/**
+ * Get current task queue status and stats.
+ */
+export function getQueueState(): {
+  isRunning: boolean;
+  isProcessing: boolean;
+  stats: ReturnType<typeof dbQueries.getTaskStats>;
+} {
+  return {
+    isRunning: isTaskQueueRunning(),
+    isProcessing,
+    stats: dbQueries.getTaskStats(),
+  };
+}
+
+/**
  * Check if the task queue is running.
  */
 export function isTaskQueueRunning(): boolean {

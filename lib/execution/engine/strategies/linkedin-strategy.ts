@@ -1,7 +1,9 @@
 /**
  * LinkedIn Apply Strategy.
  *
- * Encapsulates modal selectors, Easy Apply detection, and dialog dismissal for LinkedIn.
+ * Encapsulates modal selectors, Easy Apply detection, pre-uploaded resume selection,
+ * and dialog dismissal for LinkedIn.
+ * Enhanced with selectors & heuristics from wodsuz/EasyApplyJobsBot.
  */
 
 import type { Page } from "playwright";
@@ -26,9 +28,9 @@ export class LinkedInApplyStrategy implements PlatformApplyStrategy {
       return { success: true, alreadyApplied: true };
     }
 
-    // Locate and click "Easy Apply" button
+    // Locate and click "Easy Apply" button (top-card container + generic button selectors from EasyApplyJobsBot)
     const applyBtn = await page.$(
-      'button.jobs-apply-button, button[aria-label*="Easy Apply"], button:has-text("Easy Apply")'
+      'div.jobs-apply-button--top-card button.jobs-apply-button, button.jobs-apply-button, button[aria-label*="Easy Apply"], button:has-text("Easy Apply")'
     );
 
     if (!applyBtn) {
@@ -40,6 +42,18 @@ export class LinkedInApplyStrategy implements PlatformApplyStrategy {
 
     await humanClick(page, applyBtn);
     await actionDelay();
+
+    // Fix for LinkedIn Issue #72 (from EasyApplyJobsBot):
+    // LinkedIn sometimes displays an extra "Continue to next step" button directly after clicking Easy Apply
+    try {
+      const continueBtn = await page.$("button[aria-label='Continue to next step']");
+      if (continueBtn && (await continueBtn.isVisible())) {
+        await humanClick(page, continueBtn);
+        await actionDelay();
+      }
+    } catch {
+      // Continue normally if not present
+    }
 
     const isModalPresent = await this.isModalOpen(page);
     return { success: isModalPresent };
@@ -55,9 +69,49 @@ export class LinkedInApplyStrategy implements PlatformApplyStrategy {
     return this.modalSelector;
   }
 
+  /**
+   * Hook called before filling fields on a step:
+   * 1. Auto-selects pre-uploaded resumes if on resume upload step.
+   * 2. Unchecks 'Follow company' checkbox if present.
+   */
+  async beforeStepFill(page: Page, _stepIndex: number): Promise<void> {
+    try {
+      // 1. Pre-uploaded resume selection (from EasyApplyJobsBot)
+      const resumeSection = await page.$(
+        ".jobs-document-upload__title--is-required, .jobs-document-upload, div:has(> .ui-attachment--pdf)"
+      );
+      if (resumeSection) {
+        // Find pre-uploaded resumes with aria-label="Select this resume"
+        const resumeSelectBtn = await page.$(
+          'button[aria-label*="Select this resume"], div.ui-attachment--pdf, .jobs-document-upload__attachment-card'
+        );
+        if (resumeSelectBtn && (await resumeSelectBtn.isVisible())) {
+          await humanClick(page, resumeSelectBtn);
+          await actionDelay();
+        }
+      }
+
+      // 2. Uncheck 'Follow company' checkbox (from EasyApplyJobsBot)
+      const followCheckbox = await page.$(
+        "input#follow-company-checkbox, input[name='follow-company-checkbox']"
+      );
+      if (followCheckbox && (await followCheckbox.isChecked())) {
+        const followLabel = await page.$("label[for='follow-company-checkbox']");
+        if (followLabel) {
+          await humanClick(page, followLabel);
+        } else {
+          await followCheckbox.uncheck();
+        }
+      }
+    } catch (err) {
+      // Non-critical hook
+      console.warn("[LinkedInStrategy] beforeStepFill warning:", err);
+    }
+  }
+
   async findNextButton(page: Page): Promise<any | null> {
     return await page.$(
-      'button[aria-label*="Continue to next step"], button[aria-label*="Review your application"], button:has-text("Next"), button:has-text("Review")'
+      'button[aria-label*="Continue to next step"], button[aria-label*="Review your application"], button:has-text("Next"), button:has-text("Review"), button[data-easy-apply-next-button]'
     );
   }
 

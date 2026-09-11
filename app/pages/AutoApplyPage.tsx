@@ -26,6 +26,9 @@ import {
   Unplug,
   Sparkles,
   ArrowRight,
+  Pause,
+  Play,
+  Square,
 } from "lucide-react";
 import { Linkedin } from "@/components/icons/brand-icons";
 import { Link } from "react-router-dom";
@@ -88,6 +91,9 @@ export const AutoApplyPage: React.FC = () => {
   const [selectedJobType, setSelectedJobType] = useState<string[]>([]);
   const [selectedWorkMode, setSelectedWorkMode] = useState<string[]>([]);
 
+  const [isPaused, setIsPaused] = useState(false);
+  const activeBatchTaskIds = useRef<Set<string>>(new Set());
+
   const {
     isRunning,
     statusMsg,
@@ -96,22 +102,84 @@ export const AutoApplyPage: React.FC = () => {
     runStats,
     startExecution,
     updateStatus,
+    setResults,
     finishExecution,
   } = useExecutionStore();
 
   // ── Real-time task stream subscriber ─────────────────────────────────────
   useTaskStream({
-    kinds: ["apply", "discovery"],
+    kinds: ["apply", "discovery", "queue_control"],
     onEvent: (event) => {
+      if (event.kind === "queue_control") {
+        if (event.status === "failed") {
+          setIsPaused(true);
+        } else if (event.status === "queued" || event.status === "running") {
+          setIsPaused(false);
+        }
+        return;
+      }
+
       if (event.kind === "apply") {
+        const taskId = event.taskId;
+        const resultData = event.result || {};
+
         if (event.status === "running") {
-          updateStatus(`⚙️ Processing application task ${event.taskId.slice(0, 8)}...`, "info");
+          updateStatus(`⚙️ Processing application task ${taskId.slice(0, 8)}...`, "info");
         } else if (event.status === "succeeded") {
-          const filled = event.result?.fieldsFilled ?? 0;
-          const total = event.result?.fieldsTotal ?? 0;
+          const filled = resultData.fieldsFilled ?? 0;
+          const total = resultData.fieldsTotal ?? 0;
           updateStatus(`✅ Application submitted! Form fields completed: ${filled}/${total}`, "success");
         } else if (event.status === "failed") {
           updateStatus(`❌ Application error: ${event.error || "Form automation failed"}`, "error");
+        }
+
+        // Live update corresponding item in the results table & sync stats
+        useExecutionStore.setState((state) => {
+          const currentLog = [...state.logResults];
+          const idx = currentLog.findIndex(
+            (r) => (r as any).taskId === taskId || r.jobId === event.task?.job_id
+          );
+
+          if (idx !== -1) {
+            currentLog[idx] = {
+              ...currentLog[idx],
+              status: event.status,
+              success: event.status === "succeeded",
+              errorMessage: event.error,
+              fieldsFilled: resultData.fieldsFilled ?? currentLog[idx].fieldsFilled,
+            };
+          }
+
+          const appliedCount = currentLog.filter(
+            (r) => r.status === "succeeded" || (r as any).status === "submitted"
+          ).length;
+          const failedCount = currentLog.filter((r) => r.status === "failed").length;
+
+          return {
+            logResults: currentLog,
+            runStats: {
+              processed: currentLog.length,
+              applied: appliedCount,
+              skipped: state.runStats?.skipped || 0,
+              failed: failedCount,
+            },
+          };
+        });
+
+        // Track completion of all enqueued tasks in current batch
+        if (event.status === "succeeded" || event.status === "failed") {
+          if (activeBatchTaskIds.current.has(taskId)) {
+            activeBatchTaskIds.current.delete(taskId);
+            if (activeBatchTaskIds.current.size === 0) {
+              const currentStore = useExecutionStore.getState();
+              finishExecution(
+                true,
+                `✅ Batch finished! Applied: ${currentStore.runStats?.applied || 0} | Failed: ${currentStore.runStats?.failed || 0}`,
+                currentStore.runStats,
+                currentStore.logResults
+              );
+            }
+          }
         }
       }
     },
@@ -211,7 +279,7 @@ export const AutoApplyPage: React.FC = () => {
       updateStatus("⚠️ Please connect your LinkedIn account first.", "error");
       return;
     }
-    startExecution("linkedin", "🚀 Auto-apply started — navigating LinkedIn job search...");
+    startExecution("linkedin", "🚀 Auto-apply started — discovering jobs on LinkedIn...");
 
     try {
       const response = await conveyor.data.runLinkedInAutoApply({
@@ -229,22 +297,29 @@ export const AutoApplyPage: React.FC = () => {
         pauseBeforeSubmit,
       });
 
-      if (response?.error) {
-        finishExecution(false, `⚠️ ${response.error}`);
-      } else {
-        const stats = {
-          processed: response.processed || 0,
-          applied: response.applied || 0,
-          skipped: response.skipped || 0,
-          failed: response.failed || 0,
-        };
-        finishExecution(
-          true,
-          `✅ Done! Applied: ${response.applied || 0} | Skipped: ${response.skipped || 0} | Failed: ${response.failed || 0}`,
-          stats,
-          response.results || []
-        );
+      if (response?.error || !response?.success) {
+        finishExecution(false, `⚠️ ${response?.error || "LinkedIn discovery failed"}`);
+        return;
       }
+
+      const results = response.results || [];
+      if (results.length === 0) {
+        finishExecution(false, "No matching applyable jobs found on LinkedIn.");
+        return;
+      }
+
+      activeBatchTaskIds.current = new Set(results.map((r: any) => r.taskId).filter(Boolean));
+      setIsPaused(false);
+
+      const stats = {
+        processed: results.length,
+        applied: 0,
+        skipped: response.skipped || 0,
+        failed: 0,
+      };
+
+      setResults(results, stats);
+      updateStatus(`🚀 Enqueued ${results.length} application tasks. Processing through queue...`, "info");
     } catch (err) {
       finishExecution(false, err instanceof Error ? err.message : "Auto-apply failed.");
     }
@@ -255,7 +330,7 @@ export const AutoApplyPage: React.FC = () => {
       updateStatus("⚠️ Please connect your Naukri account first.", "error");
       return;
     }
-    startExecution("naukri", "🚀 Auto-apply started — navigating Naukri job search...");
+    startExecution("naukri", "🚀 Auto-apply started — discovering jobs on Naukri...");
 
     try {
       const response = await conveyor.data.runNaukriAutoApply({
@@ -273,24 +348,63 @@ export const AutoApplyPage: React.FC = () => {
         pauseBeforeSubmit,
       });
 
-      if (response?.error) {
-        finishExecution(false, `⚠️ ${response.error}`);
-      } else {
-        const stats = {
-          processed: response.processed || 0,
-          applied: response.applied || 0,
-          skipped: response.skipped || 0,
-          failed: response.failed || 0,
-        };
-        finishExecution(
-          true,
-          `✅ Done! Applied: ${response.applied || 0} | Skipped: ${response.skipped || 0} | Failed: ${response.failed || 0}`,
-          stats,
-          response.results || []
-        );
+      if (response?.error || !response?.success) {
+        finishExecution(false, `⚠️ ${response?.error || "Naukri discovery failed"}`);
+        return;
       }
+
+      const results = response.results || [];
+      if (results.length === 0) {
+        finishExecution(false, "No matching applyable jobs found on Naukri.");
+        return;
+      }
+
+      activeBatchTaskIds.current = new Set(results.map((r: any) => r.taskId).filter(Boolean));
+      setIsPaused(false);
+
+      const stats = {
+        processed: results.length,
+        applied: 0,
+        skipped: response.skipped || 0,
+        failed: 0,
+      };
+
+      setResults(results, stats);
+      updateStatus(`🚀 Enqueued ${results.length} application tasks. Processing through queue...`, "info");
     } catch (err) {
       finishExecution(false, err instanceof Error ? err.message : "Naukri auto-apply failed.");
+    }
+  };
+
+  const handlePauseAutoApply = async () => {
+    try {
+      await conveyor.data.pauseTaskQueue();
+      setIsPaused(true);
+      updateStatus("⏸️ Queue paused by user. Click Resume to continue.", "info");
+    } catch (e) {
+      console.error("Error pausing queue:", e);
+    }
+  };
+
+  const handleResumeAutoApply = async () => {
+    try {
+      await conveyor.data.resumeTaskQueue();
+      setIsPaused(false);
+      updateStatus("▶️ Resumed auto-apply queue.", "info");
+    } catch (e) {
+      console.error("Error resuming queue:", e);
+    }
+  };
+
+  const handleStopAutoApply = async () => {
+    try {
+      await conveyor.data.stopTaskQueue();
+      activeBatchTaskIds.current.clear();
+      setIsPaused(false);
+      finishExecution(false, "⏹️ Auto-apply stopped by user");
+      updateStatus("⏹️ Auto-apply stopped and pending tasks cancelled.", "info");
+    } catch (e) {
+      console.error("Error stopping queue:", e);
     }
   };
 
@@ -458,31 +572,60 @@ export const AutoApplyPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Launch Button */}
-        <div className="pt-3 flex justify-end">
-          <Button
-            onClick={isLinkedin ? handleRunLinkedIn : handleRunNaukri}
-            disabled={isRunning || (isLinkedin ? !liIsConnected || liIsConnecting : !naukriIsConnected || naukriIsConnecting)}
-            size="lg"
-            className={cn(
-              "gap-2 text-xs font-semibold shadow-md text-white px-6 transition-all",
-              isLinkedin
-                ? liIsConnected
-                  ? "bg-blue-600 hover:bg-blue-500"
-                  : "bg-muted text-muted-foreground cursor-not-allowed"
-                : naukriIsConnected
-                  ? "bg-emerald-600 hover:bg-emerald-500"
-                  : "bg-muted text-muted-foreground cursor-not-allowed"
-            )}
-          >
-            {isRunning ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Running Batch Apply…</>
-            ) : isLinkedin ? (
-              liIsConnected ? <><Rocket className="h-4 w-4" /> Start LinkedIn Auto-Apply</> : <><Unplug className="h-4 w-4" /> Connect LinkedIn First</>
-            ) : (
-              naukriIsConnected ? <><Zap className="h-4 w-4 fill-current" /> Start Naukri Auto-Apply</> : <><Unplug className="h-4 w-4" /> Connect Naukri First</>
-            )}
-          </Button>
+        {/* Launch / Pause / Stop Controls */}
+        <div className="pt-3 flex items-center justify-end gap-2.5">
+          {isRunning ? (
+            <>
+              {isPaused ? (
+                <Button
+                  onClick={handleResumeAutoApply}
+                  size="lg"
+                  className="gap-2 text-xs font-semibold shadow-md bg-emerald-600 hover:bg-emerald-500 text-white px-5 transition-all cursor-pointer"
+                >
+                  <Play className="h-4 w-4 fill-current" /> Resume Auto-Apply
+                </Button>
+              ) : (
+                <Button
+                  onClick={handlePauseAutoApply}
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 text-xs font-semibold shadow-md border-amber-500/50 text-amber-400 hover:bg-amber-500/10 px-5 transition-all cursor-pointer"
+                >
+                  <Pause className="h-4 w-4 fill-current" /> Pause Auto-Apply
+                </Button>
+              )}
+              <Button
+                onClick={handleStopAutoApply}
+                size="lg"
+                variant="destructive"
+                className="gap-2 text-xs font-semibold shadow-md text-white px-5 transition-all cursor-pointer"
+              >
+                <Square className="h-3.5 w-3.5 fill-current" /> Stop & Cancel
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={isLinkedin ? handleRunLinkedIn : handleRunNaukri}
+              disabled={isLinkedin ? !liIsConnected || liIsConnecting : !naukriIsConnected || naukriIsConnecting}
+              size="lg"
+              className={cn(
+                "gap-2 text-xs font-semibold shadow-md text-white px-6 transition-all cursor-pointer",
+                isLinkedin
+                  ? liIsConnected
+                    ? "bg-blue-600 hover:bg-blue-500"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                  : naukriIsConnected
+                    ? "bg-emerald-600 hover:bg-emerald-500"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+              )}
+            >
+              {isLinkedin ? (
+                liIsConnected ? <><Rocket className="h-4 w-4" /> Start LinkedIn Auto-Apply</> : <><Unplug className="h-4 w-4" /> Connect LinkedIn First</>
+              ) : (
+                naukriIsConnected ? <><Zap className="h-4 w-4 fill-current" /> Start Naukri Auto-Apply</> : <><Unplug className="h-4 w-4" /> Connect Naukri First</>
+              )}
+            </Button>
+          )}
         </div>
 
         {/* Status Message */}

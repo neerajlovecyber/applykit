@@ -6,7 +6,13 @@
 
 import { handle } from "@/lib/main/shared";
 import * as dbQueries from "@/lib/db";
-import { enqueueTask } from "@/lib/engine/task-queue";
+import {
+  enqueueTask,
+  pauseTaskQueue,
+  resumeTaskQueue,
+  cancelTasks,
+  getQueueState,
+} from "@/lib/engine/task-queue";
 
 export function registerTaskIpc(): void {
   // ── Tasks ────────────────────────────────────────────────────────────────
@@ -23,6 +29,14 @@ export function registerTaskIpc(): void {
     ),
   );
   handle("tasks:get-stats", () => dbQueries.getTaskStats());
+  handle("tasks:pause", () => pauseTaskQueue());
+  handle("tasks:resume", () => resumeTaskQueue());
+  handle("tasks:stop", () => {
+    pauseTaskQueue();
+    return cancelTasks();
+  });
+  handle("tasks:cancel", (payload) => cancelTasks(payload?.kind));
+  handle("tasks:get-queue-state", () => getQueueState());
 
   // ── Automation Plans ─────────────────────────────────────────────────────
   handle("automation-plans:get", (profileId) => dbQueries.getAutomationPlans(profileId));

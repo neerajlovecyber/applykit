@@ -147,13 +147,29 @@ export function getActiveTaskForApplication(applicationId: string): TaskRecord |
     .get();
 }
 
+export function cancelPendingTasks(kind?: string): TaskRecord[] {
+  const db = getDrizzleDb();
+  const condition = kind
+    ? and(eq(tasks.status, "queued"), eq(tasks.kind, kind))
+    : eq(tasks.status, "queued");
+
+  const pending = db.select().from(tasks).where(condition).all();
+  if (pending.length > 0) {
+    db.update(tasks)
+      .set({ status: "failed", error: "Cancelled by user" })
+      .where(condition)
+      .run();
+  }
+  return pending;
+}
+
 export function getTaskStats(): { total: number; queued: number; running: number; completed: number; failed: number } {
   const allTasks = getTasks();
   return {
     total: allTasks.length,
     queued: allTasks.filter((t) => t.status === "queued").length,
     running: allTasks.filter((t) => t.status === "running").length,
-    completed: allTasks.filter((t) => t.status === "completed").length,
+    completed: allTasks.filter((t) => t.status === "completed" || t.status === "succeeded").length,
     failed: allTasks.filter((t) => t.status === "failed").length,
   };
 }

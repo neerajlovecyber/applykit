@@ -31,7 +31,9 @@ export class FormFiller {
     }
 
     // 1. Process Text Inputs & Textareas
-    const textInputs = await container.$$('input[type="text"], input[type="tel"], input[type="number"], input:not([type]), textarea');
+    const textInputs = await container.$$(
+      'input[type="text"], input[type="tel"], input[type="number"], input[data-test-single-line-text-input], input:not([type]), textarea'
+    );
     for (const input of textInputs) {
       const res = await this.fillTextInput(page, input);
       if (res) results.push(res);
