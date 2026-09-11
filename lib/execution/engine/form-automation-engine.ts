@@ -6,7 +6,9 @@
  * - Form field detection & filling via FormFiller heuristics
  * - Human-in-the-loop pause logic before submission
  * - Automatic audit screenshot capture
- * - Persistence to applications & history tables with status tracking
+ *
+ * This engine is a pure automation module — it does NOT write to the database.
+ * All persistence is the responsibility of the caller (task-handlers in the main process).
  */
 
 import type { Page } from "playwright";
@@ -19,8 +21,6 @@ import { FormFiller } from "../form-filler";
 import { humanClick } from "../human-cursor";
 import {
   getProfileById,
-  updateApplicationStatus,
-  updateApplicationFillDetails,
 } from "@/lib/db";
 import { actionDelay, preSubmitDelay, randomDelay } from "@/lib/utils/delay";
 import {
@@ -85,7 +85,6 @@ export class FormAutomationEngine {
     const profile = executeOptions.profile || getProfileById(profileId);
     if (!profile) {
       const errMsg = `Profile not found for ID: ${profileId}`;
-      updateApplicationStatus(applicationId, "failed", errMsg);
       return {
         success: false,
         status: "failed",
@@ -106,7 +105,6 @@ export class FormAutomationEngine {
 
       if (openResult.alreadyApplied) {
         console.log(`[FormEngine] [${strategy.platform}] Job already applied: ${jobUrl}`);
-        updateApplicationStatus(applicationId, "submitted", "Already applied previously on platform");
         return {
           success: true,
           status: "submitted",
@@ -118,12 +116,6 @@ export class FormAutomationEngine {
       if (openResult.immediatelyCompleted) {
         console.log(`[FormEngine] [${strategy.platform}] 1-click apply completed instantly: ${jobUrl}`);
         screenshotPath = await this.captureScreenshot(page, applicationId);
-        updateApplicationStatus(applicationId, "submitted", "Application submitted via 1-click apply");
-        updateApplicationFillDetails(applicationId, {
-          fields_filled: 0,
-          fields_total: 0,
-          screenshot_path: screenshotPath,
-        });
         return {
           success: true,
           status: "submitted",
@@ -136,7 +128,6 @@ export class FormAutomationEngine {
       if (openResult.requiresExternalApply) {
         console.log(`[FormEngine] [${strategy.platform}] External application required for: ${jobUrl}`);
         const errMsg = "External company site application required";
-        updateApplicationStatus(applicationId, "failed", errMsg);
         return {
           success: false,
           status: "failed",
@@ -149,7 +140,6 @@ export class FormAutomationEngine {
       if (!openResult.success) {
         const errMsg = openResult.errorMessage || `Failed to open apply modal on ${strategy.platform}`;
         console.warn(`[FormEngine] [${strategy.platform}] ${errMsg}`);
-        updateApplicationStatus(applicationId, "failed", errMsg);
         return {
           success: false,
           status: "failed",
@@ -194,12 +184,6 @@ export class FormAutomationEngine {
             if (customResult.completed) {
               console.log(`[FormEngine] [${strategy.platform}] Custom step filler marked application complete.`);
               screenshotPath = await this.captureScreenshot(page, applicationId);
-              updateApplicationStatus(applicationId, "submitted");
-              updateApplicationFillDetails(applicationId, {
-                fields_filled: totalFilled,
-                fields_total: totalFields,
-                screenshot_path: screenshotPath,
-              });
               return {
                 success: true,
                 status: "submitted",
@@ -235,17 +219,6 @@ export class FormAutomationEngine {
 
           if (pauseBeforeSubmit) {
             console.log(`[FormEngine] [${strategy.platform}] Ready for human review (paused before submit).`);
-            updateApplicationStatus(
-              applicationId,
-              "pending_review",
-              "Awaiting human review before submission"
-            );
-            updateApplicationFillDetails(applicationId, {
-              fields_filled: totalFilled,
-              fields_total: totalFields,
-              screenshot_path: screenshotPath,
-            });
-
             return {
               success: true,
               status: "pending_review",
@@ -263,13 +236,6 @@ export class FormAutomationEngine {
           if (strategy.dismissPostApplyModal) {
             await strategy.dismissPostApplyModal(page);
           }
-
-          updateApplicationStatus(applicationId, "submitted", "Application submitted successfully");
-          updateApplicationFillDetails(applicationId, {
-            fields_filled: totalFilled,
-            fields_total: totalFields,
-            screenshot_path: screenshotPath,
-          });
 
           return {
             success: true,
@@ -293,11 +259,6 @@ export class FormAutomationEngine {
 
       // If loop exited without submit or pending_review
       screenshotPath = await this.captureScreenshot(page, applicationId);
-      updateApplicationFillDetails(applicationId, {
-        fields_filled: totalFilled,
-        fields_total: totalFields,
-        screenshot_path: screenshotPath,
-      });
 
       return {
         success: totalFilled > 0,
@@ -316,13 +277,6 @@ export class FormAutomationEngine {
       } catch {
         // Ignore screenshot error
       }
-
-      updateApplicationStatus(applicationId, "failed", errorMsg);
-      updateApplicationFillDetails(applicationId, {
-        fields_filled: totalFilled,
-        fields_total: totalFields,
-        screenshot_path: screenshotPath,
-      });
 
       return {
         success: false,

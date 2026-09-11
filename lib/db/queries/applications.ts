@@ -81,6 +81,10 @@ export function updateApplicationStatus(id: string, status: string, reason?: str
   const app = getApplicationById(id);
   if (!app) return;
 
+  // No-op if status hasn't changed — prevents duplicate history entries
+  // when both the worker process and main process call this for the same transition.
+  if (app.status === status) return;
+
   const history = JSON.parse(app.state_history || "[]");
   history.push({ from: app.status, to: status, at: new Date().toISOString(), reason: reason ?? null });
 
