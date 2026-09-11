@@ -13,6 +13,7 @@ import type { Profile } from "@/lib/db";
 import { findQAAnswer, upsertQABankEntry } from "@/lib/db";
 import { answerQuestion } from "@/lib/providers/provider-registry";
 import { keystrokeDelay, fieldDelay, randomDelay } from "@/lib/utils/delay";
+import { humanClick } from "./human-cursor";
 import type { FormFieldResult, FormFillSummary } from "./types";
 
 export class FormFiller {
@@ -223,7 +224,7 @@ export class FormFiller {
 
           const suggestion = await page.$(suggestionSelector);
           if (suggestion && (await suggestion.isVisible())) {
-            await suggestion.click();
+            await humanClick(page, suggestion);
             selectedOption = true;
           }
         } catch {

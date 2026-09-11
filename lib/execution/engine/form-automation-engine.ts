@@ -16,6 +16,7 @@ import fs from "fs";
 import type { ApplicationExecuteOptions, ApplicationExecuteResult } from "../types";
 import type { PlatformApplyStrategy, FormEngineOptions } from "./types";
 import { FormFiller } from "../form-filler";
+import { humanClick } from "../human-cursor";
 import {
   getProfileById,
   updateApplicationStatus,
@@ -234,7 +235,7 @@ export class FormAutomationEngine {
 
           // Human-in-the-loop disabled: submit application automatically
           console.log(`[FormEngine] [${strategy.platform}] Clicking submit button...`);
-          await submitBtn.click();
+          await humanClick(page, submitBtn);
           if (!skipDelays) await actionDelay();
 
           if (strategy.dismissPostApplyModal) {
@@ -260,7 +261,7 @@ export class FormAutomationEngine {
         // 4. Check for Next / Continue Button
         const nextBtn = await strategy.findNextButton(page);
         if (nextBtn) {
-          await nextBtn.click();
+          await humanClick(page, nextBtn);
           if (!skipDelays) await randomDelay(1200, 2500);
         } else {
           console.log(`[FormEngine] [${strategy.platform}] No next or submit button found on step ${step + 1}.`);

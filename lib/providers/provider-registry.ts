@@ -131,7 +131,6 @@ export function getActiveProviderConfig(): LLMProviderConfig {
 export function listProviders(): LLMProviderConfig[] {
   const result: LLMProviderConfig[] = [];
   for (const [id] of providerConfigs.entries()) {
-    if (id === "ollama") continue; // Exclude Ollama per user request
     const config = getProviderConfig(id);
     if (!config) continue;
 
@@ -321,29 +320,15 @@ export async function extractPdfText(input: string): Promise<string> {
   }
 
   try {
-    // pdf-parse v2 syntax: const { PDFParse } = require('pdf-parse');
-    const { PDFParse } = await import("pdf-parse");
-    if (PDFParse) {
-      const parser = new PDFParse({ data: buffer });
-      const result = await parser.getText();
-      if (parser.destroy) await parser.destroy();
-      if (result && result.text && result.text.trim()) {
-        console.log(`[ProviderRegistry] PDFParse v2 extracted ${result.text.length} chars from PDF!`);
-        return result.text;
-      }
+    const { extractText } = await import("unpdf");
+    const result = await extractText(new Uint8Array(buffer));
+    const extractedText = Array.isArray(result.text) ? result.text.join("\n") : (result.text || "");
+    if (extractedText && extractedText.trim()) {
+      console.log(`[ProviderRegistry] unpdf extracted ${extractedText.length} chars from PDF!`);
+      return extractedText;
     }
   } catch (err) {
-    console.warn("[ProviderRegistry] pdf-parse v2 failed, checking v1 fallback:", err);
-    try {
-      // @ts-ignore
-      const pdfParseV1 = (await import("pdf-parse")).default || require("pdf-parse");
-      if (typeof pdfParseV1 === "function") {
-        const res = await pdfParseV1(buffer);
-        if (res && res.text) return res.text;
-      }
-    } catch (e2) {
-      console.warn("[ProviderRegistry] pdf-parse v1 failed:", e2);
-    }
+    console.warn("[ProviderRegistry] unpdf extraction failed, trying stream fallback:", err);
   }
 
   // Pure JS PDF Text Stream Extractor (zero-dependency stream reader fallback)

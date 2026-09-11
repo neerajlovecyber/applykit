@@ -7,6 +7,7 @@
 import type { Page } from "playwright";
 import type { PlatformApplyStrategy, ModalOpenResult } from "../types";
 import { actionDelay, randomDelay } from "@/lib/utils/delay";
+import { humanClick } from "../../human-cursor";
 
 export class LinkedInApplyStrategy implements PlatformApplyStrategy {
   readonly platform = "linkedin";
@@ -37,7 +38,7 @@ export class LinkedInApplyStrategy implements PlatformApplyStrategy {
       };
     }
 
-    await applyBtn.click();
+    await humanClick(page, applyBtn);
     await actionDelay();
 
     const isModalPresent = await this.isModalOpen(page);
@@ -76,12 +77,12 @@ export class LinkedInApplyStrategy implements PlatformApplyStrategy {
         'button[aria-label*="Dismiss"], button:has-text("Done"), button:has-text("Dismiss"), button:has-text("Got it")'
       );
       if (doneBtn) {
-        await doneBtn.click();
+        await humanClick(page, doneBtn);
         await actionDelay();
       } else {
         const closeBtn = await postApplyModal.$('button[aria-label="Dismiss"], button.artdeco-modal__dismiss');
         if (closeBtn) {
-          await closeBtn.click();
+          await humanClick(page, closeBtn);
         } else {
           await page.keyboard.press("Escape");
         }

@@ -36,7 +36,6 @@ export default defineConfig({
           /^@ai-sdk\/.*/,
           "ai",
           "@openrouter/ai-sdk-provider",
-          "ollama-ai-provider",
         ],
       },
     },
