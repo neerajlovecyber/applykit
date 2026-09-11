@@ -143,18 +143,44 @@ export class AutomationWorkerManager {
       const { url } = (payload as any) || {};
       return { launched: true, url, fallback: true } as R;
     }
+    if (type === "BRING_TO_FRONT") {
+      const { bringBrowserToFront } = require("./browser-pool");
+      const success = await bringBrowserToFront();
+      return { success, fallback: true } as R;
+    }
+    if (type === "GET_BROWSER_STATUS") {
+      const { isBrowserOpen } = require("./browser-pool");
+      return { open: isBrowserOpen(), fallback: true } as R;
+    }
     if (type === "EXECUTE_TASK") {
-      const { taskKind, executeOptions } = (payload as any) || {};
+      const { taskKind, executeOptions, options: searchOptions } = (payload as any) || {};
       if (taskKind === "apply" && executeOptions) {
-        const { createStealthPage } = require("./browser-pool");
+        const { createStealthPage, releasePage } = require("./browser-pool");
         const { FormAutomationEngine } = require("./engine");
         const formEngine = new FormAutomationEngine();
-        const page = await createStealthPage({ headless: false });
+        const isHeadless = executeOptions.headless ?? false;
+        const page = await createStealthPage({ headless: isHeadless });
         try {
           const result = await formEngine.execute(page, executeOptions.platform, executeOptions);
           return result as R;
         } finally {
-          await page.close().catch(() => {});
+          await releasePage(page);
+        }
+      }
+      if (taskKind === "discovery" && searchOptions) {
+        const { createStealthPage, releasePage } = require("./browser-pool");
+        const { getDiscoveryAdapter } = require("@/lib/jobs/adapters");
+        const isHeadless = searchOptions.headless ?? false;
+        const page = await createStealthPage({ headless: isHeadless });
+        try {
+          const adapter = getDiscoveryAdapter(searchOptions.source);
+          if (!adapter) {
+            throw new Error(`No discovery adapter found for platform: ${searchOptions.source}`);
+          }
+          const jobs = await adapter.scrape(page, searchOptions);
+          return { jobs } as R;
+        } finally {
+          await releasePage(page);
         }
       }
     }
@@ -190,10 +216,45 @@ export class AutomationWorkerManager {
   }
 
   /**
+   * Execute discovery job scraping via isolated worker.
+   */
+  public async executeDiscovery(options: any): Promise<any[]> {
+    const res = await this.sendCommand<any, { jobs?: any[] }>("EXECUTE_TASK", {
+      taskKind: "discovery",
+      options,
+    }, 180000);
+    return res?.jobs ?? [];
+  }
+
+  /**
    * Close the browser pool in the worker.
    */
   public async closePool(): Promise<void> {
     return this.sendCommand("CLOSE_POOL");
+  }
+
+  /**
+   * Bring the automation browser window and active page to the front.
+   */
+  public async bringBrowserToFront(): Promise<boolean> {
+    try {
+      const res = await this.sendCommand<undefined, { success: boolean }>("BRING_TO_FRONT");
+      return res?.success ?? false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if automation browser is currently open.
+   */
+  public async getBrowserStatus(): Promise<{ open: boolean }> {
+    try {
+      const res = await this.sendCommand<undefined, { open: boolean }>("GET_BROWSER_STATUS");
+      return res ?? { open: false };
+    } catch {
+      return { open: false };
+    }
   }
 
   /**

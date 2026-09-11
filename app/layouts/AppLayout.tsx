@@ -45,6 +45,7 @@ import { RoleOnboardingWizard } from "@/app/components/RoleOnboardingWizard";
 import { ScrollArea } from "@/app/components/ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu";
 import { RunActionButton } from "@/app/components/ui/run-action-button";
+import { BrowserModeToggle } from "@/app/components/window/BrowserModeToggle";
 import { cn } from "@/lib/utils";
 
 const mainNavItems = [
@@ -268,8 +269,9 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             </span>
           </div>
 
-          {/* Global Run / Stop Dynamic Engine Control */}
-          <div className="flex items-center gap-3">
+          {/* Global Run / Stop & Browser Mode Controls */}
+          <div className="flex items-center gap-2.5">
+            <BrowserModeToggle />
             <RunActionButton
               isRunning={isRunning || execution.isRunning}
               onRun={startQueue}

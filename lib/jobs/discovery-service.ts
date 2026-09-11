@@ -75,17 +75,25 @@ export class JobDiscoveryService {
     let rawJobs: RawJobPosting[] = [];
     let errorMsg: string | undefined;
 
-    let page: any = null;
     try {
-      page = await this.pageAcquirer(true);
-      rawJobs = await adapter.scrape(page, options);
+      const isElectron = typeof (process.versions as any).electron !== "undefined" || (process as any).type === "browser";
+      if (isElectron && this.pageAcquirer === acquirePage) {
+        const { workerManager } = await import("@/lib/execution/worker-manager");
+        rawJobs = await workerManager.executeDiscovery(options);
+      } else {
+        let page: any = null;
+        try {
+          page = await this.pageAcquirer(options.headless ?? false);
+          rawJobs = await adapter.scrape(page, options);
+        } finally {
+          if (page) {
+            await this.pageReleaser(page).catch(() => {});
+          }
+        }
+      }
     } catch (err) {
       errorMsg = err instanceof Error ? err.message : String(err);
       console.error(`[JobDiscoveryService] Scrape failed for ${source}:`, errorMsg);
-    } finally {
-      if (page) {
-        await this.pageReleaser(page).catch(() => {});
-      }
     }
 
     if (errorMsg) {

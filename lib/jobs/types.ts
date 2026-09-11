@@ -31,6 +31,7 @@ export interface SearchOptions {
   jobAgeDays?: 1 | 3 | 7 | 15 | 30 | number;
   workMode?: "remote" | "hybrid" | "onSite" | "any" | string;
   filters?: Record<string, unknown>;
+  headless?: boolean;
 }
 
 export interface SearchResultPayload {

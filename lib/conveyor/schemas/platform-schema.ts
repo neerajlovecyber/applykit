@@ -87,4 +87,12 @@ export const platformIpcSchema = {
     args: z.tuple([z.record(z.string(), z.any())]),
     return: z.any(),
   },
+  "browser:bring-to-front": {
+    args: z.tuple([]),
+    return: z.object({ success: z.boolean(), message: z.string().optional() }).or(z.any()),
+  },
+  "browser:get-status": {
+    args: z.tuple([]),
+    return: z.object({ open: z.boolean() }).or(z.any()),
+  },
 } as const;

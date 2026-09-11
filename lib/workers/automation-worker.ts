@@ -6,16 +6,23 @@
  * completely isolated from Electron's Main Process and UI event loop.
  */
 
-import { createStealthPage, closeBrowserPool } from "@/lib/execution/browser-pool";
+import {
+  createStealthPage,
+  releasePage,
+  closeBrowserPool,
+  bringBrowserToFront,
+  isBrowserOpen,
+} from "@/lib/execution/browser-pool";
 
 import { FormAutomationEngine } from "@/lib/execution/engine";
 import type { ApplicationExecuteOptions } from "@/lib/execution/types";
+import { getDiscoveryAdapter } from "@/lib/jobs/adapters";
 
 const formEngine = new FormAutomationEngine();
 
 export interface WorkerMessage<T = unknown> {
   id: string;
-  type: "PING" | "EXECUTE_TASK" | "CONNECT_PLATFORM" | "LAUNCH_BROWSER" | "CLOSE_POOL";
+  type: "PING" | "EXECUTE_TASK" | "CONNECT_PLATFORM" | "LAUNCH_BROWSER" | "CLOSE_POOL" | "BRING_TO_FRONT" | "GET_BROWSER_STATUS";
   payload?: T;
 }
 
@@ -184,7 +191,7 @@ async function handleMessage(msg: WorkerMessage): Promise<void> {
             data: { stage: "launching_browser", message: `Launching browser for ${executeOptions.platform}...` },
           });
 
-          const page = await createStealthPage({ headless: false });
+          const page = await createStealthPage({ headless: executeOptions.headless ?? false });
           try {
             const result = await formEngine.execute(page, executeOptions.platform, executeOptions);
             sendResponse({
@@ -193,7 +200,33 @@ async function handleMessage(msg: WorkerMessage): Promise<void> {
               data: result,
             });
           } finally {
-            await page.close().catch(() => {});
+            await releasePage(page);
+          }
+        } else if (taskKind === "discovery") {
+          const { options: searchOptions } = (payload as any) || {};
+          const platform = (searchOptions?.source || "linkedin").toLowerCase();
+          const isHeadless = searchOptions?.headless ?? false;
+
+          sendResponse({
+            id,
+            type: "PROGRESS",
+            data: { stage: "discovery_start", message: `Scraping ${platform} for jobs...` },
+          });
+
+          const page = await createStealthPage({ headless: isHeadless });
+          try {
+            const adapter = getDiscoveryAdapter(platform);
+            if (!adapter) {
+              throw new Error(`No discovery adapter found for platform: ${platform}`);
+            }
+            const jobs = await adapter.scrape(page, searchOptions);
+            sendResponse({
+              id,
+              type: "SUCCESS",
+              data: { jobs },
+            });
+          } finally {
+            await releasePage(page);
           }
         } else {
           sendResponse({
@@ -205,6 +238,18 @@ async function handleMessage(msg: WorkerMessage): Promise<void> {
       } catch (err) {
         sendResponse({ id, type: "ERROR", error: (err as Error).message });
       }
+      break;
+    }
+
+    case "BRING_TO_FRONT": {
+      const success = await bringBrowserToFront();
+      sendResponse({ id, type: "SUCCESS", data: { success } });
+      break;
+    }
+
+    case "GET_BROWSER_STATUS": {
+      const open = isBrowserOpen();
+      sendResponse({ id, type: "SUCCESS", data: { open } });
       break;
     }
 

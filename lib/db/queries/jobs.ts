@@ -7,6 +7,7 @@ export function getJobPostings(filters?: {
   state?: string;
   source?: string;
   minScore?: number;
+  hasApplicationUrl?: boolean;
   limit?: number;
   offset?: number;
 }): JobPostingRecord[] {
@@ -21,6 +22,9 @@ export function getJobPostings(filters?: {
   }
   if (filters?.minScore !== undefined) {
     conditions.push(gte(jobPostings.match_score, filters.minScore));
+  }
+  if (filters?.hasApplicationUrl) {
+    conditions.push(sql`${jobPostings.application_url} IS NOT NULL AND ${jobPostings.application_url} != ''`);
   }
 
   let query = db.select().from(jobPostings);
@@ -81,6 +85,7 @@ export function upsertJobPosting(data: Partial<NewJobPostingRecord> & { source: 
   }
 
   if (existing) {
+    const finalAppUrl = data.application_url || existing.application_url || null;
     db.update(jobPostings)
       .set({
         title: data.title,
@@ -91,7 +96,7 @@ export function upsertJobPosting(data: Partial<NewJobPostingRecord> & { source: 
         description: data.description ?? null,
         requirements: data.requirements ?? null,
         salary_info: data.salary_info ?? null,
-        application_url: data.application_url ?? null,
+        application_url: finalAppUrl,
         company_url: data.company_url ?? null,
         raw_data: data.raw_data ?? null,
         content_hash: data.content_hash ?? null,

@@ -97,21 +97,71 @@ export async function getSharedContext(headless = false): Promise<BrowserContext
 }
 
 /**
- * Open a new page in the stealth browser context.
- * Automatically recovers if the browser was previously closed or invalid.
+ * Open or retrieve an active page in the stealth browser context.
+ * Reuses existing open page if available to avoid closing and re-launching the browser window repeatedly.
  */
-export async function createStealthPage(options?: { headless?: boolean }): Promise<Page> {
+export async function createStealthPage(options?: { headless?: boolean; reuseExisting?: boolean }): Promise<Page> {
   const isHeadless = options?.headless ?? false;
+  const reuseExisting = options?.reuseExisting !== false;
   try {
     const ctx = await getSharedContext(isHeadless);
-    return await ctx.newPage();
+    let page: Page | undefined;
+
+    if (reuseExisting) {
+      const livePages = ctx.pages().filter((p) => !p.isClosed());
+      if (livePages.length > 0) {
+        page = livePages[livePages.length - 1];
+      }
+    }
+
+    if (!page) {
+      page = await ctx.newPage();
+    }
+
+    if (!isHeadless) {
+      await page.bringToFront().catch(() => {});
+      await page.evaluate(() => window.focus()).catch(() => {});
+    }
+    return page;
   } catch (err) {
     console.warn("[BrowserPool] Context closed or invalid. Re-launching browser...", err);
     sharedContext = null;
     currentHeadlessMode = null;
     const ctx = await getSharedContext(isHeadless);
-    return await ctx.newPage();
+    const livePages = ctx.pages().filter((p) => !p.isClosed());
+    const page = livePages.length > 0 ? livePages[0] : await ctx.newPage();
+    if (!isHeadless) {
+      await page.bringToFront().catch(() => {});
+      await page.evaluate(() => window.focus()).catch(() => {});
+    }
+    return page;
   }
+}
+
+/**
+ * Bring the active automation browser window and active page to the front.
+ */
+export async function bringBrowserToFront(): Promise<boolean> {
+  if (!sharedContext) return false;
+  try {
+    const pages = sharedContext.pages();
+    if (pages.length > 0) {
+      const activePage = pages[pages.length - 1];
+      await activePage.bringToFront();
+      await activePage.evaluate(() => window.focus()).catch(() => {});
+      return true;
+    }
+  } catch (err) {
+    console.warn("[BrowserPool] Could not bring browser to front:", err);
+  }
+  return false;
+}
+
+/**
+ * Check if the browser context is open and connected.
+ */
+export function isBrowserOpen(): boolean {
+  return sharedContext !== null && (sharedContext.browser()?.isConnected() ?? false);
 }
 
 /** @deprecated Use createStealthPage() — kept for backwards compatibility */
@@ -132,11 +182,19 @@ export async function acquirePage(headless = true): Promise<Page> {
 }
 
 /**
- * Safely release a page back or close it when execution is finished.
+ * Safely release a page back without closing the entire browser window between batch tasks.
+ * If there are multiple tabs, closes extra tabs, but keeps the primary tab alive.
  */
 export async function releasePage(page: Page): Promise<void> {
-  if (page && !page.isClosed()) {
-    await page.close().catch(() => {});
+  if (!page || page.isClosed()) return;
+  try {
+    const allPages = sharedContext?.pages().filter((p) => !p.isClosed()) ?? [];
+    // Only close this page if there's at least one other page kept alive
+    if (allPages.length > 1) {
+      await page.close().catch(() => {});
+    }
+  } catch {
+    // Ignore release errors
   }
 }
 

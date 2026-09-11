@@ -31,6 +31,7 @@ export interface ApplicationExecuteOptions {
   resumePath?: string;
   coverLetterText?: string;
   pauseBeforeSubmit?: boolean;
+  headless?: boolean;
 }
 
 export interface ApplicationExecuteResult {

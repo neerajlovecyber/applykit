@@ -9,7 +9,7 @@ import { registerTaskHandler } from "./task-queue";
 import { workerManager } from "@/lib/execution/worker-manager";
 import { discoveryService } from "@/lib/jobs/discovery-service";
 import { generateTailoredResume } from "@/lib/documents/tailor";
-import { getApplicationById, getJobPostingById } from "@/lib/db";
+import { getApplicationById, getJobPostingById, getSetting } from "@/lib/db";
 import type { ApplicationExecuteOptions } from "@/lib/execution/types";
 
 /**
@@ -38,12 +38,16 @@ export function registerDefaultTaskHandlers(): void {
       return { error: `Job ${job.id} (${job.title} @ ${job.company}) has no application URL. Skipping.` };
     }
 
+    const browserMode = getSetting("browser_mode") ?? "visible";
+    const isHeadless = payload.headless !== undefined ? Boolean(payload.headless) : (browserMode === "background");
+
     const executeOptions: ApplicationExecuteOptions = {
       applicationId: app.id,
       jobUrl,
       platform: job.source || "linkedin",
       profileId: app.profile_id,
       pauseBeforeSubmit: payload.pauseBeforeSubmit !== undefined ? Boolean(payload.pauseBeforeSubmit) : true,
+      headless: isHeadless,
     };
 
     console.log(`[TaskHandlers] Delegating application task ${app.id} on ${job.source} to Worker Supervisor...`);

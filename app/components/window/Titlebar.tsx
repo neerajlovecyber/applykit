@@ -37,7 +37,7 @@ const TitlebarControls = () => {
 
   return (
     <TooltipProvider delay={300}>
-      <div className="window-titlebar-controls flex items-center gap-1.5 px-3 py-1.5">
+      <div className="window-titlebar-controls flex items-center gap-1.5 px-3 py-1.5 ml-auto">
         {wcontext?.minimizable && (
           <TitlebarIconButton label="Minimize" icon={<Minus className="size-3.5" />} action="minimize" variant="minimize" />
         )}

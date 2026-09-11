@@ -103,6 +103,9 @@ export function registerPlatformHandlers(): void {
 
     console.log(`[NaukriAutoApply] Batch auto-apply requested: "${keywords}" in "${location || 'all-India'}"...`);
 
+    const browserMode = dbQueries.getSetting("browser_mode") ?? "visible";
+    const isHeadless = browserMode === "background";
+
     try {
       // 1. Discover or fetch jobs matching search parameters
       const discovery = new JobDiscoveryService();
@@ -112,16 +115,33 @@ export function registerPlatformHandlers(): void {
         location: location || "",
         maxPages: Math.ceil((maxJobs || 5) / 20),
         filters,
+        headless: isHeadless,
       });
 
       const candidateJobs = dbQueries.getJobPostings({
         source: "naukri",
+        hasApplicationUrl: true,
         limit: maxJobs || 5,
       });
+
+      if (candidateJobs.length === 0) {
+        return {
+          success: false,
+          error: `No applyable jobs found for "${keywords}". Discovered 0 new jobs, and no stored jobs with valid application URLs exist.`,
+          enqueued: 0,
+          results: [],
+        };
+      }
+
       const results: any[] = [];
       let enqueued = 0;
 
       for (const storedJob of candidateJobs) {
+        if (!storedJob.application_url) {
+          console.warn(`[NaukriAutoApply] Skipping stored job ${storedJob.id} - missing application URL`);
+          continue;
+        }
+
         // Check if application already exists
         let app = dbQueries.getApplicationByJobId(storedJob.id);
         if (!app) {
@@ -156,6 +176,7 @@ export function registerPlatformHandlers(): void {
           payload: {
             applicationId: app.id,
             pauseBeforeSubmit: pauseBeforeSubmit !== undefined ? pauseBeforeSubmit : true,
+            headless: isHeadless,
           },
         });
 
@@ -224,6 +245,9 @@ export function registerPlatformHandlers(): void {
 
     console.log(`[LinkedInAutoApply] Batch auto-apply requested: "${keywords}" in "${location}"...`);
 
+    const browserMode = dbQueries.getSetting("browser_mode") ?? "visible";
+    const isHeadless = browserMode === "background";
+
     try {
       // 1. Discover or fetch jobs matching search parameters
       const discovery = new JobDiscoveryService();
@@ -233,16 +257,33 @@ export function registerPlatformHandlers(): void {
         location: location || "",
         maxPages: Math.ceil((maxJobs || 5) / 10),
         filters,
+        headless: isHeadless,
       });
 
       const candidateJobs = dbQueries.getJobPostings({
         source: "linkedin",
+        hasApplicationUrl: true,
         limit: maxJobs || 5,
       });
+
+      if (candidateJobs.length === 0) {
+        return {
+          success: false,
+          error: `No applyable jobs found for "${keywords}". Discovered 0 new jobs, and no stored jobs with valid application URLs exist.`,
+          enqueued: 0,
+          results: [],
+        };
+      }
+
       const results: any[] = [];
       let enqueued = 0;
 
       for (const storedJob of candidateJobs) {
+        if (!storedJob.application_url) {
+          console.warn(`[LinkedInAutoApply] Skipping stored job ${storedJob.id} - missing application URL`);
+          continue;
+        }
+
         let app = dbQueries.getApplicationByJobId(storedJob.id);
         if (!app) {
           app = dbQueries.createApplication({
@@ -275,6 +316,7 @@ export function registerPlatformHandlers(): void {
           payload: {
             applicationId: app.id,
             pauseBeforeSubmit: pauseBeforeSubmit !== undefined ? pauseBeforeSubmit : true,
+            headless: isHeadless,
           },
         });
 
@@ -303,5 +345,14 @@ export function registerPlatformHandlers(): void {
       console.error("[LinkedInAutoApply] Error enqueuing batch apply:", err);
       return { error: err instanceof Error ? err.message : String(err) };
     }
+  });
+
+  handle("browser:bring-to-front", async () => {
+    const success = await workerManager.bringBrowserToFront();
+    return { success, message: success ? "Browser brought to front" : "No active browser session" };
+  });
+
+  handle("browser:get-status", async () => {
+    return await workerManager.getBrowserStatus();
   });
 }

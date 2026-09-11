@@ -29,10 +29,10 @@ function resolveMigrationsFolder(): string {
 /**
  * Executes Drizzle ORM schema migrations on the given Drizzle instance.
  */
-let _migrationsDone = false;
+const _migratedClients = new WeakSet<any>();
 
 export function runMigrations(drizzleClient: any): void {
-  if (_migrationsDone) return;
+  if (!drizzleClient || _migratedClients.has(drizzleClient)) return;
 
   const migrationsFolder = resolveMigrationsFolder();
   if (!fs.existsSync(migrationsFolder)) return;
@@ -45,7 +45,7 @@ export function runMigrations(drizzleClient: any): void {
       const { migrate } = require("drizzle-orm/better-sqlite3/migrator");
       migrate(drizzleClient, { migrationsFolder });
     }
-    _migrationsDone = true;
+    _migratedClients.add(drizzleClient);
   } catch (err: any) {
     const msg: string = err?.message || String(err);
     // Suppress benign "table/index already exists" re-run notices from Drizzle
@@ -55,8 +55,36 @@ export function runMigrations(drizzleClient: any): void {
     if (!isBenign) {
       console.warn("[Drizzle Migrator] Notice:", msg);
     }
-    // Still mark as done to prevent retry loops
-    _migrationsDone = true;
+    _migratedClients.add(drizzleClient);
+  }
+}
+
+let _repairDone = false;
+
+export function repairMissingJobUrls(sqlite: any): void {
+  if (_repairDone || !sqlite) return;
+  try {
+    const isBun = typeof (process.versions as any).bun !== "undefined";
+    const updateLinkedin = `
+      UPDATE job_postings
+      SET application_url = 'https://www.linkedin.com/jobs/view/' || source_id || '/'
+      WHERE source = 'linkedin' AND (application_url IS NULL OR application_url = '') AND source_id GLOB '[0-9]*';
+    `;
+    const updateNaukri = `
+      UPDATE job_postings
+      SET application_url = 'https://www.naukri.com/job-listings-' || source_id
+      WHERE source = 'naukri' AND (application_url IS NULL OR application_url = '') AND source_id GLOB '[0-9]*';
+    `;
+    if (isBun && typeof sqlite.run === "function") {
+      sqlite.run(updateLinkedin);
+      sqlite.run(updateNaukri);
+    } else if (typeof sqlite.exec === "function") {
+      sqlite.exec(updateLinkedin);
+      sqlite.exec(updateNaukri);
+    }
+    _repairDone = true;
+  } catch {
+    // Suppress benign notices if table does not exist yet
   }
 }
 
@@ -77,6 +105,7 @@ export function getDrizzleDb(): any {
   }
 
   runMigrations(drizzleInstance);
+  repairMissingJobUrls(sqlite);
   return drizzleInstance;
 }
 

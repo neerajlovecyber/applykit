@@ -139,6 +139,10 @@ export class DataApi extends ConveyorApi {
   disconnectLinkedIn = () => this.invoke("linkedin:disconnect");
   runLinkedInAutoApply = (options: any) => this.invoke("linkedin:auto-apply", options);
 
+  // ── Browser Focus & Status ──────────────────────────────────────────────
+  bringBrowserToFront = () => this.invoke("browser:bring-to-front");
+  getBrowserStatus = () => this.invoke("browser:get-status");
+
   // ── Settings ─────────────────────────────────────────────────────────────
   getAllSettings = () => this.invoke("settings:get-all");
   getSetting = async (key: string): Promise<string | undefined> => {
