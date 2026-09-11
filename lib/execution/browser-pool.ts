@@ -104,8 +104,18 @@ export async function getSharedContext(headless = false): Promise<BrowserContext
         path: "/",
       },
     ]);
+
+    await sharedContext.addInitScript(() => {
+      try {
+        Object.defineProperty(navigator, "language", { get: () => "en-US" });
+        Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
+        if (document.location.hostname.includes("linkedin.com")) {
+          document.cookie = "lang=v=2&lang=en-us; domain=.linkedin.com; path=/";
+        }
+      } catch {}
+    });
   } catch (err) {
-    console.warn("[BrowserPool] Could not seed English language cookie:", err);
+    console.warn("[BrowserPool] Could not seed English language cookie / init script:", err);
   }
 
   currentHeadlessMode = headless;

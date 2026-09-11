@@ -147,6 +147,15 @@ export class LinkedInDiscoveryAdapter implements JobDiscoveryAdapter {
     const scrapedAt = new Date().toISOString();
     const jobs: RawJobPosting[] = [];
     const seenJobIds = new Set<string>();
+    // Ensure English language cookie is set on LinkedIn domain
+    try {
+      if (page.context?.()?.addCookies) {
+        await page.context().addCookies([
+          { name: "lang", value: "v=2&lang=en-us", domain: ".linkedin.com", path: "/" },
+          { name: "lang", value: "v=2&lang=en-us", domain: "www.linkedin.com", path: "/" },
+        ]);
+      }
+    } catch {}
 
     for (let pageNum = 0; pageNum < maxPages; pageNum++) {
       const startOffset = pageNum * 25;

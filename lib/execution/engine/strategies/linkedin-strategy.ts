@@ -150,7 +150,7 @@ export class LinkedInApplyStrategy implements PlatformApplyStrategy {
   }
 
   getModalContainerSelector(): string {
-    return ".jobs-easy-apply-modal, div.artdeco-modal, div[role='dialog'], div[data-test-modal], main, body";
+    return ".jobs-easy-apply-modal, div.artdeco-modal, div[role='dialog'], div[data-test-modal], .jobs-apply-page, [data-view-name*='apply-page'], div.jobs-apply-content, .jobs-easy-apply-form";
   }
 
   /**

@@ -270,6 +270,28 @@ export class FormFiller {
       const isVisible = await select.isVisible();
       if (!isVisible) return null;
 
+      // Safety: Never touch website-wide language/locale switchers or footer widgets
+      const isGlobalLanguageSwitcher = await select.evaluate((el) => {
+        const id = (el.id || "").toLowerCase();
+        const name = (el.getAttribute("name") || "").toLowerCase();
+        const cls = (el.className || "").toLowerCase();
+        const inFooter = !!el.closest("footer, nav, .global-footer, #global-footer, .language-selector");
+        return (
+          inFooter ||
+          id.includes("language") ||
+          id.includes("locale") ||
+          name.includes("locale") ||
+          name.includes("language") ||
+          cls.includes("language") ||
+          cls.includes("locale")
+        );
+      }).catch(() => false);
+
+      if (isGlobalLanguageSwitcher) {
+        console.log("[FormFiller] Skipped global/footer language selector dropdown.");
+        return null;
+      }
+
       const labelText = await this.resolveFieldLabel(select);
       const options = await select.$$eval("option", (opts) =>
         opts.map((o) => ({ text: o.textContent?.trim() || "", value: o.value }))
@@ -287,6 +309,21 @@ export class FormFiller {
 
       if (validOptions.length === 0) return null;
 
+      // Detect if this is an unexpected locale dropdown (e.g. ar_AE, en_US)
+      const isLocaleSelector = validOptions.some((o) =>
+        /^[a-z]{2}[_-][a-z]{2}$/i.test(o.value) || /العربية|deutsch|español|français|italiano/i.test(o.text)
+      );
+      if (isLocaleSelector) {
+        console.warn("[FormFiller] Detected site locale/language dropdown in form. Forcing English (en_US)...");
+        const englishOpt = validOptions.find(
+          (o) => /en[-_]us|english/i.test(o.value) || /english/i.test(o.text)
+        );
+        if (englishOpt) {
+          await select.selectOption(englishOpt.value);
+        }
+        return null;
+      }
+
       const answer = await this.resolveAnswerForQuestion(labelText, "select");
       const searchTarget = (answer?.value || "").toLowerCase().trim();
 
@@ -296,6 +333,13 @@ export class FormFiller {
           o.value.toLowerCase().includes(searchTarget)
       );
 
+      // Language preference question heuristic (always default to English)
+      if (!matched && /language|locale|lang/i.test(labelText)) {
+        matched = validOptions.find(
+          (o) => /english|en[-_]us|en[-_]gb/i.test(o.text) || /english|en[-_]us|en[-_]gb/i.test(o.value)
+        );
+      }
+
       // Special heuristic for country code / phone code dropdowns
       if (!matched && /country|dialing|phone.*code/i.test(labelText)) {
         matched =
@@ -304,7 +348,11 @@ export class FormFiller {
       }
 
       if (!matched) {
-        matched = validOptions[0];
+        // Guard: Never select an Arabic/RTL locale by default
+        const nonArabic = validOptions.find(
+          (o) => !/ar[-_]|العربية/i.test(o.value) && !/العربية/i.test(o.text)
+        );
+        matched = nonArabic || validOptions[0];
       }
 
       await select.selectOption(matched.value);
