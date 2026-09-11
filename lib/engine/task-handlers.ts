@@ -9,7 +9,14 @@ import { registerTaskHandler } from "./task-queue";
 import { workerManager } from "@/lib/execution/worker-manager";
 import { discoveryService } from "@/lib/jobs/discovery-service";
 import { generateTailoredResume } from "@/lib/documents/tailor";
-import { getApplicationById, getJobPostingById, getProfileById, getSetting } from "@/lib/db";
+import {
+  getApplicationById,
+  getJobPostingById,
+  getProfileById,
+  getSetting,
+  updateApplicationStatus,
+  updateApplicationFillDetails,
+} from "@/lib/db";
 import type { ApplicationExecuteOptions } from "@/lib/execution/types";
 
 /**
@@ -64,6 +71,24 @@ export function registerDefaultTaskHandlers(): void {
         180000,
         signal
       );
+
+      // Authoritatively sync application status to main-process DB.
+      // The worker writes from its own process; this ensures main process is always consistent.
+      if (result?.status && applicationId) {
+        try {
+          updateApplicationStatus(applicationId, result.status, result.errorMessage);
+          if (result.fieldsFilled !== undefined || result.screenshotPath !== undefined) {
+            updateApplicationFillDetails(applicationId, {
+              fields_filled: result.fieldsFilled ?? 0,
+              fields_total: result.fieldsTotal ?? 0,
+              screenshot_path: result.screenshotPath,
+              fill_details: result.errorMessage,
+            });
+          }
+        } catch (dbErr) {
+          console.warn("[TaskHandlers] Could not sync application status to main DB:", dbErr);
+        }
+      }
 
       const isNonRetryable =
         result?.requiresExternalApply ||
