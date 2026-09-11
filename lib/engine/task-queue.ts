@@ -407,8 +407,10 @@ export function getRegisteredHandlerCount(): number {
 }
 
 /**
- * Clear all registered handlers (for testing).
+ * Clear all registered handlers and reset queue state (for testing).
  */
 export function clearTaskHandlers(): void {
   handlers.clear();
+  isQueueActive = true;   // Allow processNextTask() to run in tests
+  isProcessing = false;   // Reset processing lock
 }

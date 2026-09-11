@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import * as schema from "../db/schema";
+import { initDrizzleDb, setDb, getDb, getDrizzleDb } from "../db";
 import {
   enqueueTask,
   processNextTask,
@@ -8,11 +11,14 @@ import {
   type TaskEvent,
 } from "./task-queue";
 import * as dbQueries from "../db";
-import { getDrizzleDb } from "../db";
 import { tasks } from "../db/schema";
 
 describe("Unified Task Queue Engine", () => {
   beforeEach(() => {
+    const sqlite = getDb(":memory:");
+    const db = drizzle({ client: sqlite, schema });
+    setDb(sqlite);
+    initDrizzleDb(db);
     clearTaskHandlers();
     getDrizzleDb().delete(tasks).run();
   });

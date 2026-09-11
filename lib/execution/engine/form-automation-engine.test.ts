@@ -4,7 +4,13 @@ import * as schema from "../../db/schema";
 import { initDrizzleDb, setDb, getDb } from "../../db";
 import { FormAutomationEngine } from "./form-automation-engine";
 import type { PlatformApplyStrategy } from "./types";
-import { createProfile, createApplication, getApplicationById, upsertJobPosting } from "../../db/queries";
+import { createProfile, createApplication, upsertJobPosting } from "../../db/queries";
+
+/**
+ * FormAutomationEngine is a pure automation module — it does NOT write to the database.
+ * These tests verify only the returned ApplicationExecuteResult.
+ * DB persistence is the responsibility of task-handlers.ts (tested separately).
+ */
 
 describe("Form Automation Engine (Candidate 3)", () => {
   let sqlite: any;
@@ -68,9 +74,6 @@ describe("Form Automation Engine (Candidate 3)", () => {
     expect(result.success).toBe(false);
     expect(result.status).toBe("failed");
     expect(result.errorMessage).toContain("Profile not found");
-
-    const app = getApplicationById(testApplicationId);
-    expect(app?.status).toBe("failed");
   });
 
   it("handles already applied job gracefully", async () => {
@@ -92,9 +95,6 @@ describe("Form Automation Engine (Candidate 3)", () => {
 
     expect(result.success).toBe(true);
     expect(result.status).toBe("submitted");
-
-    const app = getApplicationById(testApplicationId);
-    expect(app?.status).toBe("submitted");
   });
 
   it("handles external application requirement by marking failed with clear explanation", async () => {
@@ -117,9 +117,6 @@ describe("Form Automation Engine (Candidate 3)", () => {
     expect(result.success).toBe(false);
     expect(result.status).toBe("failed");
     expect(result.errorMessage).toContain("External company site");
-
-    const app = getApplicationById(testApplicationId);
-    expect(app?.status).toBe("failed");
   });
 
   it("handles failure to open modal or missing apply button", async () => {
@@ -142,9 +139,6 @@ describe("Form Automation Engine (Candidate 3)", () => {
     expect(result.success).toBe(false);
     expect(result.status).toBe("failed");
     expect(result.errorMessage).toBe("Apply button not found");
-
-    const app = getApplicationById(testApplicationId);
-    expect(app?.status).toBe("failed");
   });
 
   it("pauses before submit and transitions to pending_review when pauseBeforeSubmit is true", async () => {
@@ -179,9 +173,42 @@ describe("Form Automation Engine (Candidate 3)", () => {
     expect(submitFound).toBe(true);
     expect(result.success).toBe(true);
     expect(result.status).toBe("pending_review");
+  });
 
-    const app = getApplicationById(testApplicationId);
-    expect(app?.status).toBe("pending_review");
+  it("detects 1-click apply (immediatelyCompleted) and returns submitted without entering modal loop", async () => {
+    let modalOpenChecked = false;
+
+    const mockPage: any = {
+      $: async () => null,
+      $$: async () => [],
+      screenshot: async () => Buffer.from("mock-screenshot"),
+    };
+
+    const mockStrategy: PlatformApplyStrategy = {
+      platform: "naukri",
+      openApplyModal: async () => ({ success: true, immediatelyCompleted: true }),
+      isModalOpen: async () => {
+        modalOpenChecked = true; // should never be called
+        return false;
+      },
+      getModalContainerSelector: () => "body",
+      findNextButton: async () => null,
+      findSubmitButton: async () => null,
+    };
+
+    const result = await engine.execute(mockPage, mockStrategy, {
+      applicationId: testApplicationId,
+      jobUrl: "https://www.naukri.com/job-listings-devops-engineer-easemytrip-220424001633",
+      platform: "naukri",
+      profileId: testProfileId,
+      pauseBeforeSubmit: false,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.status).toBe("submitted");
+    expect(result.fieldsFilled).toBe(0);
+    // Must NOT enter the modal loop at all
+    expect(modalOpenChecked).toBe(false);
   });
 
   it("submits application automatically when pauseBeforeSubmit is false", async () => {
@@ -222,9 +249,6 @@ describe("Form Automation Engine (Candidate 3)", () => {
     expect(postModalDismissed).toBe(true);
     expect(result.success).toBe(true);
     expect(result.status).toBe("submitted");
-
-    const app = getApplicationById(testApplicationId);
-    expect(app?.status).toBe("submitted");
   });
 
   it("enforces maxSteps bound and exits loop safely without hanging", async () => {

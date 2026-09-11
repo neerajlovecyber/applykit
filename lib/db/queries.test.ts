@@ -123,6 +123,56 @@ describe("Deepened Database Persistence Module", () => {
       expect(history[1].to).toBe("submitted");
       expect(history[1].reason).toBe("Automatic submission via Playwright");
     });
+
+    it("is idempotent — does NOT duplicate state_history when called twice with same status", () => {
+      const p = createProfile({ name: "Idempotency Test" });
+      const job = upsertJobPosting({ source: "naukri", source_id: "idem-001", title: "DevOps", company: "Test Co" });
+      const app = createApplication({ job_id: job.id, profile_id: p.id, status: "queued" });
+
+      // Simulates worker write + main-process write for the same transition
+      updateApplicationStatus(app.id, "submitted", "worker write");
+      updateApplicationStatus(app.id, "submitted", "main process write — should be skipped");
+
+      const updated = getApplicationById(app.id);
+      const history = JSON.parse(updated?.state_history || "[]");
+
+      // createApplication adds 1 initial entry; only 1 more for queued→submitted
+      expect(history.length).toBe(2);
+      expect(history[1].from).toBe("queued");
+      expect(history[1].to).toBe("submitted");
+    });
+
+    it("records full multi-step transition chain with correct from/to pairs", () => {
+      const p = createProfile({ name: "Chain Test" });
+      const job = upsertJobPosting({ source: "naukri", source_id: "chain-001", title: "DevOps", company: "Test Co" });
+      const app = createApplication({ job_id: job.id, profile_id: p.id, status: "queued" });
+
+      updateApplicationStatus(app.id, "running");
+      updateApplicationStatus(app.id, "pending_review", "Waiting for review");
+      updateApplicationStatus(app.id, "submitted", "User approved");
+
+      const updated = getApplicationById(app.id);
+      const history = JSON.parse(updated?.state_history || "[]");
+
+      // 1 initial + 3 transitions = 4 total
+      expect(history.length).toBe(4);
+      // Check just the transition entries (skip initial creation entry)
+      const transitions = history.slice(1);
+      expect(transitions.map((h: any) => h.from)).toEqual(["queued", "running", "pending_review"]);
+      expect(transitions.map((h: any) => h.to)).toEqual(["running", "pending_review", "submitted"]);
+    });
+
+    it("1-click apply path sets submitted_at immediately with zero fieldsFilled", () => {
+      const p = createProfile({ name: "1-Click Test" });
+      const job = upsertJobPosting({ source: "naukri", source_id: "1click-001", title: "DevOps", company: "EaseMyTrip" });
+      const app = createApplication({ job_id: job.id, profile_id: p.id, status: "queued" });
+
+      updateApplicationStatus(app.id, "submitted");
+
+      const updated = getApplicationById(app.id);
+      expect(updated?.status).toBe("submitted");
+      expect(updated?.submitted_at).not.toBeNull();
+    });
   });
 
   describe("Tasks Queue & Priority Ordering", () => {
