@@ -16,6 +16,7 @@ import {
 } from "@/lib/db";
 import { scoreJobFit } from "@/lib/providers/provider-registry";
 import { acquirePage, releasePage } from "@/lib/execution/browser-pool";
+import { workerManager } from "@/lib/execution/worker-manager";
 import {
   LinkedInDiscoveryAdapter,
   NaukriDiscoveryAdapter,
@@ -78,7 +79,6 @@ export class JobDiscoveryService {
     try {
       const isElectron = typeof (process.versions as any).electron !== "undefined" || (process as any).type === "browser";
       if (isElectron && this.pageAcquirer === acquirePage) {
-        const { workerManager } = await import("@/lib/execution/worker-manager");
         rawJobs = await workerManager.executeDiscovery(options);
       } else {
         let page: any = null;

@@ -7,6 +7,7 @@
 
 import * as dbQueries from "@/lib/db";
 import type { Task } from "@/lib/db";
+import { workerManager } from "@/lib/execution/worker-manager";
 
 export type TaskHandler = (
   task: Task,
@@ -370,7 +371,6 @@ export function cancelTasks(kind?: string): { cancelledCount: number } {
 
   // Cancel worker active task via worker manager
   try {
-    const { workerManager } = require("@/lib/execution/worker-manager");
     workerManager.cancelActiveTask("Cancelled by user");
   } catch {}
 
