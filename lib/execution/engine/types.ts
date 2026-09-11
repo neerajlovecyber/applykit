@@ -10,6 +10,8 @@ export interface ModalOpenResult {
   success: boolean;
   alreadyApplied?: boolean;
   requiresExternalApply?: boolean;
+  /** True when the apply completed instantly (e.g. Naukri 1-click) with no further modal steps needed. */
+  immediatelyCompleted?: boolean;
   errorMessage?: string;
 }
 

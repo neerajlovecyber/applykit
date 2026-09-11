@@ -50,6 +50,21 @@ export class NaukriApplyStrategy implements PlatformApplyStrategy {
     await applyBtn.click();
     await actionDelay();
 
+    // Naukri 1-click apply: detect instant redirect to /myapply/saveApply
+    // or the on-page success banner (div.acp-header-container)
+    try {
+      await page.waitForURL(/myapply\/saveApply|myapply\/apply\/confirm/, { timeout: 3000 });
+      console.log("[NaukriStrategy] 1-click apply succeeded via URL redirect:", page.url());
+      return { success: true, immediatelyCompleted: true };
+    } catch {
+      // Not a redirect — check for on-page success banner
+      const successBanner = await page.$("div.acp-header-container, .acp-header-container").catch(() => null);
+      if (successBanner && await successBanner.isVisible().catch(() => false)) {
+        console.log("[NaukriStrategy] 1-click apply succeeded via acp-header-container banner.");
+        return { success: true, immediatelyCompleted: true };
+      }
+    }
+
     return { success: true };
   }
 

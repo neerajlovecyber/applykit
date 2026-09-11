@@ -115,6 +115,24 @@ export class FormAutomationEngine {
         };
       }
 
+      if (openResult.immediatelyCompleted) {
+        console.log(`[FormEngine] [${strategy.platform}] 1-click apply completed instantly: ${jobUrl}`);
+        screenshotPath = await this.captureScreenshot(page, applicationId);
+        updateApplicationStatus(applicationId, "submitted", "Application submitted via 1-click apply");
+        updateApplicationFillDetails(applicationId, {
+          fields_filled: 0,
+          fields_total: 0,
+          screenshot_path: screenshotPath,
+        });
+        return {
+          success: true,
+          status: "submitted",
+          fieldsFilled: 0,
+          fieldsTotal: 0,
+          screenshotPath,
+        };
+      }
+
       if (openResult.requiresExternalApply) {
         console.log(`[FormEngine] [${strategy.platform}] External application required for: ${jobUrl}`);
         const errMsg = "External company site application required";
