@@ -268,6 +268,7 @@ function processIncomingMessage(msg: WorkerMessage): void {
     .then(() => handleMessage(msg))
     .catch((err) => {
       console.error("[AutomationWorker] Unhandled message error:", err);
+      sendResponse({ id: msg?.id || "unknown", type: "ERROR", error: err?.message || String(err) });
     });
 }
 

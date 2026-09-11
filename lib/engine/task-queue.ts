@@ -11,6 +11,7 @@ import type { Task } from "@/lib/db";
 export type TaskHandler = (task: Task, payload: Record<string, unknown>) => Promise<{
   result?: Record<string, unknown>;
   error?: string;
+  retryable?: boolean;
 }>;
 
 export interface TaskEvent {
@@ -103,6 +104,13 @@ export function enqueueTask(data: {
     task,
   });
 
+  // Instantly wake up the queue processor without waiting for poll interval
+  if (!isProcessing) {
+    setImmediate(() => {
+      processNextTask().catch(() => {});
+    });
+  }
+
   return task;
 }
 
@@ -111,26 +119,30 @@ export function enqueueTask(data: {
  */
 export async function processNextTask(): Promise<boolean> {
   if (isProcessing) return false;
-
-  const task = dbQueries.getNextPendingTask();
-  if (!task) return false;
-
-  const handler = handlers.get(task.kind);
-  if (!handler) {
-    dbQueries.updateTaskStatus(task.id, "failed", undefined, `No handler registered for task kind: ${task.kind}`);
-    broadcastTaskEvent({
-      taskId: task.id,
-      kind: task.kind,
-      status: "failed",
-      error: `No handler registered for task kind: ${task.kind}`,
-      task,
-    });
-    return true;
-  }
-
   isProcessing = true;
 
+  let task: Task | undefined;
   try {
+    task = dbQueries.getNextPendingTask();
+    if (!task) {
+      isProcessing = false;
+      return false;
+    }
+
+    const handler = handlers.get(task.kind);
+    if (!handler) {
+      dbQueries.updateTaskStatus(task.id, "failed", undefined, `No handler registered for task kind: ${task.kind}`);
+      broadcastTaskEvent({
+        taskId: task.id,
+        kind: task.kind,
+        status: "failed",
+        error: `No handler registered for task kind: ${task.kind}`,
+        task,
+      });
+      isProcessing = false;
+      return true;
+    }
+
     // Mark as running & broadcast
     dbQueries.updateTaskStatus(task.id, "running");
     broadcastTaskEvent({
@@ -147,7 +159,8 @@ export async function processNextTask(): Promise<boolean> {
     const outcome = await handler(task, payload);
 
     if (outcome.error) {
-      if ((task.attempts ?? 0) + 1 < (task.max_attempts ?? 3)) {
+      const isRetryable = outcome.retryable !== false;
+      if (isRetryable && (task.attempts ?? 0) + 1 < (task.max_attempts ?? 3)) {
         dbQueries.updateTaskStatus(task.id, "queued", undefined, outcome.error);
         broadcastTaskEvent({
           taskId: task.id,
@@ -182,27 +195,33 @@ export async function processNextTask(): Promise<boolean> {
     }
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    if ((task.attempts ?? 0) + 1 < (task.max_attempts ?? 3)) {
-      dbQueries.updateTaskStatus(task.id, "queued", undefined, errorMsg);
-      broadcastTaskEvent({
-        taskId: task.id,
-        kind: task.kind,
-        status: "queued",
-        error: errorMsg,
-        task,
-      });
-    } else {
-      dbQueries.updateTaskStatus(task.id, "failed", undefined, errorMsg);
-      broadcastTaskEvent({
-        taskId: task.id,
-        kind: task.kind,
-        status: "failed",
-        error: errorMsg,
-        task,
-      });
+    if (task) {
+      if ((task.attempts ?? 0) + 1 < (task.max_attempts ?? 3)) {
+        dbQueries.updateTaskStatus(task.id, "queued", undefined, errorMsg);
+        broadcastTaskEvent({
+          taskId: task.id,
+          kind: task.kind,
+          status: "queued",
+          error: errorMsg,
+          task,
+        });
+      } else {
+        dbQueries.updateTaskStatus(task.id, "failed", undefined, errorMsg);
+        broadcastTaskEvent({
+          taskId: task.id,
+          kind: task.kind,
+          status: "failed",
+          error: errorMsg,
+          task,
+        });
+      }
     }
   } finally {
     isProcessing = false;
+    // Drain next task immediately if available
+    setImmediate(() => {
+      processNextTask().catch(() => {});
+    });
   }
 
   return true;

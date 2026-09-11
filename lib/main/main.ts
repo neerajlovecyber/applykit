@@ -4,6 +4,8 @@ import log from "electron-log/main";
 import { createAppWindow } from "./app";
 import { registerDefaultTaskHandlers } from "@/lib/engine/task-handlers";
 import { startTaskQueue, stopTaskQueue } from "@/lib/engine/task-queue";
+import { recoverStaleTasks } from "@/lib/db";
+import { workerManager } from "@/lib/execution/worker-manager";
 
 // Initialize persistent file & console logger
 log.initialize();
@@ -24,9 +26,26 @@ app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId("io.github.neerajlovecyber.applykit");
 
-  // Register execution task handlers & start task queue engine
+  // 1. Recover any tasks left stuck in 'running' by previous crash or restart
+  try {
+    const recovered = recoverStaleTasks();
+    if (recovered > 0) {
+      log.info(`[ApplyKit] Recovered ${recovered} stale running tasks from prior session.`);
+    }
+  } catch (err) {
+    log.warn("[ApplyKit] Could not recover stale tasks on startup:", err);
+  }
+
+  // 2. Register execution task handlers & start task queue engine
   registerDefaultTaskHandlers();
-  startTaskQueue(3000);
+  startTaskQueue(1000);
+
+  // 3. Pre-warm isolated automation worker
+  try {
+    workerManager.ensureWorker();
+  } catch (err) {
+    log.warn("[ApplyKit] Worker pre-warm notice:", err);
+  }
 
   // Create app window
   createAppWindow();
@@ -40,6 +59,11 @@ app.whenReady().then(() => {
       createAppWindow();
     }
   });
+});
+
+app.on("before-quit", () => {
+  stopTaskQueue();
+  workerManager.terminate().catch(() => {});
 });
 
 app.on("window-all-closed", () => {

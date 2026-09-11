@@ -60,6 +60,11 @@ export function registerDefaultTaskHandlers(): void {
         executeOptions,
       });
 
+      const isNonRetryable =
+        result?.requiresExternalApply ||
+        result?.alreadyApplied ||
+        /external|not found|already applied|unsupported/i.test(result?.errorMessage || "");
+
       return {
         result: {
           success: result?.success,
@@ -69,9 +74,10 @@ export function registerDefaultTaskHandlers(): void {
           screenshotPath: result?.screenshotPath,
         },
         error: result?.errorMessage,
+        retryable: !isNonRetryable,
       };
     } catch (err) {
-      return { error: err instanceof Error ? err.message : String(err) };
+      return { error: err instanceof Error ? err.message : String(err), retryable: true };
     }
   });
 

@@ -11,6 +11,8 @@ import path from "path";
 import type { WorkerMessage, WorkerResponse } from "@/lib/workers/automation-worker";
 
 interface PendingRequest<T = unknown> {
+  type: WorkerMessage["type"];
+  timeoutMs: number;
   resolve: (value: T) => void;
   reject: (reason: Error) => void;
   timer: NodeJS.Timeout;
@@ -21,6 +23,8 @@ export class AutomationWorkerManager {
   private pendingRequests = new Map<string, PendingRequest>();
   private isShuttingDown = false;
   private workerPath: string;
+  // Concurrency mutex: ensures strictly ONE automation task executes in the browser at a time
+  private executionQueue: Promise<any> = Promise.resolve();
 
   constructor(customWorkerPath?: string) {
     this.workerPath =
@@ -105,6 +109,8 @@ export class AutomationWorkerManager {
       }, timeoutMs);
 
       this.pendingRequests.set(id, {
+        type,
+        timeoutMs,
         resolve: resolve as (val: unknown) => void,
         reject,
         timer,
@@ -123,6 +129,12 @@ export class AutomationWorkerManager {
     if (type === "PROGRESS") {
       // Intermediate progress update — don't resolve yet
       console.log(`[WorkerManager] Progress [${id}]:`, data);
+      // Active progress heartbeat: refresh timeout window
+      clearTimeout(req.timer);
+      req.timer = setTimeout(() => {
+        this.pendingRequests.delete(id);
+        req.reject(new Error(`Worker request [${req.type}] timed out waiting for next step`));
+      }, req.timeoutMs);
       return;
     }
 
@@ -220,10 +232,13 @@ export class AutomationWorkerManager {
   }
 
   /**
-   * Execute automation task via isolated worker (with graceful in-process fallback).
+   * Execute automation task via isolated worker (guaranteed strictly sequential - one task at a time).
    */
-  public async executeTask<T = any, R = any>(task: T): Promise<R> {
-    return this.sendCommand<T, R>("EXECUTE_TASK", task);
+  public async executeTask<T = any, R = any>(task: T, timeoutMs = 180000): Promise<R> {
+    const run = () => this.sendCommand<T, R>("EXECUTE_TASK", task, timeoutMs);
+    const queued = this.executionQueue.then(run, run);
+    this.executionQueue = queued.catch(() => {});
+    return queued;
   }
 
   /**

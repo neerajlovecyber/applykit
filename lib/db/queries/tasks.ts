@@ -67,15 +67,32 @@ export function createTask(data: {
   return getTaskById(id)!;
 }
 
+/**
+ * Reset any tasks stuck in 'running' state on application boot.
+ */
+export function recoverStaleTasks(): number {
+  const db = getDrizzleDb();
+  const res = db
+    .update(tasks)
+    .set({
+      status: "failed",
+      error: "Interrupted by application restart",
+      finished_at: new Date().toISOString(),
+    })
+    .where(eq(tasks.status, "running"))
+    .run();
+  return res.changes;
+}
+
 export function getNextPendingTask(): TaskRecord | undefined {
   const db = getDrizzleDb();
   const now = new Date().toISOString();
 
-  // Recover tasks stuck as 'running' (e.g. app crash mid-task) older than 15 minutes
-  const staleRunningCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  // Recover tasks stuck as 'running' (e.g. unexpected crash mid-task) older than 2 minutes
+  const staleRunningCutoff = new Date(Date.now() - 2 * 60 * 1000).toISOString();
   db
     .update(tasks)
-    .set({ status: "queued", error: "Recovered from stale running state (app restart)" })
+    .set({ status: "queued", error: "Recovered from stale running state (timeout/restart)" })
     .where(
       and(
         eq(tasks.status, "running"),
