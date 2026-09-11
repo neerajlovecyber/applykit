@@ -74,15 +74,39 @@ export async function getSharedContext(headless = false): Promise<BrowserContext
       "--disable-infobars",
       "--disable-notifications",
       "--start-maximized",
+      "--lang=en-US",
     ],
     ignoreDefaultArgs: ["--enable-automation"],
     viewport: null, // use natural window size
     userAgent:
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
     locale: "en-US",
+    extraHTTPHeaders: {
+      "Accept-Language": "en-US,en;q=0.9",
+    },
     timezoneId: "Asia/Kolkata",
     permissions: ["geolocation", "notifications"],
   });
+
+  // Force English language cookie for LinkedIn to prevent automatic Arabic / foreign language switching
+  try {
+    await sharedContext.addCookies([
+      {
+        name: "lang",
+        value: "v=2&lang=en-us",
+        domain: ".linkedin.com",
+        path: "/",
+      },
+      {
+        name: "lang",
+        value: "v=2&lang=en-us",
+        domain: "www.linkedin.com",
+        path: "/",
+      },
+    ]);
+  } catch (err) {
+    console.warn("[BrowserPool] Could not seed English language cookie:", err);
+  }
 
   currentHeadlessMode = headless;
 

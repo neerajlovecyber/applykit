@@ -166,6 +166,8 @@ export class JobDiscoveryService {
       ? `Candidate: ${activeProfile.name}. Skills: ${activeProfile.skills}. Experience: ${activeProfile.experience_years} years.`
       : undefined;
 
+    const savedJobIds: string[] = [];
+
     for (const raw of rawJobs) {
       const dedup = checkDuplicateJob(raw);
       if (dedup.isDuplicate) {
@@ -177,6 +179,7 @@ export class JobDiscoveryService {
       const norm = normalizeRawJob(raw);
       const saved = upsertJobPosting(norm);
       newJobsAdded++;
+      savedJobIds.push(saved.id);
 
       // AI Fit Scoring if active profile exists
       if (profileSummary && saved.description) {
@@ -202,6 +205,7 @@ export class JobDiscoveryService {
       totalScraped: rawJobs.length,
       newJobsAdded,
       duplicatesSkipped,
+      savedJobIds,
     };
   }
 }

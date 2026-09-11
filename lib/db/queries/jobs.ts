@@ -45,6 +45,80 @@ export function getJobPostings(filters?: {
   return query.all();
 }
 
+/**
+ * Retrieve unapplied jobs for automated application runs.
+ * Excludes jobs that:
+ * 1. Have already been applied, submitted, skipped, or failed (e.g. external website apply required)
+ * 2. Already have a task currently queued or running
+ * Prioritizes priorityJobIds (e.g. freshly discovered jobs) if provided.
+ */
+export function getUnappliedJobPostings(options: {
+  source: string;
+  limit?: number;
+  priorityJobIds?: string[];
+}): JobPostingRecord[] {
+  const db = getDrizzleDb();
+  const limit = options.limit || 10;
+  const results: JobPostingRecord[] = [];
+  const seenIds = new Set<string>();
+
+  // 1. If priorityJobIds (e.g. freshly discovered jobs from this run) are given, fetch them first
+  if (options.priorityJobIds && options.priorityJobIds.length > 0) {
+    const validIds = options.priorityJobIds.filter(Boolean);
+    if (validIds.length > 0) {
+      const priorityJobs = db
+        .select()
+        .from(jobPostings)
+        .where(
+          and(
+            eq(jobPostings.source, options.source),
+            sql`${jobPostings.application_url} IS NOT NULL AND ${jobPostings.application_url} != ''`,
+            sql`${jobPostings.id} IN (${sql.join(validIds.map((id) => sql`${id}`), sql`, `)})`
+          )
+        )
+        .all();
+
+      for (const job of priorityJobs) {
+        if (!seenIds.has(job.id)) {
+          seenIds.add(job.id);
+          results.push(job);
+          if (results.length >= limit) return results;
+        }
+      }
+    }
+  }
+
+  // 2. Fetch jobs from DB that have NOT been applied to yet, and are NOT currently in active tasks
+  const unappliedJobs = db
+    .select()
+    .from(jobPostings)
+    .where(
+      and(
+        eq(jobPostings.source, options.source),
+        sql`${jobPostings.application_url} IS NOT NULL AND ${jobPostings.application_url} != ''`,
+        sql`${jobPostings.id} NOT IN (
+          SELECT job_id FROM applications WHERE status IN ('submitted', 'applied', 'skipped', 'failed')
+        )`,
+        sql`${jobPostings.id} NOT IN (
+          SELECT job_id FROM tasks WHERE status IN ('queued', 'running') AND job_id IS NOT NULL
+        )`
+      )
+    )
+    .orderBy(desc(jobPostings.discovered_at))
+    .limit(limit)
+    .all();
+
+  for (const job of unappliedJobs) {
+    if (!seenIds.has(job.id)) {
+      seenIds.add(job.id);
+      results.push(job);
+      if (results.length >= limit) break;
+    }
+  }
+
+  return results;
+}
+
 export function getJobPostingById(id: string): JobPostingRecord | undefined {
   return getDrizzleDb().select().from(jobPostings).where(eq(jobPostings.id, id)).get();
 }

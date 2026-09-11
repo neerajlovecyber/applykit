@@ -71,6 +71,46 @@ describe("LinkedInApplyStrategy & FormFiller Contract", () => {
     expect(result.success).toBe(true);
   });
 
+  it("identifies and clicks modern SDUI anchor-based Easy Apply links", async () => {
+    let clickedSdui = false;
+
+    const mockPage: any = {
+      goto: async () => {},
+      url: () => "https://www.linkedin.com/jobs/view/4463439792/apply/?openSDUIApplyFlow=true",
+      $: async (sel: string) => {
+        if (sel.includes("openSDUIApplyFlow=true") || sel.includes("Easy Apply to this job") || sel.includes("Easy Apply")) {
+          return {
+            click: async () => {
+              clickedSdui = true;
+            },
+          };
+        }
+        return null;
+      },
+    };
+
+    const result = await strategy.openApplyModal(mockPage, "https://www.linkedin.com/jobs/view/4463439792/");
+    expect(clickedSdui).toBe(true);
+    expect(result.success).toBe(true);
+  });
+
+  it("detects external company website apply links and marks requiresExternalApply", async () => {
+    const mockPage: any = {
+      goto: async () => {},
+      $: async (sel: string) => {
+        if (sel.includes("Apply on company website") || sel.includes("/safety/go") || sel.includes("link-external-medium")) {
+          return { type: "external-link" };
+        }
+        return null;
+      },
+    };
+
+    const result = await strategy.openApplyModal(mockPage, "https://www.linkedin.com/jobs/view/789");
+    expect(result.success).toBe(false);
+    expect(result.requiresExternalApply).toBe(true);
+    expect(result.errorMessage).toContain("external company website");
+  });
+
   it("locates LinkedIn navigation buttons correctly", async () => {
     const mockPage: any = {
       $: async (sel: string) => {
@@ -89,6 +129,38 @@ describe("LinkedInApplyStrategy & FormFiller Contract", () => {
 
     const submitBtn = await strategy.findSubmitButton(mockPage);
     expect(submitBtn).toBeDefined();
+  });
+
+  it("selects pre-uploaded resume radio in beforeStepFill", async () => {
+    let clickedLabel = false;
+    const mockPage: any = {
+      $: async (sel: string) => {
+        if (sel.includes(":checked")) {
+          return null; // Not checked yet
+        }
+        if (sel.includes("jobsDocumentCardToggle-ember229")) {
+          return {
+            isVisible: async () => true,
+            click: async () => {
+              clickedLabel = true;
+            },
+          };
+        }
+        if (sel.includes("jobsDocumentCardToggle")) {
+          return {
+            getAttribute: async (attr: string) => (attr === "id" ? "jobsDocumentCardToggle-ember229" : null),
+            check: async () => {},
+          };
+        }
+        if (sel.includes("jobs-document-upload")) {
+          return { type: "resume-section" };
+        }
+        return null;
+      },
+    };
+
+    await strategy.beforeStepFill(mockPage, 1);
+    expect(clickedLabel).toBe(true);
   });
 
   it("FormFiller resolves phone number answer for profile", async () => {

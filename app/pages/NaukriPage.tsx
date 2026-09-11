@@ -31,7 +31,7 @@ export const NaukriPage: React.FC = () => {
   const [keywords, setKeywords] = useState("DevOps Engineer");
   const [location, setLocation] = useState("Gurugram");
   const [experienceYears, setExperienceYears] = useState<number>(2);
-  const [jobAgeDays, setJobAgeDays] = useState<number>(30);
+  const [jobAgeDays, setJobAgeDays] = useState<number>(1);
   const [workMode, setWorkMode] = useState<string>("any");
   const [maxJobs, setMaxJobs] = useState<number>(10);
   const [pauseBeforeSubmit, setPauseBeforeSubmit] = useState<boolean>(false);

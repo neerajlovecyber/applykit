@@ -77,18 +77,15 @@ export const AutoApplyPage: React.FC = () => {
 
   // ── Search config ───────────────────────────────────────────────────────
   const [keywords, setKeywords] = useState("Software Engineer");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState("Gurugram");
   const [maxJobs, setMaxJobs] = useState<number>(10);
   const [pauseBeforeSubmit, setPauseBeforeSubmit] = useState(false);
 
   // ── Advanced filters ───────────────────────────────────────────────────
   const [easyApplyOnly, setEasyApplyOnly] = useState(true);
   const [under10Applicants, setUnder10Applicants] = useState(false);
-  const [datePosted, setDatePosted] = useState<string>("anyTime");
-  const [jobAgeDays, setJobAgeDays] = useState<number>(30);
+  const [jobAgeDays, setJobAgeDays] = useState<number>(1);
   const [experienceYears, setExperienceYears] = useState<number>(2);
-  const [selectedExperience, setSelectedExperience] = useState<string[]>([]);
-  const [selectedJobType, setSelectedJobType] = useState<string[]>([]);
   const [selectedWorkMode, setSelectedWorkMode] = useState<string[]>([]);
 
   const [isPaused, setIsPaused] = useState(false);
@@ -289,9 +286,9 @@ export const AutoApplyPage: React.FC = () => {
         filters: {
           easyApplyOnly,
           under10Applicants,
-          datePosted: datePosted as any,
-          experienceLevel: selectedExperience.length ? selectedExperience : undefined,
-          jobType: selectedJobType.length ? selectedJobType : undefined,
+          datePosted: jobAgeDays === 1 ? "past24Hours" : jobAgeDays <= 7 && jobAgeDays > 0 ? "pastWeek" : jobAgeDays <= 30 && jobAgeDays > 0 ? "pastMonth" : undefined,
+          jobAgeDays: jobAgeDays > 0 ? jobAgeDays : undefined,
+          experienceYears: experienceYears >= 0 ? experienceYears : undefined,
           workMode: selectedWorkMode.length ? selectedWorkMode : undefined,
         },
         pauseBeforeSubmit,
@@ -339,10 +336,9 @@ export const AutoApplyPage: React.FC = () => {
         maxJobs,
         filters: {
           easyApplyOnly,
-          datePosted: datePosted as any,
+          datePosted: jobAgeDays === 1 ? "past24Hours" : jobAgeDays <= 7 && jobAgeDays > 0 ? "pastWeek" : jobAgeDays <= 30 && jobAgeDays > 0 ? "pastMonth" : undefined,
           jobAgeDays: jobAgeDays > 0 ? jobAgeDays : undefined,
           experienceYears: experienceYears >= 0 ? experienceYears : undefined,
-          experienceLevel: selectedExperience.length ? selectedExperience : undefined,
           workMode: selectedWorkMode.length ? selectedWorkMode : undefined,
         },
         pauseBeforeSubmit,
@@ -565,9 +561,27 @@ export const AutoApplyPage: React.FC = () => {
               activePlatform={activePlatform}
             />
 
-            <div className="flex items-center gap-2 shrink-0">
-              <Switch id="pause-mode" checked={pauseBeforeSubmit} onCheckedChange={setPauseBeforeSubmit} />
-              <Label htmlFor="pause-mode" className="text-xs cursor-pointer font-medium">Pause & review before submit</Label>
+            <div className="flex flex-wrap items-center gap-4 shrink-0">
+              <div className="flex items-center gap-2">
+                <Switch id="easy-apply-mode" checked={easyApplyOnly} onCheckedChange={setEasyApplyOnly} />
+                <Label htmlFor="easy-apply-mode" className="text-xs cursor-pointer font-medium text-emerald-400">
+                  ⚡ Easy Apply Only
+                </Label>
+              </div>
+
+              {activePlatform === "linkedin" && (
+                <div className="flex items-center gap-2">
+                  <Switch id="under-10-applicants" checked={under10Applicants} onCheckedChange={setUnder10Applicants} />
+                  <Label htmlFor="under-10-applicants" className="text-xs cursor-pointer font-medium">
+                    🎯 Under 10 Applicants
+                  </Label>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <Switch id="pause-mode" checked={pauseBeforeSubmit} onCheckedChange={setPauseBeforeSubmit} />
+                <Label htmlFor="pause-mode" className="text-xs cursor-pointer font-medium">Pause & review before submit</Label>
+              </div>
             </div>
           </div>
         </div>

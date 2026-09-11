@@ -48,6 +48,7 @@ export interface SearchRunResult {
   totalScraped: number;
   newJobsAdded: number;
   duplicatesSkipped: number;
+  savedJobIds?: string[];
   error?: string;
 }
 

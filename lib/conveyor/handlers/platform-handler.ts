@@ -118,16 +118,16 @@ export function registerPlatformHandlers(): void {
         headless: isHeadless,
       });
 
-      const candidateJobs = dbQueries.getJobPostings({
+      const candidateJobs = dbQueries.getUnappliedJobPostings({
         source: "naukri",
-        hasApplicationUrl: true,
         limit: maxJobs || 5,
+        priorityJobIds: searchRes.savedJobIds,
       });
 
       if (candidateJobs.length === 0) {
         return {
           success: false,
-          error: `No applyable jobs found for "${keywords}". Discovered 0 new jobs, and no stored jobs with valid application URLs exist.`,
+          error: `No unapplied jobs found for "${keywords}". Discovered ${searchRes.totalScraped} jobs (new: ${searchRes.newJobsAdded}), and all matching jobs have already been applied or skipped.`,
           enqueued: 0,
           results: [],
         };
@@ -260,16 +260,16 @@ export function registerPlatformHandlers(): void {
         headless: isHeadless,
       });
 
-      const candidateJobs = dbQueries.getJobPostings({
+      const candidateJobs = dbQueries.getUnappliedJobPostings({
         source: "linkedin",
-        hasApplicationUrl: true,
         limit: maxJobs || 5,
+        priorityJobIds: searchRes.savedJobIds,
       });
 
       if (candidateJobs.length === 0) {
         return {
           success: false,
-          error: `No applyable jobs found for "${keywords}". Discovered 0 new jobs, and no stored jobs with valid application URLs exist.`,
+          error: `No unapplied jobs found for "${keywords}". Discovered ${searchRes.totalScraped} jobs (new: ${searchRes.newJobsAdded}), and all matching jobs have already been applied or skipped.`,
           enqueued: 0,
           results: [],
         };
