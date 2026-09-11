@@ -732,7 +732,7 @@ export const AutoApplyPage: React.FC = () => {
                 <div className="col-span-2">
                   <Badge variant="outline" className={cn(
                     "capitalize text-[10px] gap-1",
-                    (item.status === "submitted" || item.status === "succeeded")
+                    (item.status === "submitted" || item.status === "succeeded" || item.status === "applied" || item.status === "completed")
                       ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
                       : item.status === "skipped" ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
                         : item.status === "pending_review" ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
@@ -740,7 +740,7 @@ export const AutoApplyPage: React.FC = () => {
                             : item.status === "queued" ? "bg-zinc-500/10 text-zinc-400 border-zinc-500/30"
                               : "bg-rose-500/10 text-rose-400 border-rose-500/30"
                   )}>
-                    {(item.status === "submitted" || item.status === "succeeded") && <CheckCircle2 className="h-3 w-3" />}
+                    {(item.status === "submitted" || item.status === "succeeded" || item.status === "applied" || item.status === "completed") && <CheckCircle2 className="h-3 w-3" />}
                     {item.status === "skipped" && <SkipForward className="h-3 w-3" />}
                     {item.status === "pending_review" && <Clock className="h-3 w-3" />}
                     {item.status === "running" && <Clock className="h-3 w-3 animate-spin" />}
