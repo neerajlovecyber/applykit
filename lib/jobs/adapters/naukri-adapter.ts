@@ -91,7 +91,9 @@ export class NaukriDiscoveryAdapter implements JobDiscoveryAdapter {
         }
 
         const qStr = extraQuery.length > 0 ? `&${extraQuery.join("&")}` : "";
-        const searchUrl = `https://www.naukri.com/job-search?k=${encKw}${encL ? `&l=${encL}` : ""}&pageNo=${p}${qStr}`;
+        // Naukri new URL format: /{keyword-slug}-jobs?k={keyword}&l={location}&pageNo={n}
+        const kwSlug = kw.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const searchUrl = `https://www.naukri.com/${kwSlug}-jobs?k=${encKw}${encL ? `&l=${encL}` : ""}&pageNo=${p}${qStr}`;
 
         console.log(`[NaukriDiscovery: "${kw}"] Navigating to page ${p}: ${searchUrl}`);
         await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
@@ -140,7 +142,8 @@ export class NaukriDiscoveryAdapter implements JobDiscoveryAdapter {
             const desc = descEl ? (await descEl.textContent())?.trim() : undefined;
 
             const tupleJobId = (await tuple.getAttribute("data-job-id")) || (await tuple.getAttribute("id"));
-            const match = href?.match(/-(\d+)(?:\?|$)/) || href?.match(/job-listings-.*?(\d{6,})/);
+            // Job listing URLs end with a numeric ID: /job-listings-{slug}-{id}
+            const match = href?.match(/(\d{6,})(?:[\/?#]|$)/);
             const sourceId =
               tupleJobId ||
               (match ? match[1] : null) ||
