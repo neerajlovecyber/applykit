@@ -1,4 +1,4 @@
-import { eq, and, lte, desc, asc, type SQL } from "drizzle-orm";
+import { eq, and, lte, desc, asc, inArray, type SQL } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { getDrizzleDb } from "../index";
 import { tasks, type TaskRecord, type NewTaskRecord } from "../schema";
@@ -167,13 +167,17 @@ export function getActiveTaskForApplication(applicationId: string): TaskRecord |
 export function cancelPendingTasks(kind?: string): TaskRecord[] {
   const db = getDrizzleDb();
   const condition = kind
-    ? and(eq(tasks.status, "queued"), eq(tasks.kind, kind))
-    : eq(tasks.status, "queued");
+    ? and(inArray(tasks.status, ["queued", "running"]), eq(tasks.kind, kind))
+    : inArray(tasks.status, ["queued", "running"]);
 
   const pending = db.select().from(tasks).where(condition).all();
   if (pending.length > 0) {
     db.update(tasks)
-      .set({ status: "failed", error: "Cancelled by user" })
+      .set({
+        status: "failed",
+        error: "Cancelled by user",
+        finished_at: new Date().toISOString(),
+      })
       .where(condition)
       .run();
   }

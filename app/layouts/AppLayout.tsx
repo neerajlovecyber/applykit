@@ -69,7 +69,7 @@ const getInitial = (name?: string) => {
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const conveyor = useConveyor();
-  const { isRunning, pendingCount, startQueue, pauseQueue, setPendingCount, setIsRunning } = useQueueStore();
+  const { isRunning, pendingCount, startQueue, pauseQueue, stopQueue, setPendingCount, setIsRunning } = useQueueStore();
   const { activeProfile, profiles, setProfiles, setActiveProfile } = useProfileStore();
   const execution = useExecutionStore();
 
@@ -80,11 +80,10 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     const refreshQueueStats = async () => {
       try {
         const stats = await conveyor.data.getTaskStats();
+        const state = await conveyor.data.getQueueState();
         if (stats) {
           setPendingCount(stats.queued);
-          if (stats.running > 0) {
-            setIsRunning(true);
-          }
+          setIsRunning(Boolean(state?.isRunning && (stats.running > 0 || stats.queued > 0)));
         }
       } catch {
         // ignore
@@ -305,9 +304,10 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                 await startQueue();
               }}
               onStop={async () => {
-                await pauseQueue();
+                await stopQueue();
+                setIsRunning(false);
                 if (execution.isRunning) {
-                  execution.finishExecution(false, "⏸️ Execution paused by user");
+                  execution.finishExecution(false, "⏹️ Execution stopped by user");
                 }
               }}
               runLabel={`Run Queue (${pendingCount})`}

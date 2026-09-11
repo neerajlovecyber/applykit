@@ -17,7 +17,7 @@ import type { ApplicationExecuteOptions } from "@/lib/execution/types";
  */
 export function registerDefaultTaskHandlers(): void {
   // 1. Form Application Automation Task
-  registerTaskHandler("apply", async (task, payload) => {
+  registerTaskHandler("apply", async (task, payload, signal) => {
     const applicationId = (payload.applicationId as string) || task.application_id;
     if (!applicationId) {
       return { error: "Missing applicationId in task payload" };
@@ -50,15 +50,20 @@ export function registerDefaultTaskHandlers(): void {
       profile,
       pauseBeforeSubmit: payload.pauseBeforeSubmit !== undefined ? Boolean(payload.pauseBeforeSubmit) : true,
       headless: isHeadless,
+      signal,
     };
 
     console.log(`[TaskHandlers] Delegating application task ${app.id} on ${job.source} to Worker Supervisor...`);
 
     try {
-      const result = await workerManager.executeTask<any, any>({
-        taskKind: "apply",
-        executeOptions,
-      });
+      const result = await workerManager.executeTask<any, any>(
+        {
+          taskKind: "apply",
+          executeOptions,
+        },
+        180000,
+        signal
+      );
 
       const isNonRetryable =
         result?.requiresExternalApply ||

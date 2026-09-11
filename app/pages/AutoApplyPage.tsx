@@ -397,8 +397,34 @@ export const AutoApplyPage: React.FC = () => {
       await conveyor.data.stopTaskQueue();
       activeBatchTaskIds.current.clear();
       setIsPaused(false);
-      finishExecution(false, "⏹️ Auto-apply stopped by user");
-      updateStatus("⏹️ Auto-apply stopped and pending tasks cancelled.", "info");
+
+      // Immediately mark any running or queued rows in the results table as cancelled
+      useExecutionStore.setState((state) => {
+        const updatedLog = state.logResults.map((r) => {
+          if (r.status === "running" || r.status === "queued") {
+            return {
+              ...r,
+              status: "failed",
+              success: false,
+              errorMessage: "Cancelled by user",
+            };
+          }
+          return r;
+        });
+        const failedCount = updatedLog.filter((r) => r.status === "failed").length;
+        return {
+          logResults: updatedLog,
+          runStats: {
+            ...state.runStats,
+            processed: updatedLog.length,
+            failed: failedCount,
+          },
+        };
+      });
+
+      const currentStore = useExecutionStore.getState();
+      finishExecution(false, "⏹️ Auto-apply stopped by user", currentStore.runStats, currentStore.logResults);
+      updateStatus("⏹️ Auto-apply stopped and tasks cancelled.", "info");
     } catch (e) {
       console.error("Error stopping queue:", e);
     }

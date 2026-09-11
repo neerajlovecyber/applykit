@@ -4,19 +4,38 @@
  */
 
 /**
- * Sleep for a specified duration.
+ * Sleep for a specified duration with optional AbortSignal support.
  */
-export function sleep(ms: number): Promise<void> {
+export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.reject(new Error("Operation cancelled by user"));
   if (process.env.NODE_ENV === "test") return Promise.resolve();
-  return new Promise((resolve) => setTimeout(resolve, ms));
+
+  return new Promise((resolve, reject) => {
+    let timer: NodeJS.Timeout | null = null;
+    const onAbort = () => {
+      if (timer) clearTimeout(timer);
+      reject(new Error("Operation cancelled by user"));
+    };
+
+    if (signal) {
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+
+    timer = setTimeout(() => {
+      if (signal) {
+        signal.removeEventListener("abort", onAbort);
+      }
+      resolve();
+    }, ms);
+  });
 }
 
 /**
  * Sleep for a random duration between min and max milliseconds.
  */
-export function randomDelay(minMs: number, maxMs: number): Promise<void> {
+export function randomDelay(minMs: number, maxMs: number, signal?: AbortSignal): Promise<void> {
   const delay = minMs + Math.random() * (maxMs - minMs);
-  return sleep(delay);
+  return sleep(delay, signal);
 }
 
 /**

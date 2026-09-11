@@ -25,6 +25,8 @@ export class AutomationWorkerManager {
   private workerPath: string;
   // Concurrency mutex: ensures strictly ONE automation task executes in the browser at a time
   private executionQueue: Promise<any> = Promise.resolve();
+  // Active AbortController for current task execution
+  private activeAbortController: AbortController | null = null;
 
   constructor(customWorkerPath?: string) {
     this.workerPath =
@@ -184,7 +186,10 @@ export class AutomationWorkerManager {
         const isHeadless = executeOptions.headless ?? false;
         const page = await createStealthPage({ headless: isHeadless });
         try {
-          const result = await formEngine.execute(page, executeOptions.platform, executeOptions);
+          const result = await formEngine.execute(page, executeOptions.platform, {
+            ...executeOptions,
+            signal: this.activeAbortController?.signal,
+          });
           return result as R;
         } finally {
           await releasePage(page);
@@ -232,10 +237,61 @@ export class AutomationWorkerManager {
   }
 
   /**
+   * Cancel the currently executing task immediately via its AbortController.
+   */
+  public cancelActiveTask(reason = "Cancelled by user"): void {
+    if (this.activeAbortController) {
+      console.log(`[WorkerManager] Aborting current task: ${reason}`);
+      this.activeAbortController.abort(reason);
+      this.activeAbortController = null;
+    }
+    // Also send abort command to worker process if running
+    this.sendCommand("ABORT_TASK", { reason }).catch(() => {});
+  }
+
+  /**
    * Execute automation task via isolated worker (guaranteed strictly sequential - one task at a time).
    */
-  public async executeTask<T = any, R = any>(task: T, timeoutMs = 180000): Promise<R> {
-    const run = () => this.sendCommand<T, R>("EXECUTE_TASK", task, timeoutMs);
+  public async executeTask<T = any, R = any>(
+    task: T,
+    timeoutMs = 180000,
+    signal?: AbortSignal
+  ): Promise<R> {
+    const run = async () => {
+      if (signal?.aborted) {
+        throw new Error("Task cancelled before execution began");
+      }
+
+      const controller = new AbortController();
+      this.activeAbortController = controller;
+
+      // Link external signal if provided
+      const onExternalAbort = () => {
+        controller.abort("Cancelled by external signal");
+      };
+      if (signal) {
+        signal.addEventListener("abort", onExternalAbort, { once: true });
+      }
+
+      try {
+        const promise = this.sendCommand<T, R>("EXECUTE_TASK", task, timeoutMs);
+        const abortPromise = new Promise<never>((_, reject) => {
+          controller.signal.addEventListener("abort", () => {
+            reject(new Error(String(controller.signal.reason || "Task cancelled by user")));
+          }, { once: true });
+        });
+
+        return await Promise.race([promise, abortPromise]);
+      } finally {
+        if (signal) {
+          signal.removeEventListener("abort", onExternalAbort);
+        }
+        if (this.activeAbortController === controller) {
+          this.activeAbortController = null;
+        }
+      }
+    };
+
     const queued = this.executionQueue.then(run, run);
     this.executionQueue = queued.catch(() => {});
     return queued;
@@ -244,11 +300,15 @@ export class AutomationWorkerManager {
   /**
    * Execute discovery job scraping via isolated worker.
    */
-  public async executeDiscovery(options: any): Promise<any[]> {
-    const res = await this.sendCommand<any, { jobs?: any[] }>("EXECUTE_TASK", {
-      taskKind: "discovery",
-      options,
-    }, 180000);
+  public async executeDiscovery(options: any, signal?: AbortSignal): Promise<any[]> {
+    const res = await this.executeTask<any, { jobs?: any[] }>(
+      {
+        taskKind: "discovery",
+        options,
+      },
+      180000,
+      signal
+    );
     return res?.jobs ?? [];
   }
 

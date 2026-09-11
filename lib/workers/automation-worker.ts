@@ -19,10 +19,11 @@ import type { ApplicationExecuteOptions } from "@/lib/execution/types";
 import { getDiscoveryAdapter } from "@/lib/jobs/adapters";
 
 const formEngine = new FormAutomationEngine();
+let activeTaskAbortController: AbortController | null = null;
 
 export interface WorkerMessage<T = unknown> {
   id: string;
-  type: "PING" | "EXECUTE_TASK" | "CONNECT_PLATFORM" | "LAUNCH_BROWSER" | "CLOSE_POOL" | "BRING_TO_FRONT" | "GET_BROWSER_STATUS";
+  type: "PING" | "EXECUTE_TASK" | "CONNECT_PLATFORM" | "LAUNCH_BROWSER" | "CLOSE_POOL" | "BRING_TO_FRONT" | "GET_BROWSER_STATUS" | "ABORT_TASK";
   payload?: T;
 }
 
@@ -191,15 +192,20 @@ async function handleMessage(msg: WorkerMessage): Promise<void> {
             data: { stage: "launching_browser", message: `Launching browser for ${executeOptions.platform}...` },
           });
 
+          activeTaskAbortController = new AbortController();
           const page = await createStealthPage({ headless: executeOptions.headless ?? false });
           try {
-            const result = await formEngine.execute(page, executeOptions.platform, executeOptions);
+            const result = await formEngine.execute(page, executeOptions.platform, {
+              ...executeOptions,
+              signal: activeTaskAbortController.signal,
+            });
             sendResponse({
               id,
               type: "SUCCESS",
               data: result,
             });
           } finally {
+            activeTaskAbortController = null;
             await releasePage(page);
           }
         } else if (taskKind === "discovery") {
@@ -250,6 +256,17 @@ async function handleMessage(msg: WorkerMessage): Promise<void> {
     case "GET_BROWSER_STATUS": {
       const open = isBrowserOpen();
       sendResponse({ id, type: "SUCCESS", data: { open } });
+      break;
+    }
+
+    case "ABORT_TASK": {
+      const { reason } = (payload as { reason?: string }) || {};
+      console.log("[AutomationWorker] Received ABORT_TASK signal:", reason);
+      if (activeTaskAbortController) {
+        activeTaskAbortController.abort(reason || "Cancelled by user");
+        activeTaskAbortController = null;
+      }
+      sendResponse({ id, type: "SUCCESS", data: { aborted: true } });
       break;
     }
 

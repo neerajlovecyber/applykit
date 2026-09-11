@@ -33,6 +33,7 @@ export interface ApplicationExecuteOptions {
   coverLetterText?: string;
   pauseBeforeSubmit?: boolean;
   headless?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface ApplicationExecuteResult {

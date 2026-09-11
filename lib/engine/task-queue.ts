@@ -8,7 +8,11 @@
 import * as dbQueries from "@/lib/db";
 import type { Task } from "@/lib/db";
 
-export type TaskHandler = (task: Task, payload: Record<string, unknown>) => Promise<{
+export type TaskHandler = (
+  task: Task,
+  payload: Record<string, unknown>,
+  signal?: AbortSignal
+) => Promise<{
   result?: Record<string, unknown>;
   error?: string;
   retryable?: boolean;
@@ -27,8 +31,10 @@ type TaskEventListener = (event: TaskEvent) => void;
 
 const handlers = new Map<string, TaskHandler>();
 const eventListeners = new Set<TaskEventListener>();
-let processingInterval: ReturnType<typeof setInterval> | null = null;
+let isQueueActive = false;
 let isProcessing = false;
+let passiveHeartbeat: ReturnType<typeof setInterval> | null = null;
+let activeTaskController: AbortController | null = null;
 
 /**
  * Register a handler for a specific task kind.
@@ -74,6 +80,19 @@ function broadcastTaskEvent(event: TaskEvent): void {
 }
 
 /**
+ * Instantly triggers queue processing if not already busy.
+ */
+export function triggerNextTask(): void {
+  if (!isProcessing && isTaskQueueRunning()) {
+    setImmediate(() => {
+      processNextTask().catch((err) => {
+        console.error("[TaskQueue] Error during event pump:", err);
+      });
+    });
+  }
+}
+
+/**
  * Enqueue a new task.
  */
 export function enqueueTask(data: {
@@ -104,12 +123,8 @@ export function enqueueTask(data: {
     task,
   });
 
-  // Instantly wake up the queue processor if queue is currently active
-  if (!isProcessing && isTaskQueueRunning()) {
-    setImmediate(() => {
-      processNextTask().catch(() => {});
-    });
-  }
+  // Instantly trigger event-driven processing
+  triggerNextTask();
 
   return task;
 }
@@ -123,10 +138,14 @@ export async function processNextTask(): Promise<boolean> {
   isProcessing = true;
 
   let task: Task | undefined;
+  const currentAbortController = new AbortController();
+  activeTaskController = currentAbortController;
+
   try {
     task = dbQueries.getNextPendingTask();
     if (!task) {
       isProcessing = false;
+      activeTaskController = null;
       return false;
     }
 
@@ -141,6 +160,7 @@ export async function processNextTask(): Promise<boolean> {
         task,
       });
       isProcessing = false;
+      activeTaskController = null;
       return true;
     }
 
@@ -156,8 +176,20 @@ export async function processNextTask(): Promise<boolean> {
     // Parse payload
     const payload = task.payload ? JSON.parse(task.payload) : {};
 
-    // Execute handler
-    const outcome = await handler(task, payload);
+    // Execute handler with first-class AbortSignal
+    const outcome = await handler(task, payload, currentAbortController.signal);
+
+    if (currentAbortController.signal.aborted) {
+      dbQueries.updateTaskStatus(task.id, "failed", undefined, "Cancelled by user");
+      broadcastTaskEvent({
+        taskId: task.id,
+        kind: task.kind,
+        status: "failed",
+        error: "Cancelled by user",
+        task,
+      });
+      return true;
+    }
 
     if (outcome.error) {
       const isRetryable = outcome.retryable !== false;
@@ -197,7 +229,17 @@ export async function processNextTask(): Promise<boolean> {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     if (task) {
-      if ((task.attempts ?? 0) + 1 < (task.max_attempts ?? 3)) {
+      const wasAborted = currentAbortController.signal.aborted || /cancel/i.test(errorMsg);
+      if (wasAborted) {
+        dbQueries.updateTaskStatus(task.id, "failed", undefined, "Cancelled by user");
+        broadcastTaskEvent({
+          taskId: task.id,
+          kind: task.kind,
+          status: "failed",
+          error: "Cancelled by user",
+          task,
+        });
+      } else if ((task.attempts ?? 0) + 1 < (task.max_attempts ?? 3)) {
         dbQueries.updateTaskStatus(task.id, "queued", undefined, errorMsg);
         broadcastTaskEvent({
           taskId: task.id,
@@ -219,11 +261,12 @@ export async function processNextTask(): Promise<boolean> {
     }
   } finally {
     isProcessing = false;
-    // Drain next task immediately if queue is still running
+    if (activeTaskController === currentAbortController) {
+      activeTaskController = null;
+    }
+    // Event-driven: immediately drain next pending task if queue is still running
     if (isTaskQueueRunning()) {
-      setImmediate(() => {
-        processNextTask().catch(() => {});
-      });
+      triggerNextTask();
     }
   }
 
@@ -231,38 +274,55 @@ export async function processNextTask(): Promise<boolean> {
 }
 
 /**
- * Start the task queue processor.
+ * Start the task queue processor (event-driven with passive fallback heartbeat).
  */
-export function startTaskQueue(pollIntervalMs = 1000): void {
-  if (processingInterval) return;
+export function startTaskQueue(heartbeatIntervalMs = 5000): void {
+  if (isQueueActive) return;
+  isQueueActive = true;
 
-  processingInterval = setInterval(async () => {
-    try {
-      await processNextTask();
-    } catch (err) {
-      console.error("[TaskQueue] Processing error:", err);
-    }
-  }, pollIntervalMs);
+  // Passive fallback heartbeat (only to recover stuck or newly scheduled future tasks)
+  if (!passiveHeartbeat) {
+    passiveHeartbeat = setInterval(async () => {
+      try {
+        if (isQueueActive && !isProcessing) {
+          await processNextTask();
+        }
+      } catch (err) {
+        console.error("[TaskQueue] Heartbeat error:", err);
+      }
+    }, heartbeatIntervalMs);
+  }
 
-  console.log(`[TaskQueue] Started with ${pollIntervalMs}ms poll interval`);
+  console.log(`[TaskQueue] Started (event-driven with ${heartbeatIntervalMs}ms fallback heartbeat)`);
+  triggerNextTask();
 }
 
 /**
  * Stop the task queue processor.
  */
 export function stopTaskQueue(): void {
-  if (processingInterval) {
-    clearInterval(processingInterval);
-    processingInterval = null;
-    console.log("[TaskQueue] Stopped");
+  isQueueActive = false;
+  if (passiveHeartbeat) {
+    clearInterval(passiveHeartbeat);
+    passiveHeartbeat = null;
   }
+  // Abort running task if any
+  if (activeTaskController) {
+    activeTaskController.abort("Task queue stopped");
+    activeTaskController = null;
+  }
+  console.log("[TaskQueue] Stopped");
 }
 
 /**
  * Pause the task queue processor.
  */
 export function pauseTaskQueue(): { success: boolean; isRunning: boolean } {
-  stopTaskQueue();
+  isQueueActive = false;
+  if (passiveHeartbeat) {
+    clearInterval(passiveHeartbeat);
+    passiveHeartbeat = null;
+  }
   broadcastTaskEvent({
     taskId: "queue",
     kind: "queue_control",
@@ -275,24 +335,28 @@ export function pauseTaskQueue(): { success: boolean; isRunning: boolean } {
 /**
  * Resume the task queue processor.
  */
-export function resumeTaskQueue(pollIntervalMs = 1000): { success: boolean; isRunning: boolean } {
-  startTaskQueue(pollIntervalMs);
+export function resumeTaskQueue(heartbeatIntervalMs = 5000): { success: boolean; isRunning: boolean } {
+  startTaskQueue(heartbeatIntervalMs);
   broadcastTaskEvent({
     taskId: "queue",
     kind: "queue_control",
     status: "queued",
   });
-  // Immediately drain the first pending task
-  setImmediate(() => {
-    processNextTask().catch(() => {});
-  });
+  triggerNextTask();
   return { success: true, isRunning: true };
 }
 
 /**
- * Cancel pending queued tasks.
+ * Cancel pending queued and running tasks.
  */
 export function cancelTasks(kind?: string): { cancelledCount: number } {
+  // Abort running task instantly via its AbortController
+  if (activeTaskController) {
+    activeTaskController.abort("Cancelled by user");
+    activeTaskController = null;
+  }
+  isProcessing = false;
+
   const cancelled = dbQueries.cancelPendingTasks(kind);
   for (const t of cancelled) {
     broadcastTaskEvent({
@@ -303,6 +367,13 @@ export function cancelTasks(kind?: string): { cancelledCount: number } {
       task: t as any,
     });
   }
+
+  // Cancel worker active task via worker manager
+  try {
+    const { workerManager } = require("@/lib/execution/worker-manager");
+    workerManager.cancelActiveTask("Cancelled by user");
+  } catch {}
+
   return { cancelledCount: cancelled.length };
 }
 
@@ -325,7 +396,7 @@ export function getQueueState(): {
  * Check if the task queue is running.
  */
 export function isTaskQueueRunning(): boolean {
-  return processingInterval !== null;
+  return isQueueActive;
 }
 
 /**

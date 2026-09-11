@@ -146,6 +146,10 @@ export class FormAutomationEngine {
       let step = 0;
 
       for (; step < maxSteps; step++) {
+        if (executeOptions.signal?.aborted) {
+          throw new Error("Application cancelled by user");
+        }
+
         const isOpen = await strategy.isModalOpen(page);
         if (!isOpen) {
           console.log(`[FormEngine] [${strategy.platform}] Application modal closed or completed.`);
@@ -262,7 +266,7 @@ export class FormAutomationEngine {
         const nextBtn = await strategy.findNextButton(page);
         if (nextBtn) {
           await humanClick(page, nextBtn);
-          if (!skipDelays) await randomDelay(1200, 2500);
+          if (!skipDelays) await randomDelay(1200, 2500, executeOptions.signal);
         } else {
           console.log(`[FormEngine] [${strategy.platform}] No next or submit button found on step ${step + 1}.`);
           break;
