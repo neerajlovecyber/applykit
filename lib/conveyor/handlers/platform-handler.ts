@@ -2,7 +2,7 @@ import { handle } from "@/lib/main/shared";
 import * as dbQueries from "@/lib/db";
 import { getActiveTaskForApplication } from "@/lib/db/queries/tasks";
 import { workerManager } from "@/lib/execution/worker-manager";
-import { enqueueTask } from "@/lib/engine/task-queue";
+import { enqueueTask, resumeTaskQueue } from "@/lib/engine/task-queue";
 import { JobDiscoveryService } from "@/lib/jobs/discovery-service";
 import { loginNaukriAPI } from "@/lib/jobs/adapters/naukri-api";
 
@@ -192,6 +192,10 @@ export function registerPlatformHandlers(): void {
         enqueued++;
       }
 
+      if (enqueued > 0) {
+        resumeTaskQueue(1000);
+      }
+
       console.log(`[NaukriAutoApply] Enqueued ${enqueued} application tasks (discovered: ${searchRes.newJobsAdded}).`);
       return {
         success: true,
@@ -330,6 +334,10 @@ export function registerPlatformHandlers(): void {
           success: true,
         });
         enqueued++;
+      }
+
+      if (enqueued > 0) {
+        resumeTaskQueue(1000);
       }
 
       console.log(`[LinkedInAutoApply] Enqueued ${enqueued} application tasks (discovered: ${searchRes.newJobsAdded}).`);

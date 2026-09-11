@@ -104,8 +104,8 @@ export function enqueueTask(data: {
     task,
   });
 
-  // Instantly wake up the queue processor without waiting for poll interval
-  if (!isProcessing) {
+  // Instantly wake up the queue processor if queue is currently active
+  if (!isProcessing && isTaskQueueRunning()) {
     setImmediate(() => {
       processNextTask().catch(() => {});
     });
@@ -119,6 +119,7 @@ export function enqueueTask(data: {
  */
 export async function processNextTask(): Promise<boolean> {
   if (isProcessing) return false;
+  if (!isTaskQueueRunning()) return false;
   isProcessing = true;
 
   let task: Task | undefined;
@@ -218,10 +219,12 @@ export async function processNextTask(): Promise<boolean> {
     }
   } finally {
     isProcessing = false;
-    // Drain next task immediately if available
-    setImmediate(() => {
-      processNextTask().catch(() => {});
-    });
+    // Drain next task immediately if queue is still running
+    if (isTaskQueueRunning()) {
+      setImmediate(() => {
+        processNextTask().catch(() => {});
+      });
+    }
   }
 
   return true;
@@ -230,7 +233,7 @@ export async function processNextTask(): Promise<boolean> {
 /**
  * Start the task queue processor.
  */
-export function startTaskQueue(pollIntervalMs = 2000): void {
+export function startTaskQueue(pollIntervalMs = 1000): void {
   if (processingInterval) return;
 
   processingInterval = setInterval(async () => {
@@ -272,12 +275,16 @@ export function pauseTaskQueue(): { success: boolean; isRunning: boolean } {
 /**
  * Resume the task queue processor.
  */
-export function resumeTaskQueue(pollIntervalMs = 2000): { success: boolean; isRunning: boolean } {
+export function resumeTaskQueue(pollIntervalMs = 1000): { success: boolean; isRunning: boolean } {
   startTaskQueue(pollIntervalMs);
   broadcastTaskEvent({
     taskId: "queue",
     kind: "queue_control",
     status: "queued",
+  });
+  // Immediately drain the first pending task
+  setImmediate(() => {
+    processNextTask().catch(() => {});
   });
   return { success: true, isRunning: true };
 }

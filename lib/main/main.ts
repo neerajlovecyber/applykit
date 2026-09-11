@@ -36,9 +36,8 @@ app.whenReady().then(() => {
     log.warn("[ApplyKit] Could not recover stale tasks on startup:", err);
   }
 
-  // 2. Register execution task handlers & start task queue engine
+  // 2. Register execution task handlers (queue remains idle until user starts it)
   registerDefaultTaskHandlers();
-  startTaskQueue(1000);
 
   // 3. Pre-warm isolated automation worker
   try {
