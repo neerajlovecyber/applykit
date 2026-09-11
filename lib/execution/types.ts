@@ -28,6 +28,7 @@ export interface ApplicationExecuteOptions {
   jobUrl: string;
   platform: string;
   profileId: string;
+  profile?: any;
   resumePath?: string;
   coverLetterText?: string;
   pauseBeforeSubmit?: boolean;

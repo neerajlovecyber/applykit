@@ -261,17 +261,23 @@ async function handleMessage(msg: WorkerMessage): Promise<void> {
 }
 
 // Attach listener to Electron parentPort or standard child_process IPC
+let messageQueue = Promise.resolve();
+
+function processIncomingMessage(msg: WorkerMessage): void {
+  messageQueue = messageQueue
+    .then(() => handleMessage(msg))
+    .catch((err) => {
+      console.error("[AutomationWorker] Unhandled message error:", err);
+    });
+}
+
 if (process.parentPort) {
   process.parentPort.on("message", (event: { data: WorkerMessage }) => {
-    handleMessage(event.data).catch((err) => {
-      console.error("[AutomationWorker] Unhandled rejection:", err);
-    });
+    processIncomingMessage(event.data);
   });
 } else if (process.on) {
   process.on("message", (msg: WorkerMessage) => {
-    handleMessage(msg).catch((err) => {
-      console.error("[AutomationWorker] Unhandled message error:", err);
-    });
+    processIncomingMessage(msg);
   });
 }
 

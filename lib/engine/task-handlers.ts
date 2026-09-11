@@ -9,7 +9,7 @@ import { registerTaskHandler } from "./task-queue";
 import { workerManager } from "@/lib/execution/worker-manager";
 import { discoveryService } from "@/lib/jobs/discovery-service";
 import { generateTailoredResume } from "@/lib/documents/tailor";
-import { getApplicationById, getJobPostingById, getSetting } from "@/lib/db";
+import { getApplicationById, getJobPostingById, getProfileById, getSetting } from "@/lib/db";
 import type { ApplicationExecuteOptions } from "@/lib/execution/types";
 
 /**
@@ -40,12 +40,14 @@ export function registerDefaultTaskHandlers(): void {
 
     const browserMode = getSetting("browser_mode") ?? "visible";
     const isHeadless = payload.headless !== undefined ? Boolean(payload.headless) : (browserMode === "background");
+    const profile = getProfileById(app.profile_id);
 
     const executeOptions: ApplicationExecuteOptions = {
       applicationId: app.id,
       jobUrl,
       platform: job.source || "linkedin",
       profileId: app.profile_id,
+      profile,
       pauseBeforeSubmit: payload.pauseBeforeSubmit !== undefined ? Boolean(payload.pauseBeforeSubmit) : true,
       headless: isHeadless,
     };

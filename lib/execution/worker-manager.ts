@@ -44,7 +44,18 @@ export class AutomationWorkerManager {
       }
 
       console.log(`[WorkerManager] Spawning Playwright utilityProcess worker at: ${this.workerPath}`);
-      this.childProcess = utilityProcess.fork(this.workerPath);
+      let dbPath: string | undefined;
+      try {
+        const { resolveDbPath } = require("@/lib/db/connection");
+        dbPath = resolveDbPath();
+      } catch {}
+
+      this.childProcess = utilityProcess.fork(this.workerPath, [], {
+        env: {
+          ...process.env,
+          ...(dbPath ? { APPLYKIT_DB_PATH: dbPath } : {}),
+        },
+      });
 
       this.childProcess.on("message", (response: WorkerResponse) => {
         this.handleWorkerResponse(response);

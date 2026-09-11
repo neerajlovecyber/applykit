@@ -82,7 +82,7 @@ export class FormAutomationEngine {
 
     console.log(`[FormEngine] [${strategy.platform}] Starting application for job: ${jobUrl}`);
 
-    const profile = getProfileById(profileId);
+    const profile = executeOptions.profile || getProfileById(profileId);
     if (!profile) {
       const errMsg = `Profile not found for ID: ${profileId}`;
       updateApplicationStatus(applicationId, "failed", errMsg);
